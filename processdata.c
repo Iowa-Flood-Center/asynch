@@ -1,3 +1,4 @@
+#include <errno.h>
 #include "processdata.h"
 
 //Reads the results stored in temporary files and outputs them conveniently to a new file.
@@ -16,8 +17,8 @@ int Process_Data(Link** sys,UnivVars* GlobalVars,unsigned int N,unsigned int* sa
 {
 	int i,proc,k;
 	unsigned int j,l,m,loc,id,counter,total_spaces,my_max_disk,max_disk,*space_counter,size = 16;
-	char filename[GlobalVars->string_size],filenamespace[GlobalVars->string_size],outputfilename[GlobalVars->string_size],outputfilename_index[GlobalVars->string_size];
-	char data_storage[size];
+	char filename[ASYNCH_MAX_PATH_LENGTH],filenamespace[ASYNCH_MAX_PATH_LENGTH],outputfilename[ASYNCH_MAX_PATH_LENGTH],outputfilename_index[ASYNCH_MAX_PATH_LENGTH];
+	char data_storage[16];
 	fpos_t *positions;
 	unsigned int dim = GlobalVars->num_print;
 	FILE *inputfile = NULL,*outputfile = NULL,*outputfile_index = NULL;
@@ -406,7 +407,7 @@ int Process_Data(Link** sys,UnivVars* GlobalVars,unsigned int N,unsigned int* sa
 					while(io_val != 1)
 					{
 						printf("[%i]: Error writing id %u to .irad file. Trying again...\n",my_rank,save_list[i]);
-						sleep(2);
+						ASYNCH_SLEEP(2);
 						io_val = fwrite(&(save_list[i]),sizeof(unsigned int),1,outputfile_index);
 					}
 				}
@@ -466,7 +467,7 @@ int Process_Data(Link** sys,UnivVars* GlobalVars,unsigned int N,unsigned int* sa
 								while(io_val != 1)
 								{
 									printf("[%i]: Error writing data for id %u to .rad file. Trying again...\n",my_rank,save_list[i]);
-									sleep(2);
+									ASYNCH_SLEEP(2);
 									io_val = fwrite(data_storage,GlobalVars->output_sizes[m],1,outputfile);
 								}
 							}
@@ -784,7 +785,7 @@ int UploadHydrosDB(Link** sys,UnivVars* GlobalVars,unsigned int N,unsigned int* 
 {
 	int i,k,nbytes,my_result = 0,result = 0,return_val = 0;
 	unsigned int j,l,m,loc,id,total_spaces,max_disk;
-	char filename[GlobalVars->string_size],filenamespace[GlobalVars->string_size],temptablename[GlobalVars->query_size],tempfilename[GlobalVars->string_size];
+	char filename[ASYNCH_MAX_PATH_LENGTH],filenamespace[ASYNCH_MAX_PATH_LENGTH],temptablename[ASYNCH_MAX_PATH_LENGTH],tempfilename[ASYNCH_MAX_PATH_LENGTH];
 	char* submission;
 	char data_storage[16];
 	fpos_t **positions;
@@ -1062,7 +1063,7 @@ int PreparePeakFlowFiles(UnivVars* GlobalVars,unsigned int peaksave_size)
 	if(peaksave_size)
 	{
 		//Put together the output filename string
-		char outputfilename[GlobalVars->string_size],filename[GlobalVars->string_size];
+		char outputfilename[ASYNCH_MAX_PATH_LENGTH],filename[ASYNCH_MAX_PATH_LENGTH];
 		sprintf(outputfilename,"%s",GlobalVars->peaks_loc_filename);
 		if(GlobalVars->print_par_flag == 1)
 		{
@@ -1089,7 +1090,7 @@ int DumpPeakFlowData(Link** sys,UnivVars* GlobalVars,unsigned int N,int* assignm
 {
 	unsigned int i,length,error = 0,loc;
 	Link* current;
-	FILE* peakfile;
+	FILE* peakfile = NULL;
 	char buffer[256];
 	double conversion = (GlobalVars->convertarea_flag) ? 1e-6 : 1.0;
 
@@ -1167,7 +1168,7 @@ int DumpPeakFlowData(Link** sys,UnivVars* GlobalVars,unsigned int N,int* assignm
 int UploadPeakFlowData(Link** sys,UnivVars* GlobalVars,unsigned int N,int* assignments,unsigned int* peaksave_list,unsigned int peaksave_size,unsigned int** id_to_loc,ConnData* conninfo)
 {
 	unsigned int i,loc,length,result,return_val = 0,error = 0;
-	char temptablename[GlobalVars->query_size],buffer[256];
+	char temptablename[ASYNCH_MAX_QUERY_LENGTH],buffer[256];
 	Link* current;
 	PGresult *res;
 	double conversion = (GlobalVars->convertarea_flag) ? 1e-6 : 1.0;
@@ -1367,7 +1368,7 @@ int DataDump2(Link** sys,unsigned int N,int* assignments,UnivVars* GlobalVars,ch
 	FILE* output;
 	//char filename[256];
 	//unsigned int dim = GlobalVars->dim;
-	double buffer[GlobalVars->max_dim];
+	double buffer[ASYNCH_MAX_DIM];
 
 	if(my_rank == 0)	//Creating the file
 	{
@@ -1424,9 +1425,9 @@ int DataDump2(Link** sys,unsigned int N,int* assignments,UnivVars* GlobalVars,ch
 int UploadDBDataDump(Link** sys,unsigned int N,int* assignments,UnivVars* GlobalVars,char* preface,ConnData* conninfo)
 {
 	unsigned int i,j,init_length,nbytes;
-	char query[GlobalVars->query_size],state_name[32],temptablename[GlobalVars->query_size];
+	char query[ASYNCH_MAX_QUERY_LENGTH],state_name[32],temptablename[ASYNCH_MAX_QUERY_LENGTH];
 	unsigned int size = GlobalVars->max_dim*(16+1)+16+1+16+1;
-	char submission[size];	//Assumes 16 chars for each double
+	char submission[ASYNCH_MAX_DIM * (16 + 1) + 16 + 1 + 16 + 1];	//Assumes 16 bytes for each double
 	static short int first_call = 0;
 	PGresult* res;
 	int result,error;
@@ -1597,7 +1598,7 @@ FILE* PrepareTempFiles(Link** sys,unsigned int N,int* assignments,UnivVars* Glob
 	Link* current;
 	FILE* outputfile = NULL;
 	//double* dummy_value;
-	char filename[GlobalVars->string_size];
+	char filename[ASYNCH_MAX_PATH_LENGTH];
 	VEC* dummy_y = NULL;	//Used for blanking lines in the temp files
 	double dummy_t = 0.0;			//For blanking lines in the temp files
 	//fpos_t holder1,holder2;
@@ -1617,7 +1618,7 @@ FILE* PrepareTempFiles(Link** sys,unsigned int N,int* assignments,UnivVars* Glob
 		outputfile = fopen(filename,"w+b");
 		if(!outputfile)	//If there's an error, try one more time...
 		{		//This was added because of problems with the filesystem on Helium
-			sleep(1);
+			ASYNCH_SLEEP(1);
 			outputfile = fopen(filename,"w+b");
 			if(outputfile)
 				printf("[%i]: Notice: Needed two tries to create file %s.\n",my_rank,filename);
@@ -1672,11 +1673,11 @@ FILE* PrepareTempFiles(Link** sys,unsigned int N,int* assignments,UnivVars* Glob
 }
 
 //Deletes this process's temporary file.
-//Returns 0 if file delete, 1 if file does not exist, 2 if an error occurred.
+//Returns 0 if file deleted, errno if an error occurred.
 int RemoveTemporaryFiles(UnivVars* GlobalVars,unsigned int my_save_size,char* additional_temp)
 {
-	int ret_val;
-	char filename[GlobalVars->string_size];
+	int ret_val = 0;
+	char filename[ASYNCH_MAX_PATH_LENGTH];
 
 	if(my_save_size > 0)
 	{
@@ -1688,12 +1689,11 @@ int RemoveTemporaryFiles(UnivVars* GlobalVars,unsigned int my_save_size,char* ad
 			sprintf(filename,"%s_%s",GlobalVars->temp_filename,additional_temp);
 			//sprintf(filename,"%s_%s_%.3i",GlobalVars->temp_filename,additional_temp,my_rank);
 		ret_val = remove(filename);
-		if(!ret_val)	return 0;
-		else		return 2;
+		if(ret_val == -1)
+            ret_val = errno;
 	}
-	else
-		return 1;
 	
+	return ret_val;
 }
 
 //Resets all temp files to the beginning of each link. This will allow all data in the temp files to be overwritten.

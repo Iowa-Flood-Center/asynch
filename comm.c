@@ -13,7 +13,7 @@ void Transfer_Data(TransData* my_data,Link** sys,int* assignments,UnivVars* Glob
 	int i,j,m,n,sender,steps_to_transfer = 0,curr_idx = 0,parval,s,dim,flag,position,total_links,count,removed = 0,order = 0,num_times = 0;
 	unsigned int loc = 0,l,num_dense;
 	double discont_time = 0.0;
-	RKSolutionNode* node;
+	RKSolutionNode* node = NULL;
 	Link *current,*next,*prev;
 	MPI_Status status;
 
@@ -227,7 +227,7 @@ void Transfer_Data_Finish(TransData* my_data,Link** sys,int* assignments,UnivVar
 	unsigned int data_to_send = 0;
 	unsigned int data_sent = 0;
 	double discont_time = 0.0;
-	RKSolutionNode* node;
+	RKSolutionNode* node = NULL;
 	Link *current,*next,*prev;
 	MPI_Status status;
 
