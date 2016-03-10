@@ -835,7 +835,8 @@ int UploadHydrosDB(Link** sys,UnivVars* GlobalVars,unsigned int N,unsigned int* 
 
 	if(my_rank == 0)
 	{
-		sprintf(temptablename,"tmp_%s",GlobalVars->hydro_table);
+		//sprintf(temptablename,"tmp_%s",GlobalVars->hydro_table);
+		sprintf(temptablename,"%s_tmp",GlobalVars->hydro_table);
 		return_val = 0;
 		ConnectPGDB(conninfo);
 
@@ -1179,7 +1180,8 @@ printf("[%i]: Warning: I think you need a file to create a peakflow table...\n",
 		if(my_rank == 0)
 		{
 			//Prepare temporary table name
-			sprintf(temptablename,"tmp_%s",GlobalVars->peak_table);
+			//sprintf(temptablename,"tmp_%s",GlobalVars->peak_table);
+			sprintf(temptablename,"%s_tmp",GlobalVars->peak_table);
 
 			error |= ConnectPGDB(conninfo);
 
@@ -1479,7 +1481,8 @@ int UploadDBDataDump(Link** sys,unsigned int N,int* assignments,UnivVars* Global
 		}
 
 		//Create temp table
-		sprintf(temptablename,"tmp_%s",GlobalVars->dump_table);
+		//sprintf(temptablename,"tmp_%s",GlobalVars->dump_table);
+		sprintf(temptablename,"%s_tmp",GlobalVars->dump_table);
 
 		sprintf(conninfo->query,"DROP TABLE IF EXISTS %s;",temptablename);
 		res = PQexec(conninfo->conn,conninfo->query);

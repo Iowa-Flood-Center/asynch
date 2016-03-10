@@ -17,6 +17,7 @@ def SetParamSizes_MyModel(GlobalVars_ptr,lib_ptr):
 	GlobalVars.disk_params = 3
 	GlobalVars.convertarea_flag = 0
 	GlobalVars.num_forcings = 3
+	GlobalVars.min_error_tolerances = 6
 
 #	GlobalVars.dim = GlobalVars.problem_dim = 6
 #	GlobalVars.template_flag = 0
