@@ -146,6 +146,13 @@ typedef struct io
 	int (*CreateSnapShot)(struct Link**,unsigned int,int*,struct UnivVars*,char*,struct ConnData*);
 } io;
 
+
+#define ASYNCH_MAX_NUM_FORCINGS 12
+#define ASYNCH_MAX_PATH_LENGTH 1024
+#define ASYNCH_MAX_QUERY_LENGTH 2048
+#define ASYNCH_MAX_DIM 256
+
+
 //Structure to contain all data that is global to the river system.
 typedef struct UnivVars
 {
@@ -249,6 +256,9 @@ typedef struct UnivVars
 	//char* dump_location;
 	//char* halt_filename;
 } UnivVars;
+
+
+#define ASYNCH_LINK_MAX_PARENTS 8
 
 //This structure holds all the data for a link in the river system.
 typedef struct Link

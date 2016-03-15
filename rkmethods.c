@@ -452,7 +452,7 @@ int ExplicitRKSolver(Link* link_i,UnivVars* GlobalVars,int* assignments,short in
 	unsigned int i,j,l,m,idx;
 	//VEC** k;
 	VEC* new_y;
-	RKSolutionNode *curr_node[link_i->numparents],*node,*new_node;
+	RKSolutionNode *curr_node[ASYNCH_LINK_MAX_PARENTS],*node,*new_node;
 	Link* currentp;
 	double t_needed,timediff,current_theta;
 
@@ -856,7 +856,7 @@ int ExplicitRKIndex1Solver(Link* link_i,UnivVars* GlobalVars,int* assignments,sh
 	unsigned int i,j,l,m,idx;
 	//VEC** k;
 	VEC* new_y;
-	RKSolutionNode *curr_node[link_i->numparents],*node,*new_node;
+	RKSolutionNode *curr_node[ASYNCH_LINK_MAX_PARENTS],*node,*new_node;
 	Link* currentp;
 	double t_needed,timediff,theta;
 
@@ -1172,7 +1172,7 @@ int ExplicitRKIndex1SolverDam(Link* link_i,UnivVars* GlobalVars,int* assignments
 {
 	unsigned int i,j,l,m,idx;
 	VEC* new_y;
-	RKSolutionNode *curr_node[link_i->numparents],*node,*new_node;
+	RKSolutionNode *curr_node[ASYNCH_LINK_MAX_PARENTS],*node,*new_node;
 	Link* currentp;
 	double t_needed,timediff,current_theta;
 
@@ -1637,7 +1637,7 @@ int ExplicitRKSolverDiscont(Link* link_i,UnivVars* GlobalVars,int* assignments,s
 {
 	unsigned int i,j,l,m,idx;
 	VEC* new_y;
-	RKSolutionNode *curr_node[link_i->numparents],*node,*new_node;
+	RKSolutionNode *curr_node[ASYNCH_LINK_MAX_PARENTS],*node,*new_node;
 	Link* currentp;
 	double t_needed,timediff,current_theta;
 
@@ -2557,7 +2557,7 @@ int ForcedSolutionSolver(Link* link_i,UnivVars* GlobalVars,int* assignments,shor
 {
 	unsigned int i,j,l,m,idx;
 	VEC* new_y;
-	RKSolutionNode *curr_node[link_i->numparents],*node,*new_node;
+	RKSolutionNode *curr_node[ASYNCH_LINK_MAX_PARENTS],*new_node;
 	Link* currentp;
 	double t_needed,timediff,current_theta;
 	short int change_value = 0;

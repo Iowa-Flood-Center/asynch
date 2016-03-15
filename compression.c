@@ -1,8 +1,9 @@
 #include "compression.h"
 
+#define CHUNK 16384
+
 int uncompress_gzfile(FILE *source, FILE *dest)
 {
-    static unsigned int CHUNK = 16384;
     int ret;
     unsigned have;
     z_stream strm;

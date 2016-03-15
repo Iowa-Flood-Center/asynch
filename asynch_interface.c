@@ -108,7 +108,7 @@ void Asynch_Parse_GBL(asynchsolver* asynch,char* gbl_filename)
 	if(!asynch->GlobalVars)
 	{
 		if(my_rank == 0)	printf("[%i]: An error occurred reading the .gbl file. See above messages for details.\n",my_rank);
-		else			sleep(2);
+		else			ASYNCH_SLEEP(2);
 		MPI_Abort(asynch->comm,1);
 	}
 
@@ -140,7 +140,7 @@ void Asynch_Load_Network_Parameters(asynchsolver* asynch,short int load_all)
 		if(my_rank == 0)
 			printf("Error: Topology data must be read before loading the link parameters.\n");
 		else
-			sleep(1);
+			ASYNCH_SLEEP(1);
 		MPI_Abort(asynch->comm,1);
 	}
 	if(!asynch->setup_partition && !load_all)
@@ -148,7 +148,7 @@ void Asynch_Load_Network_Parameters(asynchsolver* asynch,short int load_all)
 		if(my_rank == 0)
 			printf("Error: Paritioning must be done before reading link parameters.\n");
 		else
-			sleep(1);
+			ASYNCH_SLEEP(1);
 		MPI_Abort(asynch->comm,1);
 	}
 
@@ -166,7 +166,7 @@ void Asynch_Partition_Network(asynchsolver* asynch)
 		if(my_rank == 0)
 			printf("Error: Topology data must be read before partitioning the network.\n");
 		else
-			sleep(1);
+			ASYNCH_SLEEP(1);
 		MPI_Abort(asynch->comm,1);
 	}
 	
@@ -184,7 +184,7 @@ void Asynch_Load_Numerical_Error_Data(asynchsolver* asynch)
 		if(my_rank == 0)
 			printf("Error: Partitioning must be done before setting up numerical error data.\n");
 		else
-			sleep(1);
+			ASYNCH_SLEEP(1);
 		MPI_Abort(asynch->comm,1);
 	}
 
@@ -202,7 +202,7 @@ void Asynch_Initialize_Model(asynchsolver* asynch)
 		if(my_rank == 0)
 			printf("Error: Partitioning must be done before initializing model.\n");
 		else
-			sleep(1);
+			ASYNCH_SLEEP(1);
 		MPI_Abort(asynch->comm,1);
 	}
 	if(!asynch->setup_dams)
@@ -210,7 +210,7 @@ void Asynch_Initialize_Model(asynchsolver* asynch)
 		if(my_rank == 0)
 			printf("Error: Dam parameters must be loaded before initializing model.\n");
 		else
-			sleep(1);
+			ASYNCH_SLEEP(1);
 		MPI_Abort(asynch->comm,1);
 	}
 	if(!asynch->setup_dams)
@@ -218,7 +218,7 @@ void Asynch_Initialize_Model(asynchsolver* asynch)
 		if(my_rank == 0)
 			printf("Error: Save lists must be loaded before initializing model.\n");
 		else
-			sleep(1);
+			ASYNCH_SLEEP(1);
 		MPI_Abort(asynch->comm,1);
 	}
 	i = Initialize_Model(asynch->sys,asynch->N,asynch->my_sys,asynch->my_N,asynch->assignments,asynch->getting,asynch->GlobalVars,asynch->custom_model,asynch->ExternalInterface);
@@ -235,7 +235,7 @@ void Asynch_Load_Initial_Conditions(asynchsolver* asynch)
 		if(my_rank == 0)
 			printf("Error: Partitioning must be done before loading initial conditions.\n");
 		else
-			sleep(1);
+			ASYNCH_SLEEP(1);
 		MPI_Abort(asynch->comm,1);
 	}
 	if(!asynch->setup_params)
@@ -243,7 +243,7 @@ void Asynch_Load_Initial_Conditions(asynchsolver* asynch)
 		if(my_rank == 0)
 			printf("Error: Link parameters must be loaded before loading initial conditions.\n");
 		else
-			sleep(1);
+			ASYNCH_SLEEP(1);
 		MPI_Abort(asynch->comm,1);
 	}
 	if(!asynch->setup_dams)
@@ -251,7 +251,7 @@ void Asynch_Load_Initial_Conditions(asynchsolver* asynch)
 		if(my_rank == 0)
 			printf("Error: Dam parameters must be loaded before loading initial conditions.\n");
 		else
-			sleep(1);
+			ASYNCH_SLEEP(1);
 		MPI_Abort(asynch->comm,1);
 	}
 
@@ -269,7 +269,7 @@ void Asynch_Load_Forcings(asynchsolver* asynch)
 		if(my_rank == 0)
 			printf("Error: Partitioning must be done before loading forcings.\n");
 		else
-			sleep(1);
+			ASYNCH_SLEEP(1);
 		MPI_Abort(asynch->comm,1);
 	}
 
@@ -287,7 +287,7 @@ void Asynch_Load_Dams(asynchsolver* asynch)
 		if(my_rank == 0)
 			printf("Error: Partitioning must be done before loading dam information.\n");
 		else
-			sleep(1);
+			ASYNCH_SLEEP(1);
 		MPI_Abort(asynch->comm,1);
 	}
 
@@ -305,7 +305,7 @@ void Asynch_Calculate_Step_Sizes(asynchsolver* asynch)
 		if(my_rank == 0)
 			printf("Error: Network must be finalized before calculating step sizes.\n");
 		else
-			sleep(1);
+			ASYNCH_SLEEP(1);
 		MPI_Abort(asynch->comm,1);
 	}
 
@@ -323,7 +323,7 @@ void Asynch_Load_Save_Lists(asynchsolver* asynch)
 		if(my_rank == 0)
 			printf("Error: Partitioning must be done before loading output data information.\n");
 		else
-			sleep(1);
+			ASYNCH_SLEEP(1);
 		MPI_Abort(asynch->comm,1);
 	}
 
@@ -878,7 +878,7 @@ int Asynch_Delete_Temporary_Files(asynchsolver* asynch)
 {
 	int ret_val = RemoveTemporaryFiles(asynch->GlobalVars,asynch->my_save_size,NULL);
 	//if(ret_val == 1)	printf("[%i]: Error deleting temp file. File does not exist.\n");
-	if(ret_val == 2)	printf("[%i]: Error deleting temp file.\n",my_rank);
+	if(ret_val != 0)	printf("[%i]: Error [%i] while deleting temp file.\n",my_rank,ret_val);
 	return ret_val;
 }
 
@@ -886,7 +886,8 @@ int Asynch_Delete_Temporary_Files(asynchsolver* asynch)
 //!!!! This should set the current forcing to something. But what if maxtime is beyond the ceiling term? !!!!
 int Asynch_Activate_Forcing(asynchsolver* asynch,unsigned int idx)
 {
-	unsigned int i,j,l,my_N = asynch->my_N;
+	//unsigned int i,j,l,my_N = asynch->my_N;
+    unsigned int my_N = asynch->my_N;
 	Link* current;
 
 	if(idx >= asynch->GlobalVars->num_forcings)

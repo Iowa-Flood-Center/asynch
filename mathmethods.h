@@ -88,8 +88,10 @@ void Print_MatrixC(MAT* A);
 		(y)->ve[ii] = (alpha)*(x)->ve[ii] + (y)->ve[ii]; \
 }
 
+#if !defined(_MSC_VER)
 #define min(val1,val2)	(((val1) > (val2)) ? (val2) : (val1))
 #define max(val1,val2)	(((val1) < (val2)) ? (val2) : (val1))
+#endif
 
 #define sv_mlt(val,v,start) \
 { \
