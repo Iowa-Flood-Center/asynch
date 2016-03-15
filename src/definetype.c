@@ -2080,6 +2080,8 @@ params->ve[11] = 0.0;
 		//If not using algebraic variables, then everything is already set
 		return 0;
 	}
+
+    return 0;
 }
 
 /*

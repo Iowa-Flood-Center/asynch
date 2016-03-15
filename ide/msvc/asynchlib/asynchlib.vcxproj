@@ -1,0 +1,221 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{B7C669BC-CB73-4FD5-B095-65AA2C1D6D1B}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <RootNamespace>asynchlib</RootNamespace>
+    <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v140</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v140</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v140</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v140</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="..\asynch.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="..\asynch.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="..\asynch.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="..\asynch.props" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup />
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_WARNINGS;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <SDLCheck>true</SDLCheck>
+      <AdditionalIncludeDirectories>$(MSMPI_INC);c:\python27\include;$(RootDir)\third_party\zlib-1.2.8;$(RootDir)\third_party\postgresql-8.4.22-1\include;$(MSMPI_INC)\x86</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>$(MSMPI_LIB32);$(RootDir)\third_party\zlib-1.2.8\lib;$(RootDir)\third_party\postgresql-8.4.22-1\lib</AdditionalLibraryDirectories>
+      <AdditionalDependencies>msmpi.lib;libpq.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <LargeAddressAware>true</LargeAddressAware>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_WARNINGS;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <SDLCheck>true</SDLCheck>
+      <AdditionalIncludeDirectories>$(MSMPI_INC);c:\python27\include;$(RootDir)\third_party\zlib-1.2.8;$(RootDir)\third_party\postgresql-8.4.22-1\include;$(MSMPI_INC)\x64</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories> $(MSMPI_LIB64);$(RootDir)\third_party\zlib-1.2.8;$(RootDir)\third_party\postgresql-9.1.20-1-x64\lib</AdditionalLibraryDirectories>
+      <AdditionalDependencies>msmpi.lib;libpq.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <LargeAddressAware>true</LargeAddressAware>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_WARNINGS;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <SDLCheck>true</SDLCheck>
+      <AdditionalIncludeDirectories>$(MSMPI_INC);c:\python27\include;$(RootDir)\third_party\zlib-1.2.8;$(RootDir)\third_party\postgresql-8.4.22-1\include;$(MSMPI_INC)\x86</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <AdditionalLibraryDirectories> $(MSMPI_LIB32);$(RootDir)\third_party\zlib-1.2.8\lib;$(RootDir)\third_party\postgresql-8.4.22-1\lib</AdditionalLibraryDirectories>
+      <AdditionalDependencies>msmpi.lib;libpq.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <LargeAddressAware>true</LargeAddressAware>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_WARNINGS;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <SDLCheck>true</SDLCheck>
+      <AdditionalIncludeDirectories>$(MSMPI_INC);c:\python27\include;$(RootDir)\third_party\zlib-1.2.8;$(RootDir)\third_party\postgresql-8.4.22-1\include;$(MSMPI_INC)\x64</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <AdditionalLibraryDirectories> $(MSMPI_LIB64);$(RootDir)\third_party\zlib-1.2.8;$(RootDir)\third_party\postgresql-9.1.20-1-x64\lib</AdditionalLibraryDirectories>
+      <AdditionalDependencies>msmpi.lib;libpq.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <LargeAddressAware>true</LargeAddressAware>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClInclude Include="$(RootDir)\src\asynch_interface.h" />
+    <ClInclude Include="$(RootDir)\src\asynch_interface_py.h" />
+    <ClInclude Include="$(RootDir)\src\comm.h" />
+    <ClInclude Include="$(RootDir)\src\compression.h" />
+    <ClInclude Include="$(RootDir)\src\data_types.h" />
+    <ClInclude Include="$(RootDir)\src\date_manip.h" />
+    <ClInclude Include="$(RootDir)\src\definetype.h" />
+    <ClInclude Include="$(RootDir)\src\forcings.h" />
+    <ClInclude Include="$(RootDir)\src\io.h" />
+    <ClInclude Include="$(RootDir)\src\mathmethods.h" />
+    <ClInclude Include="$(RootDir)\src\misc.h" />
+    <ClInclude Include="$(RootDir)\src\modeloutputs.h" />
+    <ClInclude Include="$(RootDir)\src\partition.h" />
+    <ClInclude Include="$(RootDir)\src\problems.h" />
+    <ClInclude Include="$(RootDir)\src\processdata.h" />
+    <ClInclude Include="$(RootDir)\src\rainfall.h" />
+    <ClInclude Include="$(RootDir)\src\riversys.h" />
+    <ClInclude Include="$(RootDir)\src\rkmethods.h" />
+    <ClInclude Include="$(RootDir)\src\solvers.h" />
+    <ClInclude Include="$(RootDir)\src\sort.h" />
+    <ClInclude Include="$(RootDir)\src\structs.h" />
+    <ClInclude Include="$(RootDir)\src\system.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="$(RootDir)\src\asynch_interface.c" />
+    <ClCompile Include="$(RootDir)\src\asynch_interface_py.c">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="$(RootDir)\src\comm.c" />
+    <ClCompile Include="$(RootDir)\src\compression.c" />
+    <ClCompile Include="$(RootDir)\src\data_types.c" />
+    <ClCompile Include="$(RootDir)\src\date_manip.c" />
+    <ClCompile Include="$(RootDir)\src\definetype.c" />
+    <ClCompile Include="$(RootDir)\src\forcings.c" />
+    <ClCompile Include="$(RootDir)\src\io.c" />
+    <ClCompile Include="$(RootDir)\src\mathmethods.c" />
+    <ClCompile Include="$(RootDir)\src\misc.c" />
+    <ClCompile Include="$(RootDir)\src\modeloutputs.c" />
+    <ClCompile Include="$(RootDir)\src\partition.c" />
+    <ClCompile Include="$(RootDir)\src\problems.c" />
+    <ClCompile Include="$(RootDir)\src\processdata.c" />
+    <ClCompile Include="$(RootDir)\src\rainfall.c" />
+    <ClCompile Include="$(RootDir)\src\riversys.c" />
+    <ClCompile Include="$(RootDir)\src\rkmethods.c" />
+    <ClCompile Include="$(RootDir)\src\solvers.c" />
+    <ClCompile Include="$(RootDir)\src\sort.c" />
+    <ClCompile Include="$(RootDir)\src\system.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="$(RootDir)\LICENSE" />
+    <None Include="$(RootDir)\makefile" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="$(RootDir)\third_party\zlib-1.2.8\contrib\vstudio\vc14\zlibstat.vcxproj">
+      <Project>{745dec58-ebb3-47a9-a9b8-4c6627c01bf8}</Project>
+    </ProjectReference>
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

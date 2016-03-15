@@ -1,5 +1,8 @@
 #include <stdio.h>
-#include <unistd.h>
+#if !defined(_MSC_VER)
+#  include <unistd.h>
+#endif
+
 #include "mpi.h"
 #include "asynch_interface.h"
 

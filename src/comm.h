@@ -1,7 +1,7 @@
 #ifndef COMM_H
 #define COMM_H
 
-#include "mpi.h"
+#include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -11,6 +11,8 @@
 
 extern int my_rank;
 extern int np;
+
+#define ASYNCH_MAX_NUMBER_OF_PROCESS 256
 
 //MPI Related Methods
 void Transfer_Data(TransData* my_data,Link** sys,int* assignments,UnivVars* GlobalVars);

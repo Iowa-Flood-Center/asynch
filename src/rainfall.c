@@ -32,7 +32,7 @@ int Create_Rain_Data_Par(Link** sys,unsigned int N,unsigned int my_N,UnivVars* G
 	//This is a time larger than any time in which the integrator is expected to get
 	double ceil_time = 1e300;
 	if(sys[my_sys[0]]->last_t > ceil_time*0.1)
-		printf("[%i]: Warning: integrator time is extremely large (about %e). Loss of precision may occur.\n",my_rank,sys[my_sys[i]]->last_t);
+		printf("[%i]: Warning: integrator time is extremely large (about %e). Loss of precision may occur.\n",my_rank,sys[my_sys[0]]->last_t);
 
 	//Check that space for rain data has been allocated.
 	if(sys[my_sys[0]]->forcing_buff[forcing_idx] == NULL)
@@ -132,6 +132,8 @@ int Create_Rain_Data_Par(Link** sys,unsigned int N,unsigned int my_N,UnivVars* G
 	return 0;
 }
 
+#define ASYNCH_BUFFER_SIZE sizeof(unsigned int) + sizeof(float)
+
 //This reads in a set of gzip compressed binary files for the rainfall at each link.
 //Assumes the file is full of floats. Assumes no IDs are in the file and that IDs are consecutive starting from 0
 //Link** sys: An array of links.
@@ -159,13 +161,12 @@ int Create_Rain_Data_GZ(Link** sys,unsigned int N,unsigned int my_N,UnivVars* Gl
 	FILE* stormdata = NULL;
 	unsigned int numfiles = last - first + 1;
 	FILE* compfile = NULL;
-	unsigned int buffer_size = sizeof(unsigned int)+sizeof(float);
-	char transferbuffer[buffer_size];
+	char transferbuffer[ASYNCH_BUFFER_SIZE];
 
 	//This is a time larger than any time in which the integrator is expected to get
 	double ceil_time = 1e300;
 	if(sys[my_sys[0]]->last_t > ceil_time*0.1)
-		printf("[%i]: Warning: integrator time is extremely large (about %e). Loss of precision may occur.\n",my_rank,sys[my_sys[i]]->last_t);
+		printf("[%i]: Warning: integrator time is extremely large (about %e). Loss of precision may occur.\n",my_rank,sys[my_sys[0]]->last_t);
 
 	//Check that space for rain data has been allocated.
 	if(sys[my_sys[0]]->forcing_buff[forcing_idx] == NULL)
@@ -228,9 +229,9 @@ int Create_Rain_Data_GZ(Link** sys,unsigned int N,unsigned int my_N,UnivVars* Gl
 				else	//Send it to the correct proc
 				{
 					int pos = 0;
-					MPI_Pack(&curr_idx,1,MPI_INT,transferbuffer,buffer_size,&pos,MPI_COMM_WORLD);
-					MPI_Pack(&rainfall_buffer,1,MPI_FLOAT,transferbuffer,buffer_size,&pos,MPI_COMM_WORLD);
-					MPI_Send(transferbuffer,buffer_size,MPI_PACKED,assignments[curr_idx],N,MPI_COMM_WORLD);		//N = tag, as typical communication should not send this many links.
+					MPI_Pack(&curr_idx,1,MPI_INT,transferbuffer,ASYNCH_BUFFER_SIZE,&pos,MPI_COMM_WORLD);
+					MPI_Pack(&rainfall_buffer,1,MPI_FLOAT,transferbuffer,ASYNCH_BUFFER_SIZE,&pos,MPI_COMM_WORLD);
+					MPI_Send(transferbuffer,ASYNCH_BUFFER_SIZE,MPI_PACKED,assignments[curr_idx],N,MPI_COMM_WORLD);		//N = tag, as typical communication should not send this many links.
 				}
 			}
 
@@ -243,9 +244,9 @@ int Create_Rain_Data_GZ(Link** sys,unsigned int N,unsigned int my_N,UnivVars* Gl
 			for(i=0;i<my_N;i++)
 			{
 				int pos = 0;
-				MPI_Recv(transferbuffer,buffer_size,MPI_PACKED,0,N,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
-				MPI_Unpack(transferbuffer,buffer_size,&pos,&curr_idx,1,MPI_INT,MPI_COMM_WORLD);
-				MPI_Unpack(transferbuffer,buffer_size,&pos,&rainfall_buffer,1,MPI_FLOAT,MPI_COMM_WORLD);
+				MPI_Recv(transferbuffer,ASYNCH_BUFFER_SIZE,MPI_PACKED,0,N,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
+				MPI_Unpack(transferbuffer,ASYNCH_BUFFER_SIZE,&pos,&curr_idx,1,MPI_INT,MPI_COMM_WORLD);
+				MPI_Unpack(transferbuffer,ASYNCH_BUFFER_SIZE,&pos,&rainfall_buffer,1,MPI_FLOAT,MPI_COMM_WORLD);
 
 				//This assumes the files have a different endianness from the system
 				holder = *(unsigned int*) &rainfall_buffer;	//Pointers are fun!
@@ -337,7 +338,7 @@ int Create_Rain_Data_Grid(Link** sys,unsigned int N,unsigned int my_N,UnivVars* 
 	//This is a time larger than any time in which the integrator is expected to get
 	double ceil_time = 1e300;
 	if(sys[my_sys[0]]->last_t > ceil_time*0.1)
-		printf("[%i]: Warning: integrator time is extremely large (about %e). Loss of precision may occur.\n",my_rank,sys[my_sys[i]]->last_t);
+		printf("[%i]: Warning: integrator time is extremely large (about %e). Loss of precision may occur.\n",my_rank,sys[my_sys[0]]->last_t);
 
 	//Check that space for rain data has been allocated.
 	if(sys[my_sys[0]]->forcing_buff[forcing_idx] == NULL)
@@ -784,7 +785,7 @@ int Create_Rain_Database_Irregular(Link** sys,unsigned int N,unsigned int my_N,U
 	if(sys[my_sys[0]]->last_t > ceil_time*0.1 && !gave_warning)
 	{
 		gave_warning = 1;
-		printf("[%i]: Warning: integrator time is extremely large (about %e). Loss of precision may occur.\n",my_rank,sys[my_sys[i]]->last_t);
+		printf("[%i]: Warning: integrator time is extremely large (about %e). Loss of precision may occur.\n",my_rank,sys[my_sys[0]]->last_t);
 	}
 
 	//Query the database

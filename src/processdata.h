@@ -5,13 +5,22 @@
 #include <stdlib.h>
 #include <time.h>
 #include <string.h>
-#include "structs.h"
-#include "mpi.h"
-#include "sort.h"
+#if !defined(_MSC_VER)
 #include <unistd.h>
+#endif
+#include <mpi.h>
+#include "structs.h"
+#include "sort.h"
 #include "comm.h"
 #include "rkmethods.h"
 #include "data_types.h"
+
+#if !defined(_MSC_VER)
+#define ASYNCH_SLEEP sleep
+#else
+#include <windows.h>
+#define ASYNCH_SLEEP Sleep
+#endif
 
 #define DB_CONNS_AT_ONCE 10
 

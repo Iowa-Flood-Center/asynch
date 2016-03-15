@@ -1,5 +1,9 @@
 #include <stdio.h>
+
+#if !defined(_MSC_VER)
 #include <unistd.h>
+#endif
+
 #include "mpi.h"
 #include "asynch_interface.h"
 
@@ -27,6 +31,23 @@ int main(int argc,char* argv[])
 		MPI_Finalize();
 		return 1;
 	}
+
+#if !defined(NDEBUG)
+    //Disable stdout buffering
+    setvbuf(stdout, NULL, _IONBF, 0);
+
+    //When the program first starts to execute, at the very beginning of our program, we 
+    //ask the user to type some sort of inpu to simply stall the application until start your
+    //"Attach to Process" and you can attach to all the different threads in your program.
+    if (my_rank == 0)
+    {
+        printf("You may now attach the debugger then press enter.\n");
+        //fflush(stdout);
+        getchar();
+    }
+
+    MPI_Barrier(MPI_COMM_WORLD); // All threads will wait here until you give thread 0 an input
+#endif
 
 	//Declare variables
 	time_t start,stop;
@@ -88,7 +109,7 @@ int main(int argc,char* argv[])
 
 	//Make sure everyone is good before getting down to it...
 	printf("Process %i (%i total) is good to go with %i links.\n",my_rank,np,asynch->my_N);
-	sleep(1);
+	ASYNCH_SLEEP(1);
 	MPI_Barrier(MPI_COMM_WORLD);
 
 	if(my_rank == 0)

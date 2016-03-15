@@ -16,3 +16,9 @@ Makefile.in
 /install-sh
 /missing
 /stamp-h1
+
+# others
+
+dist
+third_party
+examples

@@ -1,5 +1,7 @@
 #include "riversys.h"
-
+#if defined(_MSC_VER)
+#include <process.h>
+#endif
 
 
 //Read topo data and build the network.
@@ -1299,7 +1301,7 @@ int Load_Forcings(Link** system,unsigned int N,unsigned int* my_sys,unsigned int
 {
 	unsigned int i,j,l,m,limit,id,loc;
 	FILE* forcingfile = NULL;
-	double *buffer = NULL,univ_forcing_change_time[GlobalVars->num_forcings];
+	double *buffer = NULL,univ_forcing_change_time[ASYNCH_MAX_NUM_FORCINGS];
 	PGresult *res;
 	Link* current;
 
@@ -1919,7 +1921,7 @@ int Load_Forcings(Link** system,unsigned int N,unsigned int* my_sys,unsigned int
 int Load_Dams(Link** system,unsigned int N,unsigned int* my_sys,unsigned int my_N,int* assignments,short int* getting,unsigned int** id_to_loc,UnivVars* GlobalVars,ErrorData* GlobalErrors,ConnData** db_connections,unsigned int** res_list,unsigned int* res_size,unsigned int* my_res_size)
 {
 	unsigned int i,j,k,m,num_dams,id,size,num_values;
-	int error;
+	//int error;
 	Link* current;
 	FILE* damfile = NULL;
 	double* buffer = NULL;
@@ -1933,7 +1935,7 @@ int Load_Dams(Link** system,unsigned int N,unsigned int* my_sys,unsigned int my_
 		buffer = (double*) malloc(size*sizeof(double));
 
 		//Setup needs array. This is the procs that have getting set to 1.
-		int* needs;
+		int* needs = NULL;
 		if(my_rank == 0) needs = (int*) malloc(N*sizeof(int));
 		int not_needed = -1;
 		for(i=0;i<N;i++)
@@ -2036,7 +2038,7 @@ int Load_Dams(Link** system,unsigned int N,unsigned int* my_sys,unsigned int my_
 	else if(GlobalVars->uses_dam && GlobalVars->dam_flag == 2)	//.qvs file
 	{
 		//Setup needs array. This is the procs that have getting set to 1.
-		int* needs;
+		int* needs = NULL;
 		if(my_rank == 0) needs = (int*) malloc(N*sizeof(int));
 		int not_needed = -1;
 		for(i=0;i<N;i++)
@@ -2165,7 +2167,7 @@ int Load_Dams(Link** system,unsigned int N,unsigned int* my_sys,unsigned int my_
 		Link* current;
 		unsigned int num_pts,curr_loc;
 		num_dams = 0;
-		short int procs_sending_to[np],mine;
+		short int procs_sending_to[ASYNCH_MAX_NUMBER_OF_PROCESS],mine;
 		double* array_holder;
 		MPI_Status status;
 
@@ -3331,8 +3333,10 @@ int RemoveSuffix(char* filename,char suffix[])
 int AttachParameters(char* filename,unsigned int max_size,VEC* v,unsigned int string_size)
 {
 	unsigned int i,count,total=0;
-	char buffer[string_size];
+	char *buffer;
 	unsigned int length = strlen(filename);
+
+    buffer = (char *) malloc(string_size);
 
 	for(i=0;i<v->dim;i++)
 	{
@@ -3342,6 +3346,8 @@ int AttachParameters(char* filename,unsigned int max_size,VEC* v,unsigned int st
 		if(total+1 > max_size)		return 1;
 		strcat(filename,buffer);
 	}
+
+    free(buffer);
 
 	return 0;
 }

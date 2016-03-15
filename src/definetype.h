@@ -3,11 +3,13 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#if !defined(_MSC_VER)
+#include <unistd.h>
+#endif
 #include "structs.h"
 #include "system.h"
 #include "rkmethods.h"
 #include "problems.h"
-#include <unistd.h>
 #include "math.h"
 
 void SetParamSizes(UnivVars* GlobalVars,void* external);

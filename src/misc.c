@@ -6,7 +6,7 @@
 void CalcHortonOrder(Link** sys,unsigned int N,unsigned int* order,unsigned short int* complete)
 {
 	unsigned int i,j,loc,parentsval;
-	Link *current,*root;
+	Link *current,*root = NULL;
 
 	Link** stack = malloc(N * sizeof(Link*));
 	int stack_size = 0;
@@ -144,7 +144,7 @@ void CreateStrComplete(Link** sys,unsigned int N)
 void CreateGraph(Link** sys,unsigned int N)
 {
 	unsigned int i,j;
-	int offset = -sys[0]->ID + 2;
+	int offset = sys[0]->ID + 2;
 	FILE* output = fopen("Cedar30.gra","w");
 	if(!output)
 	{
