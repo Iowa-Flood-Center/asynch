@@ -1,0 +1,5 @@
+dbname=model_ifc host=s-iihr51.iihr.uiowa.edu port=5432 user=<need username> password=<need password>
+
+1
+SELECT link_id,q,s,s_p,s_l,s_s,v_p,v_r,q_b FROM master_archive_maps_ifc1c WHERE forecast_time = %u ORDER BY link_id;
+

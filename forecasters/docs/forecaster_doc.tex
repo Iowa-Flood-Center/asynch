@@ -1,0 +1,512 @@
+\documentclass[12pt]{article}
+\addtolength{\topmargin}{-.8in}
+\addtolength{\textheight}{1.4in}
+%\addtolength{\textheight}{1.8in}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\usepackage{subfig}
+\usepackage{hyphenat}
+\usepackage{listings}
+%\usepackage[hyphens]{url}
+%\usepackage{breakurl}
+\usepackage{hyperref}
+\usepackage{multirow}
+\usepackage[T1]{fontenc} %Allows for < and > in plain text
+
+\lstdefinestyle{CStyle} {language=C}
+\lstdefinestyle{PythonStyle} {language=Python}
+\lstset{language=C}
+\lstset{language=Python}
+
+%\lstset{language=C,
+%                basicstyle=\ttfamily,
+               % keywordstyle=\color{blue}\ttfamily,
+               % stringstyle=\color{red}\ttfamily,
+               % commentstyle=\color{green}\ttfamily,
+               % morecomment=[l][\color{magenta}]{\#}
+%}
+
+\newenvironment{codeindent}
+{\begin{list}{}
+        {\setlength{\leftmargin}{.1in}}
+        \item[]
+}
+{\end{list}}
+
+\title{Flood Forecaster Documentation and User's Guide}
+\author{Scott J. Small}
+
+\begin{document}
+
+\maketitle
+
+\tableofcontents
+
+\section{Forecaster Overview and Terminology} \label{sec: forecaster overview}
+
+An \emph{ASYNCH style simulation} is a simulation produced by the ASYNCH program. The simulation is the solution to a system of ODEs with forcings (such as rainfall, evaporation, reservoir outputs, etc). The outputs consist of hydrographs and other time series, peakflow information, and snapshots of every model state. Documentation for using ASYNCH exists. Much of the information contained there can by applied here.
+
+A \emph{forecast} is a special type of ASYNCH style simulation. The simulation begins with a rainfall forcing for a period of time (typically one hour). This forcing is typically some type of rainfall estimates (maybe the IFC product, or the NWS's MRMS). After this rainfall period, an intensity of 0 mm/hr is assumed, and the simulation continues for a set duration of time, called the \emph{forecast window} (typically 10 days). In future developments, rainfall predictions may be incorporated into these forecasts. Forecasts are typically hydrographs, though other time series may be included.
+
+A \emph{forecaster} is a program which downloads rainfall data from a database, produces a forecast, and uploads the results to a database. Forecasters have the same general flow:
+\begin{itemize}
+ \item A forecaster begins producing forecasts at a specified time. This involves downloading available rainfall estimates.
+ \item Once a forecast is produced, a forecaster advances in time (typically one hour), and produces a new forecast with currently available rainfall estimates.
+ \item A forecaster continues repeating this procedure until no rainfall estimates are available.
+\end{itemize}
+The most common reason rainfall estimates are unavailable is that the forecaster last made a forecast at a very recent time, and rainfall estimates have not been created yet. There are four different forecasters. Each differs in the output provided, as well as the flow of operation.
+\begin{itemize}
+ \item ASYNCHPERSIS produces forecasts at select locations and maintains a history of these forecasts. Peakflow information at select locations is also produced for the most recent forecast.
+ \item FORECASTER\_MAPS produces forecasts at select locations, peakflow data at select locations, and maps. A history of each is maintained.
+ \item ASYNCHERSIS\_END is similar to ASYNCHPERSIS, except the program terminates when no additional rainfall data is available.
+ \item FORECASTER\_MAPS\_END is similar to FORECASTER\_MAPS, except the program terminates when no additional rainfall data is available.
+\end{itemize}
+Some of these programs require additional inputs to run, depending upon the desired output. See Section \ref{sec: forecaster inputs}. The forecasters ASYNCHPERSIS and FORECASTER\_MAPS wait until rainfall estimates are available. These forecasters will only stop when requested by the user.
+
+Every forecaster has a special forcing, referred to as the \emph{forecast forcing}. This forcing (typically rainfall) consists of current estimates which are provided to the forecaster in realtime. The availability of this data drives a forecaster, and requires special attention.
+
+A \emph{forecaster group} is a collection of forecasters running on the same set of compute nodes. These are run in serial (i.e. one at a time) and are controlled by a Python script. Typically, the forecasters ASYNCHPERSIS\_END and FORECASTER\_MAPS\_END are used in forecaster groups, as they terminate when no rainfall estimates are available.
+
+Each forecaster in a forecaster group is repeatedly run until no forecaster makes progress (i.e. produces a forecast). When this occurs, they wait a set period of time (typically 10 minutes) before attempting to produce forecasts again.
+
+
+\section{The Forecaster Code} \label{sec: forecaster code}
+
+Will discuss where to find the repository of codes, needed libraries, how to compile, examples.
+
+The repository for the forecasters can be found at
+\begin{center}
+\url{https://github.com/ssmall41/FloodForecasters}
+\end{center}
+This repository includes the code for the forecasters as well as example initialization files. Two other short programs allow for the generation of output database tables for the forecasters.
+
+\subsection{Requirements} \label{sec: requirements}
+
+The forecasters are designed to work with a Unix based system. A version for Windows does not exist, and no plans to create a Windows version exist. Several libraries and programs are required to use the forecasters.
+\begin{description}
+ \item[C Compiler] Such as gcc or icc.
+ \item[MPI] OpenMPI works. Other implementations of MPI should work correctly with the forecasters.
+ \item[ASYNCH] This is available in the repository
+ \begin{center}
+ \url{https://github.com/ssmall41/asynch},
+ \end{center}
+ and is available on the Iowa HPC resources Helium and Neon.
+ \item[Python] A Python interpreter.
+ \item[libssh2] The SSH library.
+ \item[libpq] The libpq library for connecting to PostgreSQL databases.
+\end{description}
+Except for ASYNCH, most of these can be found in standard Linux repositories.
+
+\subsection{Compiling} \label{sec: compiling}
+
+The makefile found in the forecasters repository should correctly compile on the Helium cluster. Modifications to library locations may need to be modified in the makefile if compiling on another system. To compile, simply type
+\begin{center}
+ make <forecaster name>
+\end{center}
+at a unix command line. The <forecaster name> can be any of the four forecasters discussed in Section \ref{sec: forecaster overview}.
+
+\subsection{Programs for Managing Database Tables} \label{sec: programs for managing database tables}
+
+Two additional programs are useful to manage output tables. These programs are not necessary, but may be helpful. The programs are written in C and require the libpq libraries. Both contain a comment at their beginning with instructions for compiling. Adjustments may need to be made to these instructions depending upon library locations on the local computing system. The programs are very simple, and can be modified easily to change functionality (for example, add table schema, change target database).
+
+CREATETABLES (with source createtables.c) creates the output tables, functions, triggers, and indices. Two command line inputs are required: a model name (this is attached to each table and should match the forecast file (see Section \ref{sec: forecast files})), and the program type (either ``forecast'' or ``maps''). The program type ``forecast'' creates the needed database objects for the forecasters ASYNCHPERSIS and ASYNCHPERSIS\_END. The program type ``maps'' creates the objects for forecasters FORECASTER\_MAPS and FORECASTER\_MAPS\_END. Within the code, a flag called \emph{new\_version} can be set to 1 (true) if the database uses PostgreSQL 9.0 or above. Otherwise, set the flag to 0.
+
+DELETETABLES (with source deletetables.c) drops all the database objects created by CREATETABLES. This program only needs the model name passed as a command line parameter.
+
+\subsection{Examples} \label{sec: examples}
+
+An example is provided in the repository. All the intput files are provided; however, the database connection files are missing information (hostname, username, password). The submit script for Helium \emph{foreaster.sh} shows two different approaches: starting an individual forecaster and starting a forecaster group. The directory \emph{examples} holds all the needed input files. Output files are also written in a subdirectory of \emph{examples}.
+
+
+\section{Forecaster Inputs} \label{sec: forecaster inputs}
+
+Forecasters require a large number of inputs to correctly produce forecasts. Many inputs can be pulled from a database with relative ease. Other inputs are best done through files. Most of these inputs only need to be modified when a significant change occurs (new parameters, new model, new database, etc).
+
+\subsection{Command Line Arguments} \label{sec: command line arguments}
+
+Each of the four forecasters takes a different collection of command line arguments.
+
+ASYNCHPERSIS and FORECASTER\_MAPS both take the arguments
+\begin{itemize}
+ \item Filename of a global file (Section \ref{sec: global file})
+ \item Filename of a forecast file (Section \ref{sec: forecast files})
+\end{itemize}
+ 
+ASYNCHPERSIS\_END takes
+\begin{itemize}
+ \item Filename of a global file (Section \ref{sec: global file})
+ \item Filename of a forecast file (Section \ref{sec: forecast files})
+ \item Start timestamp for all forcings (unix timestamp)
+ \item End timestamp for the forecast forcing (unix timestamp)
+ \item Filename for the exit file (Section \ref{sec: exit files})
+ \item Timestamp for initial conditions (unix timestamp)
+\end{itemize}
+
+FORECASTER\_MAPS\_END takes
+\begin{itemize}
+ \item Filename of a global file (Section \ref{sec: global file})
+ \item Filename of a forecast file (Section \ref{sec: forecast files})
+ \item Start timestamp for all forcings (unix timestamp)
+ \item End timestamp for the forecast forcing (unix timestamp)
+ \item Filename for the exit file (Section \ref{sec: exit files})
+ \item Timestamp for initial conditions (unix timestamp)
+ \item Flag to upload hydrograph files (if not present, assumed 0)
+ \item Flag to upload snapshot files (if not present, assumed 0)
+ \item Folder location of snapshot files to upload (only needed if previous flag is 1)
+\end{itemize}
+
+
+\subsection{Global File} \label{sec: global file}
+
+Running a forecaster requires a global file (see ASYNCH documentation). The global file is set up in a similar manner to a typical simulation with the ASYNCH program. a few important portions of the global file are highlighted here.
+
+The forecast forcing should be pulled from a database (forcing flag 3). The end timestamp indicates the time at which forecasts will be produced. For the forecasters ASYNCHPERSIS and FORECASTER\_MAPS, an ASYNCH style simulation begins from the start timestamp and ends at the end timestamp before forecasts are produced. The maxtime value (in first line of global file) must be the difference between the end and start timestamps, divided by 60 (to convert to minutes). For the forecasters ASYNCHPERSIS\_END and FORECASTER\_MAPS\_END, the start timestamp must always match the end timestamp, and maxtime must always be 0.
+
+The output time series must match the fields of the \emph{hydroforecast\_modelname} table described in Section \ref{sec: hydrograph tables}. This is similar to writing output time series to a database with ASYNCH.
+
+There are two options for the output peakflow function with the forecasters. ASYNCHPERSIS and ASYNCHPERSIS\_END should use \emph{Forecast}, while FORECASTER\_MAPS and FORECASTER\_MAPS\_END should use \emph{Forecast\_Maps}. These functions will create the peakflow outputs defined in Section \ref{sec: peakflow tables}. Using the incorrect function will result in an error.
+
+Forcings that are not the forecast forcing are assumed to be always available and are always active, regardless of their source (file, database, etc). If a forcing requires timestamps, the start timestamp should (probably) match the start timestamp of the forecast forcing. This is not actually necessary; each forcing will begin at their specified start timestamp. But for most problems, the start timestamps for every forcing will be the same. As usual, if the simulation or forecast goes beyond the end timestamp of a forcing, the forcing will be assumed 0. To insure a forcing is never deactivated (i.e. taken to 0), the end timestamp can be chosen as something large.
+
+\subsection{Forecast Files (.fcst)} \label{sec: forecast files}
+
+These are ASCII files in unix format that provide additional information to the forecasters beyond what is available in the global file. Every forecaster must be run with a forecast file. The format of these files is
+\begin{codeindent}
+\{model name\}
+
+\{display results on IFIS flag (0 or 1)\}
+
+\{index of forecast forcing in global file\}
+
+\{number of precipitation values to use in a forecast\}
+
+\{forecast window (in minutes)\}
+
+\{database connection file for using forcing index table\}
+
+\{halt filename\}
+
+\#
+\end{codeindent}
+The model name is attached to the name of every output table in a database. See Section \ref{sec: forecaster outputs}. Setting the IFIS display flag to 1 causes the forecaster to call extra functions and perform additional queries to prepare the output results for use by IFIS. The index of the forecast forcing is simply a way to identify which forcing specified in the global file is used as the forecast forcing. These indices begin at 0. The next value is the minimum number of times with a forcing value (from the forecast forcing) which must be available before a forecast is made. This value is also the number of forcing values to use in each forecast. The forecast window is the length (in minutes) of the simulation for each forecast. A database connection file for using the forcing index table must be specified here in the forecast file. See Section \ref{sec: forecast forcing index table} for information about what this file must contain. The last entry is the filename of the halt file used to determine when the forecaster should terminate. See Section \ref{sec: halt file}.
+
+Forecast files support commenting. A \% symbol indicates the remainder of a line is to be ignored.
+
+\subsection{Forecast Forcing Index Table} \label{sec: forecast forcing index table}
+
+The source for the forecast forcing data must come with an additional table, referred to as an \emph{index table}. The structure of this table is very flexible, but should have as a minimum
+\begin{codeindent}
+CREATE TABLE tname \\
+( \\
+  unix\_time integer NOT NULL, \\
+  link\_count integer DEFAULT (-1) \\
+);
+\end{codeindent}
+The table name and field names can be anything. They are used in the rainindex database connection file described below. The field \emph{unix\_time} contains a time in which rainfall data is potentially available. The field \emph{link\_count} is the number of links which have nonzero rainfall values. If this number is $-1$, then rainfall data is not available for that time.
+
+The index table is used by the forecasters to determine if rainfall data is available a given time. The table is necessary because values of 0 rainfall are not necessarily stored. The forecasters need a method to distinguish between times with 0 rainfall everywhere and rainfall not yet available.
+
+The forecaster accesses this table using a query from a database connection file (see ASYNCH documentation for a description of these files). This file is specified in the forecast file. The database connection file requires one query:
+\begin{itemize}
+ \item Query to find the smallest timestamp in the index table greater than or equal to the next rainfall needed.
+  \begin{itemize}
+   \item Inputs: Next timestamp of rainfall needed
+   \item Returned tuples: (unix\_time)
+  \end{itemize}
+\end{itemize}
+If the query returns NULL, then no new rainfall data is available for the forecaster. Depending upon the implementation of index table, the \emph{link\_count} field may need to be checked for positive values to insure rainfall data is truly available.
+
+
+\subsection{Halt File} \label{sec: halt file}
+
+The halt file is used to properly terminate execution of a forecaster. This file is an ASCII file that contains a single value: either 0 or 1. Occasionally, a forecaster checks the contents of its halt file. As long as the value in the halt file is 0, the forecaster continues execution. If the value is 1, the forecaster produces the current forecast, and then begins proper shut down procedures.
+
+The halt file is created by a forecaster, and the value in the halt file is always set to 0 initially. The user needs to modify the halt file when setting its value to 1.
+
+\subsection{Special Inputs for IFIS} \label{sec: database functions for IFIS}
+
+If a forecaster will be used for displaying information on IFIS, an extra function must be called in the database with the output tables. This function gets stage values from the forecasted discharge rates. The function is currently called \emph{get\_stages\_ifc01()}. The function name is hardcoded in the forecasters' code (check the main routine).
+
+In addition, a PHP script is called after the stages are obtained. As of the writing of this document, the script is activated with a \emph{wget} call to \emph{\_new\_get\_ifc\_forecast.php} located at
+\begin{codeindent}
+http://ifisfe.its.uiowa.edu/ifc/php/acquisition/
+\end{codeindent}
+This script moves the stages to a special table on the IFIS database. The script name and the location are hardcoded in the main routine of the forecasters.
+
+The user probably does not need to create these, but may need to modify names in the code from time to time. Talk with Felipe or Radek about these.
+
+
+\section{Forecaster Outputs} \label{sec: forecaster outputs}
+
+Typically, output from a forecaster goes into a database. A specific table structure needs to exist for the outputs to be stored properly. Some database functions must also exist. All output tables and functions must end with \mbox{\emph{\_modelname}}, where model name is specified in the forecast file.
+
+Many output tables use a partitioned table structure. These tables are used to store historical data. One child table is needed for each day of storage. This creates a ``moving window'' of historical data. We call the number of days stored $M$ (typically, $M$ is 10 days). When data becomes more than $M$ days old, it is deleted from the database. The deletion is done by the forecasters.
+
+For some forecasters, output data is produced in a file to allow for checkpointing. This is typically done through the use of recovery files. See the ASYNCH documentation for details on the use of recovery files.
+
+\subsection{Hydrograph Tables} \label{sec: hydrograph tables}
+
+The hydrograph data from the most recent forecast is stored in a table with the definition
+\begin{codeindent}
+CREATE TABLE hydroforecast\_modelname \\
+( \\
+  link\_id integer NOT NULL, \\
+  "time" integer NOT NULL, \\
+  discharge double precision, \\
+  baseflow double precision \\
+);
+\end{codeindent}
+This table is used for transferring forecasts to IFIS. The field \emph{link\_id} is the id for the hillslope or link. The field \emph{"time"} is the unixtime of the \emph{discharge} and \emph{baseflow} values. Each of the discharges are measured in $m^3/s$. This table is created by the forecasters. After a forecast is produced, a call to the function
+\begin{codeindent}
+CREATE OR REPLACE FUNCTION \\
+  copy\_to\_archive\_hydroforecast\_modelname() \\
+ RETURNS void AS \\
+\$BODY\$ \\
+INSERT INTO master\_archive\_hydroforecast\_modelname( \\
+	link\_id,time\_utc,discharge,baseflow) \\
+	(SELECT link\_id,to\_timestamp("time"),discharge,baseflow \\
+	FROM hydroforecast\_modelname); \\
+\$BODY\$ \\
+  LANGUAGE sql VOLATILE \\
+  COST 100;
+\end{codeindent}
+occurs. This copies the time series from \emph{hydroforecast\_modelname} to \emph{master\_archive\_hydroforecast\_modelname}.
+
+Every forecaster uses a partitioned set of tables archiving hydrograph forecasts. The master table should look like
+\begin{codeindent}
+CREATE TABLE master\_archive\_hydroforecast\_modelname \\
+( \\
+  link\_id integer, \\
+  time\_utc timestamp with time zone, \\
+  discharge double precision, \\
+  forecast\_time integer, \\
+  baseflow double precision \\
+);
+\end{codeindent}
+while the child tables should take the form
+\begin{codeindent}
+CREATE TABLE archive\_hydroforecast\_modelname\_num() \\
+INHERITS (master\_archive\_hydroforecast\_modelname);
+\end{codeindent}
+The child tables are indexed from 0 to $M-1$ (this index should be used in place of \emph{num} in the child table definition above). The field \emph{forecast\_time} is the unixtime when the forecast was made. The field \emph{link\_id} is the id for the hillslope or link. The field \emph{time\_utc} is the timestamp of the \emph{discharge} and \emph{baseflow} values. Each of the discharges is measured in $m^3/s$.
+
+\subsection{Peakflow Tables} \label{sec: peakflow tables}
+
+The forecasters \emph{ASYNCHPERSIS} and \emph{ASYNCHPERSIS\_END} keep only peakflow data for the most recent forecast. The table has the structure
+\begin{codeindent}
+CREATE TABLE peakforecast\_modelname \\
+(\\
+  link\_id integer, \\
+  peak\_time integer, \\
+  peak\_discharge double precision, \\
+  start\_time integer, \\
+  test\_stage real \\
+);
+\end{codeindent}
+This table is truncated before any additional data is inserted. The field \emph{link\_id} is the id of the hillslope. The field \emph{start\_time} is the unixtime of when the forecast was made. The two fields \emph{start\_time} and \emph{link\_id} form a key for the table. The field \emph{peak\_time} is the unixtime of the when the peakflow occurs. The field \emph{peak\_discharge} is the value of the peakflow in $m^3/s$. The field \emph{stage} is used for storing the stage corresponding to the peakflow. This value is not set by the forecasters. The table is created by the forecasters.
+
+The forecasters \emph{FORECASTER\_MAPS} and \emph{FORECASTER\_MAPS\_END} maintain a history of $M$ days of peakflow data. These forecasters calculate peakflows over multiple intervals. Each such interval is called a \emph{period}. The structure for the master table is
+\begin{codeindent}
+CREATE TABLE master\_archive\_peakflows\_modelname \\
+( \\
+  link\_id integer, \\
+  peak\_time integer, \\
+  peak\_discharge double precision, \\
+  forecast\_time integer, \\
+  period integer \\
+);
+\end{codeindent}
+The structure for the child tables is
+\begin{codeindent}
+CREATE TABLE archive\_peakflows\_modelname\_num() \\
+INHERITS (master\_archive\_peakflows\_modelname);
+\end{codeindent}
+Here \emph{num} is the index of the table from $0$ to $M-1$. The field \emph{link\_id} is the id of the hillslope. The field \emph{forecast\_time} is the unixtime of when the forecast was made. The field \emph{period} indicates which leadtime the peakflow value is calculated. This is the unixtime of the beginning of the period. The three fields \emph{forecast\_time}, \emph{link\_id}, and \emph{period} form a key for the table. The field \emph{peak\_time} is the unixtime of the when the peakflow occurs. The field \emph{peak\_discharge} is the value of the peakflow in $m^3/s$.
+
+Both \emph{FORECASTER\_MAPS} and \emph{FORECASTER\_MAPS\_END} calculate peakflow data over the same time periods:
+\begin{itemize}
+ \item Beginning of the forecast to 1 hour
+ \item 1 hour to 3 hours
+ \item 3 hours to 6 hours
+ \item 6 hours to 12 hours
+ \item 12 hours to 1 day
+ \item 1 day to 2 days
+ \item 2 days to 3 days
+ \item 3 days to 4 days
+ \item 4 days to 5 days
+\end{itemize}
+
+
+\subsection{Map Tables} \label{sec: map tables}
+
+The forecasters \emph{FORECASTER\_MAPS} and \emph{FORECASTER\_MAPS\_END} maintain a history of $M$ days of system states. The values in these tables are the states of every link in the network when the forecast is produced. These tables are model dependent. For model 262, the master table structure is
+\begin{codeindent}
+CREATE TABLE master\_archive\_maps\_modelname \\
+( \\
+  forecast\_time integer, \\
+  link\_id integer, \\
+  q double precision, \\
+  s double precision, \\
+  s\_p double precision, \\
+  s\_l double precision, \\
+  s\_s double precision, \\
+  v\_p double precision, \\
+  v\_r double precision, \\
+  q\_b double precision \\
+);
+\end{codeindent}
+while each child table has the form
+\begin{codeindent}
+CREATE TABLE archive\_maps\_modelname\_num() \\
+INHERITS (master\_archive\_maps\_modelname);
+\end{codeindent}
+The index of the child table (\emph{num}) should range from $0$ to $M-1$. The field \emph{forecast\_time} is the unixtime of when the forecast was made. The field \emph{link\_id} is the id for the link or hillslope. The remaining fields are for each state in the model at a single hillslope.
+
+\subsection{Check Point Files} \label{sec: check point files}
+
+The forecasters ASYNCHPERSIS and FORECASTER\_MAPS periodically produce recovery files. These files can be used as initial conditions to later forecaster runs. They are especially useful in the case of system failure. The two forecasters also produce a recovery file of the last system state when they terminate.
+
+\subsection{Exit Files} \label{sec: exit files}
+
+The two forecasters ASYNCHPERSIS\_END and FORECASTER\_MAPS\_END produce ASCII files called \emph{check point files} when they terminate. These files contain the unix time for the next forecast to produce. They are intended to be used by the Python script in forecaster groups to determine if a forecaster actually produced any forecasts.
+
+
+\section{Starting a Forecaster or Forecaster Group} \label{sec: starting}
+
+Forecasters can be run in a forecaster group, or independently. Regardless of whether a forecaster is in a group or independent, starting a forecaster requires setting up a global file (.gbl) and a forecast file (.fcst). Most of the information in the global file is identical to an ASYNCH style simulation.
+
+\subsection{Starting an Independent Forecaster} \label{sec: starting independent forecaster}
+
+The inputs described in Section \ref{sec: forecaster inputs} must be set. In addition, the database tables and functions described in Section \ref{sec: forecaster outputs} should exist.
+
+For the global file, two sections have a special meaning beyond their typical use. Care should be taken to insure these values are correct.
+
+The \emph{maxtime} is used in ASYNCH for specifying the total time to simulate. Similarly, ASYNCHPERSIS and FORECASTER\_MAPS will run a simulation for maxtime (exactly like ASYNCH). When the simulation time reaches maxtime, each forecaster will begin producing forecasts as current forecast forcing values are available. Using a value of 0 for maxtime causes the forecasters to immediately begin producing forecasts. ASYNCHPERSIS\_END and FORECASTER\_MAPS\_END cannot be run with an ASYNCH style simulation. Therefore the value of maxtime should always be set to 0 for these two forecasters.
+
+In the global file, the forecast forcing has a start timestamp and an end timestamp, like any database forcing. For the forecasters, the end timestamp corresponds to the time when forecasts will be produced. The start timestamp corresponds to the starting timestamp for the ASYNCH style simulation. ASYNCHPERSIS\_END and FORECASTER\_MAPS\_END ignore the start and end timestamps, so any value could be used here.
+
+Note that the difference between the end timestamp and start timestamp (divided by 60) should always equal maxtime.
+
+A forecaster can be launched similar to any MPI program:
+\begin{codeindent}
+ mpirun -np \{number of processes\} \{forecaster name\} \{arguments\}
+\end{codeindent}
+The forecaster used should be compiled according to Section \ref{sec: forecaster code}.
+
+\subsection{Starting a Forecaster Group} \label{sec: starting forecaster group}
+
+The inputs described in Section \ref{sec: forecaster inputs} must be set. In addition, the database tables and functions described in Section \ref{sec: forecaster outputs} should exist. Each forecaster group has a Python script for starting and managing the forecasters in the group. The desired command line parameters should be set in the script.
+
+Every forecaster group has a \emph{times file}. This is an ASCII file in unix format and has the structure
+\begin{codeindent}
+ \{forecaster 1 start timestamp\} \{forecaster 1 end timestamp\}
+ 
+ \{forecaster 2 start timestamp\} \{forecaster 2 end timestamp\}
+ 
+ \{forecaster 3 start timestamp\} \{forecaster 3 end timestamp\}
+ 
+ \hspace{1in} \vdots \hspace{2in} \vdots
+\end{codeindent}
+The times file should have one line per forecaster in the forecaster group. These values are accessible in the Python script for launching the forecasters, and may be used as command line arguments for the forecasters. The values in the times file are automatically updated by the Python script. \emph{The times file should NOT be changed by the user while the forecaster group is operational.} 
+
+The Python script can be launched like any Python script. The number of MPI processes available should be passed as a command line argument. All forecasters in a forecaster group should be compiled according to Section \ref{sec: forecaster code}.
+
+\section{Stopping a Forecaster or Forecaster Group} \label{sec: stopping}
+
+Forecasters and forecaster groups can be terminated like any program (ctrl-C, qdel, kill, etc). However, these methods are sloppy and can cause data loss. Stopping a forecaster or forecaster group properly is much cleaner, and will make restart much simpler. Forced stops should only be done in the situation of an error, or when a quick stop is needed.
+
+\subsection{Stopping an Individual Forecaster} \label{sec: stopping forecaster}
+
+Stopping any of the four forecasters can be done by setting the flag in the halt file (see Section \ref{sec: halt file}). The forecaster will complete any forecast it is computing, and send the results to a database as normal. Once the forecast is made, the forecaster will begin its shutdown procedures.
+
+The forecasters ASYNCHPERSIS and FORECASTER\_MAPS will create an output recovery file (.rec) of the system state at the time the last forecast is made. This file can be used as initial conditions if the forecaster is to be restarted.
+
+The forecasters ASYNCHPERSIS\_END and FORECASTER\_MAPS\_END will eventually stop running, regardless of the contents of the halt file. If the flag in the halt file is set, these forecasters terminate execution as they normally do, although there may still be sufficient forcing data to continue with forecasts.
+
+\subsection{Stopping a Forecaster Group} \label{sec: stopping forecaster group}
+
+Like an individual forecaster, forecaster groups have their own halt file. When the flag in a forecaster group's halt file is set, the Python script managing the group will complete the forecasts of each forecaster, then terminate.
+
+\section{Restarting a Forecaster or Forecaster Group} \label{sec: restarting}
+
+Occasionally, a forecaster or forecaster group may need to be restarted. This can happen due to many different reasons (change in the model, change in parameters, unexpected error, etc).
+
+Restarting an entire forecaster group is typically easy. If a forecaster group is running, stop it using the method described in Section \ref{sec: stopping forecaster group}. Make any desired changes (global file, Python script, forecast file, times file). To begin running the forecaster group again, only the Python script for the group needs to be started.
+
+Restarting an individual forecaster may require more effort. If running, the forecaster should be stopped (Section \ref{sec: stopping forecaster}). Changes will (probably) be required to the global file (initial conditions and forcing timestamps, in particular) before the forecaster is started again.
+
+\section{Current Realtime Flood Forecasting Setup} \label{sec: current realtime flood forecasting setup}
+
+The realtime flood forecasting system displayed on IFIS is separate from other IFC infustructure. This provides better (in theory) safety reliability for the system. This section only discusses the components related to the forecasters serving IFIS. Questions about other components of the system should be discussed with Radek, Ibrahim, or Felipe.
+
+\subsection{Data Center Virtual Machine} \label{sec: data center}
+
+The realtime flood forecater displayed on IFIS is run at the data center operated by the University of Iowa ITS. Using the data center provides reliability and security. A virtual machine called \emph{ifisff} is the host for the forecaster. It features 8 cores (Intel Xeon CPU), 24 GB memory, and 20 GB disk space. The virtual machine be accessed at the hostname
+\begin{center}
+ ifisff.its.uiowa.edu
+\end{center}
+The virtual machine is managed by Leandro Avila (leandro-avila@uiowa.edu). Approximately once per month, the virtual machine is restarted for software updates. Leandro will notify the owner of the virtual machine before a restart occurs. Be sure no floods are occuring at this time!
+
+\subsection{Database Tables} \label{sec: database tables}
+
+Input tables are available in a database on the s-iihr58 server. This will likely change in the near future (discuss with Radek). Output tables are available in a database on the ifisfe virtual machine.
+
+\subsection{Notes about the Forecaster at the Data Center} \label{sec: notes about the data center}
+
+\begin{itemize}
+ \item The forecasters and their source code can be found in the directory \emph{/home/ssma/codes/hydrosim/}. The ASYNCH directory is \emph{/home/ssma/NewAsynchVersion/}. Also noticed the makefile differs from the makefile available in the repository. This is to accommodate the specific computing system.
+ \item The version of PostgreSQL running on ifisfe is somewhat old (8.4). Because of this, an SQL error message about creating the peakforecast table each forecast may occur (table already exists). This is typically safe to ignore. If a newer version of PostgreSQL becomes available, this error should disappear.
+ \item The virtual machine is missing the libssh2 libraries. Ideally, this needs to be installed. The code on the data center has been slightly modified to accommodate this. The last routine in forecaster\_methods.c has been commented, and the last two includes in forecaster\_methods.h are commented.
+\end{itemize}
+
+
+\section{Errors} \label{sec: errors}
+
+Typically, I check the end of the log file of each forecaster group each day. Any timestamps should be very recent. If a forecaster is executing a query, I continue checking every minute or so until it progresses. Make sure to check the output of each forecaster in a forecaster group for errors.
+
+Occasionally, an error message will appear in an output log, or a forecaster will not behave as expected. Here are a few common errors I have encountered.
+
+\begin{description}
+ \item[Problem] Errors about database connections in the log file.
+ \item[Causes] Database is down, unavailable, or extremely busy. This is the most common problem. A query may also be incorrect.
+ \item[How to fix] Many times, nothing needs to be done to the forecasters. The problem is usually on the database side. Sometimes the connection problem is temporary, and the forecasters will fix everything on their own. Other times the database may need to be restarted, or queries 
+need to be stopped. When this happens, the forecasters will usually recover on their own. If a query is incorrect (for example, a syntax error), the forecaster should be stopped and the query in the corresponding .dbc file fixed.
+\end{description}
+
+\vspace{.1in}
+\begin{description}
+ \item[Problem] The program is not making progress (i.e. a forecaster is running but the log file is not changing).
+ \item[Causes] Database is down, unavailable, or extremely busy. Bad model parameters. Bad rainfall values.
+ \item[How to fix] Check running queries on the databases to see if the forecaster's queries are actually running. In some rare cases, a forecaster will remain waiting for a query, even though the query has been killed. The forecaster will need to be killed in this situation. I believe this is an issue with libpq. If no queries are running, then the likely problem is the numerical solvers. Tiny step sizes often occur when unrealistic model parameters are used. Check that these parameters are correct (units, correct model). Also check for unrealistic (or unexpected) rainfall values, such as negative values, extremely high values, error code values instead of intensities.
+\end{description}
+
+\vspace{.1in}
+\begin{description}
+ \item[Problem] Too many or not enough initial conditions when using initial conditions from a database table.
+ \item[Causes] This usually occurs from an error in a previous forecaster run. I tend to get these errors when making changes to the forecasters (changing model parameters, input sources, etc).
+ \item[How to fix] If 0 initial conditions are present in the database table with initial conditions, the initial timestamp should be reduced to a time where initial conditions are available. If more initial conditions than needed are present, consider deleting the extra conditions, or modifying the timestamp for initial conditions.
+\end{description}
+
+\vspace{.1in}
+\begin{description}
+ \item[Problem] A long period of no rainfall is visible in the forecasts. However, rainfall did actually fall.
+ \item[Causes] This occurs when the rainfall subsystem is not functioning properly.
+ \item[How to fix] First, verify that nonzero rainfall intensities are not present in the database, but should be. If the values are not there, they must be reingested into the database table. Then the forecaster can be restarted from a timestamp before the missing rainfall data. If the time period with missing rainfall is large, consider running an ASYNCH style simulation to create initial conditions for the forecaster at a recent time.
+\end{description}
+
+
+\section{To Do} \label{sec: to do}
+
+\begin{enumerate}
+ \item The number of days to keep in the archive tables is currently hardcoded (10 in the repository, 2 in the data center). See the main routines of each forecaster. This value should be moved into the forecast file.
+ \item The functions for displaying information on IFIS are hardcoded. See the main routines of each forecaster. A good approach to fix this is to require only calls to database functions (instead of a mix of php scripts and database functions). The function names can be added to the forecast file.
+ \item Only one forecast forcing is allowed. Expanding this to allow multiple forcings can be useful when other estimates (such as evapotranspiration) become available in realtime.
+ \item All four forecasters should ideally be one program.
+\end{enumerate}
+
+Items 1 and 2 are fairly simple tasks. These would be good for someone looking to understand the underlying code. Item 3 will require a understanding of the ASYNCH library routines. Item 4 requires a good understanding of the ASYNCH library as well as the forecaster code.
+
+
+\end{document}

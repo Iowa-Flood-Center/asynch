@@ -1,0 +1,5 @@
+dbname=model_ifc host=s-iihr51.iihr.uiowa.edu user=<need username> password=<need password>
+
+1
+SELECT DISTINCT link_id FROM _pois_adv WHERE link_id > 2 AND link_id < 620174 AND (type = 2 OR type = 3 OR type = 4) ORDER BY link_id;
+

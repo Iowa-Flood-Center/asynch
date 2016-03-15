@@ -1,0 +1,8 @@
+dbname=model_ifc host=s-iihr51.iihr.uiowa.edu port=5432 user=<need username> password=<need password>
+
+2
+SELECT link_id,up_area,length,area,slope,0.11 as topsoil_thickness,0.5 as manning,0.5 as h_b,3.404e-8 as k_d, 2.925e-03 as k_dry,5.909e-07 as k_i from env_master_km WHERE link_id < 620174 AND link_id > 1 ORDER BY link_id;
+
+SELECT nodeX.link_id,nodeX.up_area,nodeX.length,nodeX.area,nodeX.slope,0.11 as topsoil_thickness,0.5 as manning,0.5 as h_b,3.404e-8 as k_d, 2.925e-03 as k_dry,5.909e-07 as k_i
+	FROM env_master_km AS nodeX, env_master_km AS parentX WHERE (nodeX.left BETWEEN parentX.left AND parentX.right) AND parentX.link_id = %u ORDER BY link_id;
+

@@ -1,0 +1,94 @@
+%Type / Maxtime
+262 0.0
+
+0	%Parameters to filenames
+
+%Components to print
+4
+LinkID
+Timestamp
+State0
+State7
+
+%Peakflow function
+Forecast_Maps
+
+%Global parameters
+%6 v_0 [m/s],lambda_1,lambda_2,N,  phi,v_B
+6   0.33      0.20      -0.1  3.0 1.67 0.75
+
+%No. steps stored at each link and
+%Max no. steps transfered between procs
+%Discontinuity buffer size
+30 10 30
+
+%Topology (0 = .rvr, 1 = database)
+1 0 examples/topo51.dbc
+
+%DEM Parameters (0 = .prm, 1 = database)
+1 examples/params51_262_constant.dbc
+
+%Initial state (0 = .ini, 1 = .uini, 2 = .rec, 3 = .dbc)
+3 examples/init51_262_ifc.dbc 1451883600
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%Forcings (0 = none, 1 = .str, 2 = binary, 3 = database, 4 = .ustr, 5 = forecasting, 6 = .gz binary, 7 = recurring)
+3
+
+%Rain
+3 examples/forcing_rain51.dbc
+15 5.0 1451887200 1451887200	%Block_size  time_resolution  starting_time(utc)  ending_time(utc)
+
+%Evaporation
+7 examples/evap.mon
+1451887200 1588291200
+
+%Reservoirs feed
+3 examples/forcing_reservoir51.dbc
+20 60.0 1451887200 1588291200
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%Dams (0 = no dam, 1 = .dam, 2 = .qvs)
+3 examples/qvs_51.dbc
+
+%Reservoir ids (0 = no reservoirs, 1 = .rsv, 2 = .dbc file)
+1 examples/reservoirs.rsv 2
+
+%Where to put hydrographs
+%(0 = no output, 1 = .dat file, 2 = .csv file, 3 = database)
+3 60.0 examples/hydrograph_location_baseflow_forecast51.dbc hydroforecast_test
+
+%Where to put peakflow data
+%(0 = no output, 1 = .pea file, 2 = database)
+2 examples/peakflow_location_forecast51.dbc master_archive_peakflows_test
+
+%Save links for hydrographs and peak file
+%(0 = save no data, 1 = save link data, 2 = .dbc, 3 = all)
+2 examples/hydrosav51.dbc	%Hydrographs
+3				%Peakflow data
+
+%Snapshot information (0 = none, 1 = to file, 2 = to database)
+2 examples/snapshot51_model_ifc_262.dbc master_archive_maps_test
+
+%Filename for scratch work
+examples/outputs/tmp
+
+%Numerical solver settings follow
+
+%facmin, facmax, fac
+.1 10.0 .9
+
+%Solver flag (0 = data below, 1 = .rkd)
+0
+%Numerical solver index (0-3 explicit, 4 implicit)
+2
+%Error tolerances (abs, rel, abs dense, rel dense)
+1e-4 1e-4 1e-4 1e-4 1e-4 1e-4 1e-4 1e-4
+1e-6 1e-6 1e-6 1e-6 1e-6 1e-6 1e-6 1e-6
+1e-4 1e-4 1e-4 1e-4 1e-4 1e-4 1e-4 1e-4
+1e-6 1e-6 1e-6 1e-6 1e-6 1e-6 1e-6 1e-6
+
+# %End of file
+-------------------------------
+

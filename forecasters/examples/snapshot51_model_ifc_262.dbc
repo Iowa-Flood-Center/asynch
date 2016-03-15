@@ -1,0 +1,5 @@
+dbname=model_test host=s-iihr51.iihr.uiowa.edu port=5432 user=<need username> password=<need password>
+
+1
+CREATE TABLE IF NOT EXISTS %s
+(forecast_time integer,link_id integer,q double precision,s double precision,s_p double precision,s_l double precision,s_s double precision,v_p double precision,v_r double precision,q_b double precision);

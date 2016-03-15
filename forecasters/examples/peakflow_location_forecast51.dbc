@@ -1,0 +1,5 @@
+dbname=model_test host=s-iihr51.iihr.uiowa.edu port=5432 user=<need username> password=<need password>
+
+1
+CREATE TABLE IF NOT EXISTS %s(link_id integer, peak_time integer, peak_discharge double precision, start_time integer, period integer);
+

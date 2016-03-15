@@ -1,0 +1,23 @@
+%Model Name
+test
+
+%For display on ifis?
+0
+
+%Index of the forcing (in .gbl file) for forecasting
+0
+
+%Number of precipitation values to use in a forecast
+12
+
+
+%Forecast window (mins)
+14400.0
+
+%Table name for map index
+examples/rainmaps51.dbc
+
+%Halt file
+examples/outputs/terminate
+
+# -----------------

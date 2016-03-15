@@ -1,0 +1,17 @@
+dbname=model_ifc host=s-iihr51.iihr.uiowa.edu port=5432 user=<need username> password=<need password>
+
+3
+
+SELECT link_id FROM env_master_km WHERE link_id < 620174 AND link_id > 1 ORDER BY link_id;
+
+WITH all_links(id) AS (SELECT link_id FROM env_master_km)
+SELECT all_links.id,env_master_km.link_id FROM env_master_km,all_links 
+	WHERE all_links.id > 1 AND env_master_km.parent_link = all_links.id ORDER BY all_links.id;
+
+WITH all_links(id) AS (SELECT link_id FROM env_master_km)
+SELECT all_links.id,env_master_km.link_id FROM env_master_km,all_links
+	WHERE (all_links.id IN 
+		(SELECT nodeX.link_id FROM env_master_km AS nodeX, env_master_km AS parentX 
+			WHERE (nodeX.left BETWEEN parentX.left AND parentX.right) AND parentX.link_id = %u) ) 
+	AND env_master_km.parent_link = all_links.id ORDER BY all_links.id;
+

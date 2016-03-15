@@ -1,0 +1,4 @@
+dbname=model_ifc host=s-iihr51.iihr.uiowa.edu user=<need username> password=<need password>
+
+1
+SELECT min(unix_time) FROM rain_maps5_index WHERE unix_time >= %u;

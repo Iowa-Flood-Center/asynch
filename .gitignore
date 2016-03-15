@@ -22,3 +22,7 @@ Makefile.in
 dist
 third_party
 examples
+
+*.dbc
+*.str
+*.rvr

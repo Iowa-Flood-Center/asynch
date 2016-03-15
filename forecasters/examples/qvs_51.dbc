@@ -1,0 +1,5 @@
+dbname=model_ifc host=s-iihr51.iihr.uiowa.edu port=5432 user=<need username> password=<need password>
+
+1
+SELECT link_id,storage_m3,discharge_m3s FROM env_ponds_qvs ORDER BY link_id,storage_m3;
+

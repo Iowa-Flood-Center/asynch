@@ -1,0 +1,11 @@
+dbname=model_ifc host=s-iihr51.iihr.uiowa.edu port=5432 user=<need username> password=<need password>
+
+3
+SELECT unix_ts,var_value*0.0283168,link_id FROM _data_usace_reservoir AS A,_pois_adv AS B WHERE A.ifis_id = B.id AND unix_ts >= %u AND unix_ts < %u ORDER BY unix_ts;
+
+WITH subbasin AS (SELECT nodeX.link_id FROM env_master_km AS nodeX, env_master_km AS parentX 
+	WHERE (nodeX.left BETWEEN parentX.left AND parentX.right) AND parentX.link_id = %u) 
+SELECT unix_ts,var_value*0.0283168,B.link_id FROM _data_usace_reservoir AS A,_pois_adv AS B,subbasin AS R
+	WHERE A.ifis_id = B.id AND B.link_id = R.link_id AND unix_ts >= %u AND unix_ts < %u AND B.link_id < 620174 AND B.link_id > 1 ORDER BY unix_ts;
+
+SELECT unix_ts FROM _data_usace_reservoir LIMIT 1;

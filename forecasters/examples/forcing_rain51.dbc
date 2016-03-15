@@ -1,0 +1,12 @@
+dbname=model_ifc host=s-iihr51.iihr.uiowa.edu port=5432 user=<need username> password=<need password>
+
+3
+SELECT unix_time,rain_intens,link_id FROM link_rain5 WHERE unix_time >= %u AND unix_time < %u AND link_id < 620174 AND link_id > 1 ORDER BY unix_time;
+
+WITH subbasin AS (SELECT nodeX.link_id FROM env_master_km AS nodeX, env_master_km AS parentX 
+				WHERE (nodeX.left BETWEEN parentX.left AND parentX.right) AND parentX.link_id = %u) 
+				SELECT unix_time,rain_intens,L.link_id FROM link_rain5 L, subbasin R 
+				WHERE unix_time >= %u AND unix_time < %u AND L.link_id = R.link_id ORDER BY unix_time;
+
+SELECT unix_time FROM link_rain5 LIMIT 1;
+
