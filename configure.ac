@@ -12,5 +12,5 @@ AX_CHECK_ZLIB
 AX_LIB_POSTGRESQL
 
 AC_CONFIG_HEADERS([config.h])
-AC_CONFIG_FILES([Makefile src/Makefile])
+AC_CONFIG_FILES([Makefile src/Makefile forecasters/Makefile])
 AC_OUTPUT
