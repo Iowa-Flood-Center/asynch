@@ -17,6 +17,18 @@ make check
 make install
 ```
 
+### Installing the package on NEON
+
+First, `git clone` the repository or `tar xzf` a released packages. To install the software for the IFC group:
+
+```
+mkdir build && cd build
+../configure --prefix=/Groups/IFC/.local
+make
+make check
+make install
+```
+
 ## Standard Makefile Targets
 
 
