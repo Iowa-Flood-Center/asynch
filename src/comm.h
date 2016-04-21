@@ -1,6 +1,10 @@
 #ifndef COMM_H
 #define COMM_H
 
+#if _MSC_VER > 1000
+#pragma once
+#endif // _MSC_VER > 1000
+
 #include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>

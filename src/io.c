@@ -49,7 +49,7 @@ io* BuildIO(UnivVars* GlobalVars)
 //Returns NULL if there was an error.
 ConnData* ReadDBC(char* filename,unsigned int string_size)
 {
-	unsigned int i,j,errorcode = 0;
+	unsigned int i = 0,j = 0,errorcode = 0;
 	ConnData* conninfo = NULL;
 	char c,*connectstring = (char*) malloc(string_size*sizeof(char));
 
@@ -81,7 +81,11 @@ ConnData* ReadDBC(char* filename,unsigned int string_size)
 		}
 
 		//Get number of queries
-		fscanf(input,"%u",&(conninfo->num_queries));
+		if (fscanf(input,"%u",&(conninfo->num_queries)) == EOF)
+        {
+            printf("[%i]: Error: failed to parse file.\n", my_rank);
+            exit(EXIT_FAILURE);
+        }
 		conninfo->queries = (char**) malloc(conninfo->num_queries*sizeof(char*));
 		for(i=0;i<conninfo->num_queries;i++)
 			conninfo->queries[i] = (char*) malloc(ASYNCH_MAX_QUERY_SIZE*sizeof(char));
@@ -194,7 +198,7 @@ void WriteValue(FILE* outputfile,char* specifier,char* data_storage,short int da
 }
 
 //void WriteStep(double t,VEC* y,UnivVars* GlobalVars,VEC* params,unsigned int state,FILE* outputfile,void* user,fpos_t* pos)
-unsigned int WriteStep(double t,VEC* y,UnivVars* GlobalVars,VEC* params,unsigned int state,FILE* outputfile,void* user,long int* pos_offset)
+unsigned int WriteStep(double t,VEC y,UnivVars* GlobalVars,VEC params,unsigned int state,FILE* outputfile,void* user,long int* pos_offset)
 {
 	unsigned int i;
 
@@ -236,7 +240,7 @@ unsigned int WriteStep(double t,VEC* y,UnivVars* GlobalVars,VEC* params,unsigned
 
 unsigned int CatBinaryToString(char* submission,char* specifier,char* data_storage,short int data_type,char* delim)
 {
-	unsigned int written;
+	unsigned int written = 0;
 
 	switch(data_type)
 	{

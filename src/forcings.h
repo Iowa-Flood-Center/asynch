@@ -1,6 +1,10 @@
 #ifndef FORCINGS_H
 #define FORCINGS_H
 
+#if _MSC_VER > 1000
+#pragma once
+#endif // _MSC_VER > 1000
+
 #include <stdio.h>
 #include <stdlib.h>
 #include "structs.h"

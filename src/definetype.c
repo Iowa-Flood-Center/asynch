@@ -428,13 +428,13 @@ void SetParamSizes(UnivVars* GlobalVars,void* external)
 	}
 
 	//Make sure the appropriate number of global parameters are given
-	if(GlobalVars->global_params->dim < num_global_params)
+	if(GlobalVars->global_params.dim < num_global_params)
 	{
-		printf("\nError: Obtained %u parameters from .gbl file. Expected %u for model type %hu.\n",GlobalVars->global_params->dim,num_global_params,type);
+		printf("\nError: Obtained %u parameters from .gbl file. Expected %u for model type %hu.\n",GlobalVars->global_params.dim,num_global_params,type);
 		MPI_Abort(MPI_COMM_WORLD,1);
 	}
-	if(GlobalVars->global_params->dim > num_global_params)
-		printf("\nWarning: Obtained %u parameters from .gbl file. Expected %u for model type %hu.\n",GlobalVars->global_params->dim,num_global_params,type);
+	if(GlobalVars->global_params.dim > num_global_params)
+		printf("\nWarning: Obtained %u parameters from .gbl file. Expected %u for model type %hu.\n",GlobalVars->global_params.dim,num_global_params,type);
 }
 
 
@@ -443,117 +443,117 @@ void SetParamSizes(UnivVars* GlobalVars,void* external)
 //and precalculations are not available here.
 //VEC* params:		Vector of parameters to convert.
 //unsigned int type:	The index of the model.
-void ConvertParams(VEC* params,unsigned int type,void* external)
+void ConvertParams(VEC params,unsigned int type,void* external)
 {
 	if(type == 19)
 	{
-		params->ve[1] *= 1000;	//L: km -> m
-		params->ve[2] *= 1e6;	//A_h: km^2 -> m^2
+		params.ve[1] *= 1000;	//L: km -> m
+		params.ve[2] *= 1e6;	//A_h: km^2 -> m^2
 	}
 	else if(type == 190 || type == 191)
 	{
-		params->ve[1] *= 1000;	//L: km -> m
-		params->ve[2] *= 1e6;	//A_h: km^2 -> m^2
+		params.ve[1] *= 1000;	//L: km -> m
+		params.ve[2] *= 1e6;	//A_h: km^2 -> m^2
 	}
 	else if(type == 20)
 	{
-		//params->ve[0] *= 1e6;	//km^2 -> m^2
-		params->ve[1] *= 1000;	//km -> m
-		params->ve[2] *= 1e6;	//km^2 -> m^2
+		//params.ve[0] *= 1e6;	//km^2 -> m^2
+		params.ve[1] *= 1000;	//km -> m
+		params.ve[2] *= 1e6;	//km^2 -> m^2
 	}
 	else if(type == 60)
 	{
-		params->ve[1] *= 1000;	//L: km -> m
-		params->ve[2] *= 1e6;	//A_h: km^2 -> m^2
-		params->ve[3] *= 1e-3;	//h_b: mm->m
+		params.ve[1] *= 1000;	//L: km -> m
+		params.ve[2] *= 1e6;	//A_h: km^2 -> m^2
+		params.ve[3] *= 1e-3;	//h_b: mm->m
 	}
 	else if(type == 21)
 	{
-		//params->ve[0] *= 1e6;	//km^2 -> m^2
-		params->ve[1] *= 1000;	//km -> m
-		params->ve[2] *= 1e6;	//km^2 -> m^2
+		//params.ve[0] *= 1e6;	//km^2 -> m^2
+		params.ve[1] *= 1000;	//km -> m
+		params.ve[2] *= 1e6;	//km^2 -> m^2
 	}
 	else if(type == 22 || type == 23 || type == 40)
 	{
-		//params->ve[0] *= 1e6;	//km^2 -> m^2
-		params->ve[1] *= 1000;	//km -> m
-		params->ve[2] *= 1e6;	//km^2 -> m^2
+		//params.ve[0] *= 1e6;	//km^2 -> m^2
+		params.ve[1] *= 1000;	//km -> m
+		params.ve[2] *= 1e6;	//km^2 -> m^2
 	}
 	else if(type <= 5)
 	{
-		params->ve[0] *= 1000;	//km -> m
-		params->ve[3] *= .001;	//mm -> m
-		params->ve[4] *= .001;	//mm -> m
+		params.ve[0] *= 1000;	//km -> m
+		params.ve[3] *= .001;	//mm -> m
+		params.ve[4] *= .001;	//mm -> m
 	}
 	else if(type == 6)
 	{
-		params->ve[0] *= 1000;	//km -> m
-		params->ve[3] *= .001;	//mm -> m
+		params.ve[0] *= 1000;	//km -> m
+		params.ve[3] *= .001;	//mm -> m
 	}
 	else if(type == 15 || type == 315)
 	{
-		params->ve[0] *= 1000;	//L: km -> m
-		params->ve[3] *= .001;	//h_b: mm -> m
-		params->ve[4] *= .001;	//h_H: mm -> m
+		params.ve[0] *= 1000;	//L: km -> m
+		params.ve[3] *= .001;	//h_b: mm -> m
+		params.ve[4] *= .001;	//h_H: mm -> m
 	}
 	else if(type == 30)
 	{
-		params->ve[0] *= 1000;		//L_h:  km -> m
-		params->ve[4] *= .001;		//H_h:  mm -> m
-		params->ve[5] *= 1000.0; 	//MaxInfRate:  m/hr -> mm/hr
+		params.ve[0] *= 1000;		//L_h:  km -> m
+		params.ve[4] *= .001;		//H_h:  mm -> m
+		params.ve[5] *= 1000.0; 	//MaxInfRate:  m/hr -> mm/hr
 	}
 	else if(type == 105)
 	{
-		params->ve[0] *= 1000;	//km -> m
-		params->ve[3] *= .001;	//mm -> m
-		params->ve[4] *= .001;	//mm -> m
+		params.ve[0] *= 1000;	//km -> m
+		params.ve[3] *= .001;	//mm -> m
+		params.ve[4] *= .001;	//mm -> m
 	}
 	else if(type == 200)	//!!!! Did I screw these up on accident?!!!!
 	{
-		params->ve[0] *= 1000;	//L_h:  km -> m
+		params.ve[0] *= 1000;	//L_h:  km -> m
 /*
-		//params->ve[3] *= .001;	//mm -> m
-		params->ve[4] *= .001;	//H_h:  mm -> m
-		params->ve[5] *= 1000.0; //MaxInfRate:  m/hr -> mm/hr
+		//params.ve[3] *= .001;	//mm -> m
+		params.ve[4] *= .001;	//H_h:  mm -> m
+		params.ve[5] *= 1000.0; //MaxInfRate:  m/hr -> mm/hr
 */
 	}
 	else if(type == 219)
 	{
-		params->ve[1] *= 1000;	//L: km -> m
-		params->ve[2] *= 1e6;	//A_h: km^2 -> m^2
+		params.ve[1] *= 1000;	//L: km -> m
+		params.ve[2] *= 1e6;	//A_h: km^2 -> m^2
 	}
 	else if(type == 250)
 	{
-		params->ve[1] *= 1000;		//L_h: km -> m
-		params->ve[2] *= 1e6;		//A_h: km^2 -> m^2
-		params->ve[4] *= .001;		//H_h: mm -> m
+		params.ve[1] *= 1000;		//L_h: km -> m
+		params.ve[2] *= 1e6;		//A_h: km^2 -> m^2
+		params.ve[4] *= .001;		//H_h: mm -> m
 	}
 	else if(type == 252 || type == 260 || type == 254 || type == 261 || type == 262)
 	{
-		params->ve[1] *= 1000;		//L_h: km -> m
-		params->ve[2] *= 1e6;		//A_h: km^2 -> m^2
+		params.ve[1] *= 1000;		//L_h: km -> m
+		params.ve[2] *= 1e6;		//A_h: km^2 -> m^2
 	}
 	else if(type == 253)
 	{
-		params->ve[1] *= 1000;		//L_h: km -> m
-		params->ve[2] *= 1e6;		//A_h: km^2 -> m^2
+		params.ve[1] *= 1000;		//L_h: km -> m
+		params.ve[2] *= 1e6;		//A_h: km^2 -> m^2
 	}
 	else if (type == 255)
 	{
-		params->ve[1] *= 1000;		//L_h: km -> m
-		params->ve[2] *= 1e6;		//A_h: km^2 -> m^2
+		params.ve[1] *= 1000;		//L_h: km -> m
+		params.ve[2] *= 1e6;		//A_h: km^2 -> m^2
 	}
 	else if(type == 300 || type == 301)
 	{
-		params->ve[0] *= 1000;	//km -> m
-		params->ve[3] *= .001;	//mm -> m
-		params->ve[4] *= .001;	//mm -> m
+		params.ve[0] *= 1000;	//km -> m
+		params.ve[3] *= .001;	//mm -> m
+		params.ve[4] *= .001;	//mm -> m
 	}
 	else if(type == 2000)
 	{
-		params->ve[0] *= 1000;	//km -> m
-		params->ve[3] *= .001;	//mm -> m
-		params->ve[4] *= .001;	//mm -> m
+		params.ve[0] *= 1000;	//km -> m
+		params.ve[3] *= .001;	//mm -> m
+		params.ve[4] *= .001;	//mm -> m
 	}
 }
 
@@ -1134,7 +1134,7 @@ void InitRoutines(Link* link,unsigned int type,unsigned int exp_imp,unsigned sho
 
 
 //Perform precalculations needed for the differential equation.  These should be stored in params after the DEM
-//	data and after the dam data (i.e. params->ve[disk_params] is the first precalcuation, params->ve[params_size]
+//	data and after the dam data (i.e. params.ve[disk_params] is the first precalcuation, params.ve[params_size]
 //	is the first dam datum). This method is run at each link. This method can do nothing, if no precalculations are
 //	expected for the model. This assumes the same number of precalculations regardless if there is a dam or not.
 //VEC* global_params:		Vector of the global parameters of the system. These are already set and are available for use.
@@ -1143,7 +1143,7 @@ void InitRoutines(Link* link,unsigned int type,unsigned int exp_imp,unsigned sho
 //unsigned int disk_params:	The first entry of params that should be set here.
 //unsigned int params_size:	First entry of the dam data. Don't change this entry or later unless you want to modify the dam!
 //unsigned int type:		The index of the model.
-void Precalculations(Link* link_i,VEC* global_params,VEC* params,unsigned int disk_params,unsigned int params_size,unsigned short int dam,unsigned int type,void* external)
+void Precalculations(Link* link_i,VEC global_params,VEC params,unsigned int disk_params,unsigned int params_size,unsigned short int dam,unsigned int type,void* external)
 {
 	if(type == 19)
 	{
@@ -1151,16 +1151,16 @@ void Precalculations(Link* link_i,VEC* global_params,VEC* params,unsigned int di
 		//The numbering is:	0   1   2   3  4    5    6   7
 		//Order of global_params: v_r,lambda_1,lambda_2,RC,v_h,v_g,e_pot
 		//The numbering is:        0      1        2     3  4   5   6
-		double* vals = params->ve;
-		double A_i = params->ve[0];
-		double L_i = params->ve[1];
-		double A_h = params->ve[2];
-		double v_r = global_params->ve[0];
-		double lambda_1 = global_params->ve[1];
-		double lambda_2 = global_params->ve[2];
-		double RC = global_params->ve[3];
-		double v_h = global_params->ve[4];
-		double v_g = global_params->ve[5];
+		double* vals = params.ve;
+		double A_i = params.ve[0];
+		double L_i = params.ve[1];
+		double A_h = params.ve[2];
+		double v_r = global_params.ve[0];
+		double lambda_1 = global_params.ve[1];
+		double lambda_2 = global_params.ve[2];
+		double RC = global_params.ve[3];
+		double v_h = global_params.ve[4];
+		double v_g = global_params.ve[5];
 
 		vals[3] = v_h * L_i / A_h * 60.0;	//[1/min]  k2
 		vals[4] = v_g * L_i / A_h * 60.0;	//[1/min]  k3
@@ -1174,16 +1174,16 @@ void Precalculations(Link* link_i,VEC* global_params,VEC* params,unsigned int di
 		//The numbering is:	0   1   2   3  4    5    6   7
 		//Order of global_params: v_r,lambda_1,lambda_2,RC,v_h,v_g (,v_B)
 		//The numbering is:        0      1        2     3  4   5     6
-		double* vals = params->ve;
-		double A_i = params->ve[0];
-		double L_i = params->ve[1];
-		double A_h = params->ve[2];
-		double v_r = global_params->ve[0];
-		double lambda_1 = global_params->ve[1];
-		double lambda_2 = global_params->ve[2];
-		double RC = global_params->ve[3];
-		double v_h = global_params->ve[4];
-		double v_g = global_params->ve[5];
+		double* vals = params.ve;
+		double A_i = params.ve[0];
+		double L_i = params.ve[1];
+		double A_h = params.ve[2];
+		double v_r = global_params.ve[0];
+		double lambda_1 = global_params.ve[1];
+		double lambda_2 = global_params.ve[2];
+		double RC = global_params.ve[3];
+		double v_h = global_params.ve[4];
+		double v_g = global_params.ve[5];
 
 		vals[3] = v_h * L_i / A_h * 60.0;	//[1/min]  k2
 		vals[4] = v_g * L_i / A_h * 60.0;	//[1/min]  k3
@@ -1197,31 +1197,31 @@ void Precalculations(Link* link_i,VEC* global_params,VEC* params,unsigned int di
 		//The numbering is:	0   1   2    3     4   5
 		//Order of global_params: v_r,lambda_1,lambda_2,beta,k_p,k_a,theta_p,theta_a,scale_p,scale_a
 		//The numbering is:        0      1        2     3    4   5     6       7      8        9
-		double* vals = params->ve;
-		double A_i = params->ve[0];
-		double L_i = params->ve[1];
-		double A_h = params->ve[2];
-		double v_r = global_params->ve[0];
-		double lambda_1 = global_params->ve[1];
-		double lambda_2 = global_params->ve[2];
+		double* vals = params.ve;
+		double A_i = params.ve[0];
+		double L_i = params.ve[1];
+		double A_h = params.ve[2];
+		double v_r = global_params.ve[0];
+		double lambda_1 = global_params.ve[1];
+		double lambda_2 = global_params.ve[2];
 
 
 		vals[3] = 60.0*v_r*pow(A_i,lambda_2) / ((1.0-lambda_1)*L_i); //[1/min]  invtau
 
 /*
 		//For gamma
-		double k_p = global_params->ve[4];
-		double k_a = global_params->ve[5];
-		double theta_p = global_params->ve[6];
-		double theta_a = global_params->ve[7];
+		double k_p = global_params.ve[4];
+		double k_a = global_params.ve[5];
+		double theta_p = global_params.ve[6];
+		double theta_a = global_params.ve[7];
 		vals[4] = 1.0/(tgamma(k_p)*pow(theta_p,k_p)); //c_1
 		vals[5] = 1.0/(tgamma(k_a)*pow(theta_a,k_a)); //c_2
 */
 /*
 		//For log normal
-		double mu = global_params->ve[3];
-		double sigma2 = global_params->ve[4];
-		double scale = global_params->ve[5];
+		double mu = global_params.ve[3];
+		double sigma2 = global_params.ve[4];
+		double scale = global_params.ve[5];
 		vals[4] = scale/(pow(2.0*3.141592653589*sigma2,0.5));
 		vals[5] = 0.0;
 */
@@ -1235,16 +1235,16 @@ void Precalculations(Link* link_i,VEC* global_params,VEC* params,unsigned int di
 		//The numbering is:	0   1   2   3  4    5    6   7
 		//Order of global_params: v_r,lambda_1,lambda_2,RC,v_h,v_g
 		//The numbering is:        0      1        2     3  4   5 
-		double* vals = params->ve;
-		double A_i = params->ve[0];
-		double L_i = params->ve[1];
-		double A_h = params->ve[2];
-		double v_r = global_params->ve[0];
-		double lambda_1 = global_params->ve[1];
-		double lambda_2 = global_params->ve[2];
-		double RC = global_params->ve[3];
-		double v_h = global_params->ve[4];
-		double v_g = global_params->ve[5];
+		double* vals = params.ve;
+		double A_i = params.ve[0];
+		double L_i = params.ve[1];
+		double A_h = params.ve[2];
+		double v_r = global_params.ve[0];
+		double lambda_1 = global_params.ve[1];
+		double lambda_2 = global_params.ve[2];
+		double RC = global_params.ve[3];
+		double v_h = global_params.ve[4];
+		double v_g = global_params.ve[5];
 		double F_et = 0.05;
 
 		vals[3] = v_h * L_i / A_h * 60.0;	//[1/min]  k2
@@ -1260,15 +1260,15 @@ void Precalculations(Link* link_i,VEC* global_params,VEC* params,unsigned int di
 		//The numbering is:	0   1   2   3   4  5    6    7 
 		//Order of global_params: v_r,lambda_1,lambda_2,v_h,v_g,e_pot
 		//The numbering is:        0      1        2     3   4   5  
-		double* vals = params->ve;
-		double A_i = params->ve[0];
-		double L_i = params->ve[1];
-		double A_h = params->ve[2];
-		double v_r = global_params->ve[0];
-		double lambda_1 = global_params->ve[1];
-		double lambda_2 = global_params->ve[2];
-		double v_h = global_params->ve[3];
-		double v_g = global_params->ve[4];
+		double* vals = params.ve;
+		double A_i = params.ve[0];
+		double L_i = params.ve[1];
+		double A_h = params.ve[2];
+		double v_r = global_params.ve[0];
+		double lambda_1 = global_params.ve[1];
+		double lambda_2 = global_params.ve[2];
+		double v_h = global_params.ve[3];
+		double v_g = global_params.ve[4];
 
 		vals[4] = v_h * L_i / A_h * 60.0;	//[1/min]  k2
 		vals[5] = v_g * L_i / A_h * 60.0;	//[1/min]  k3
@@ -1282,15 +1282,15 @@ void Precalculations(Link* link_i,VEC* global_params,VEC* params,unsigned int di
 		//Order of global_params: v_r,lambda_1,lambda_2,RC,S_0,v_h,v_g
 		//The numbering is:        0      1        2     3  4   5   6
 		//Need to set entries 3, 4, 5, and 6 of params.
-		double* vals = params->ve;
-		double A_i = params->ve[0];
-		double L_i = params->ve[1];
-		double A_h = params->ve[2];
-		double v_r = global_params->ve[0];
-		double lambda_1 = global_params->ve[1];
-		double lambda_2 = global_params->ve[2];
-		double v_h = global_params->ve[5];
-		double v_g = global_params->ve[6];
+		double* vals = params.ve;
+		double A_i = params.ve[0];
+		double L_i = params.ve[1];
+		double A_h = params.ve[2];
+		double v_r = global_params.ve[0];
+		double lambda_1 = global_params.ve[1];
+		double lambda_2 = global_params.ve[2];
+		double v_h = global_params.ve[5];
+		double v_g = global_params.ve[6];
 
 		vals[3] = v_h * L_i / A_h * 60.0;	//[1/min]  k2
 		//vals[4] = vals[3] / 20.0;		//[1/min]  k3
@@ -1306,15 +1306,15 @@ void Precalculations(Link* link_i,VEC* global_params,VEC* params,unsigned int di
 		//Order of global_params: lambda_1,lambda_2,S_0,v_g
 		//The numbering is:         0        1       2   3
 		//Need to set entries 6, 7, 8, and 9 of params.
-		double* vals = params->ve;
-		double A_i = params->ve[0];
-		double L_i = params->ve[1];
-		double A_h = params->ve[2];
-		double v_h = params->ve[4];
-		double v_r = params->ve[5];
-		double lambda_1 = global_params->ve[0];
-		double lambda_2 = global_params->ve[1];
-		double v_g = global_params->ve[3];
+		double* vals = params.ve;
+		double A_i = params.ve[0];
+		double L_i = params.ve[1];
+		double A_h = params.ve[2];
+		double v_h = params.ve[4];
+		double v_r = params.ve[5];
+		double lambda_1 = global_params.ve[0];
+		double lambda_2 = global_params.ve[1];
+		double v_g = global_params.ve[3];
 
 		vals[6] = v_h * L_i / A_h * 60.0;	//[1/min]  k2
 		//vals[7] = vals[6] / 20.0;		//[1/min]  k3
@@ -1330,15 +1330,15 @@ void Precalculations(Link* link_i,VEC* global_params,VEC* params,unsigned int di
 		//Order of global_params: lambda_1,lambda_2,S_0,v_g
 		//The numbering is:         0        1       2   3
 		//Need to set entries 6, 7, and 8 of params.
-		double* vals = params->ve;
-		double A_i = params->ve[0];
-		double L_i = params->ve[1];
-		double A_h = params->ve[2];
-		double v_h = params->ve[4];
-		double v_r = params->ve[5];
-		double lambda_1 = global_params->ve[0];
-		double lambda_2 = global_params->ve[1];
-		double v_g = global_params->ve[3];
+		double* vals = params.ve;
+		double A_i = params.ve[0];
+		double L_i = params.ve[1];
+		double A_h = params.ve[2];
+		double v_h = params.ve[4];
+		double v_r = params.ve[5];
+		double lambda_1 = global_params.ve[0];
+		double lambda_2 = global_params.ve[1];
+		double v_g = global_params.ve[3];
 
 		vals[6] = v_h * L_i / A_h * 60.0;	//[1/min]  k2
 		vals[7] = v_g * L_i / A_h * 60.0;	//[1/min]  k3
@@ -1351,16 +1351,16 @@ void Precalculations(Link* link_i,VEC* global_params,VEC* params,unsigned int di
 		//Order of global_params: v_r,lambda_1,lambda_2,Q_r,A_r,RC, (for 200) u_0,U,DL,scale
 		//The numbering is:        0      1        2     3   4   5   	       6  7  8   9
 		//Need to set entries 12-19 of params.
-		double* vals = params->ve;
+		double* vals = params.ve;
 		double K_T = 1.0;
 		double s_r = 1.0;
 		double rootS_h = pow(vals[7],.5);
-		double v_r = global_params->ve[0];
-		double lambda_1 = global_params->ve[1];
-		double lambda_2 = global_params->ve[2];
-		double Q_r = global_params->ve[3];
-		double A_r = global_params->ve[4];
-		double RC = global_params->ve[5];
+		double v_r = global_params.ve[0];
+		double lambda_1 = global_params.ve[1];
+		double lambda_2 = global_params.ve[2];
+		double Q_r = global_params.ve[3];
+		double A_r = global_params.ve[4];
+		double RC = global_params.ve[5];
 
 		vals[12] = 60.0*v_r*pow(vals[2]/A_r,lambda_2)/((1.0-lambda_1)*vals[0]);
 		vals[13] = vals[3] / s_r;
@@ -1378,13 +1378,13 @@ void Precalculations(Link* link_i,VEC* global_params,VEC* params,unsigned int di
 		//Order of global_params: v_r,lambda_1,lambda_2,Q_r,A_r
 		//The numbering is:        0      1        2     3   4
 		//Need to set entries 14 - 19 and 9 of params.
-		double v_r = global_params->ve[0];
-		double lambda_1 = global_params->ve[1];
-		double lambda_2 = global_params->ve[2];
-		double Q_r = global_params->ve[3];
-		double A_r = global_params->ve[4];
+		double v_r = global_params.ve[0];
+		double lambda_1 = global_params.ve[1];
+		double lambda_2 = global_params.ve[2];
+		double Q_r = global_params.ve[3];
+		double A_r = global_params.ve[4];
 
-		double* vals = params->ve;
+		double* vals = params.ve;
 		double L_i = vals[0];
 		double A_h = vals[1];
 		double A_i = vals[2];
@@ -1411,19 +1411,19 @@ void Precalculations(Link* link_i,VEC* global_params,VEC* params,unsigned int di
 		//Order of global_params: v_r,lambda_1,lambda_2,v_h,A_r,RC
 		//The numbering is:        0      1        2     3   4   5
 		//Need to set entries 12-19 of params.
-		double* vals = params->ve;
+		double* vals = params.ve;
 		double K_T = 1.0;
 		double s_r = 1.0;
 		double rootS_h = pow(vals[7],.5);
-		double L = params->ve[0];
-		double A_h = params->ve[1] * 1e6;	//Put into m^2
-		double eta = params->ve[8];
-		double v_r = global_params->ve[0];
-		double lambda_1 = global_params->ve[1];
-		double lambda_2 = global_params->ve[2];
-		double v_h = global_params->ve[3];
-		double A_r = global_params->ve[4];
-		double RC = global_params->ve[5];
+		double L = params.ve[0];
+		double A_h = params.ve[1] * 1e6;	//Put into m^2
+		double eta = params.ve[8];
+		double v_r = global_params.ve[0];
+		double lambda_1 = global_params.ve[1];
+		double lambda_2 = global_params.ve[2];
+		double v_h = global_params.ve[3];
+		double A_r = global_params.ve[4];
+		double RC = global_params.ve[5];
 
 
 		vals[12] = 60.0*v_r*pow(vals[2]/A_r,lambda_2)/((1.0-lambda_1)*vals[0]);	//invtau
@@ -1445,35 +1445,35 @@ void Precalculations(Link* link_i,VEC* global_params,VEC* params,unsigned int di
 		//Need to set entries 12-19 of params.
 
 		//Global params
-		double v_0 = global_params->ve[0];
-		double lambda_1 = global_params->ve[1];
-		double lambda_2 = global_params->ve[2];
-		double A_r = global_params->ve[4];
-		double C_r = global_params->ve[6];
+		double v_0 = global_params.ve[0];
+		double lambda_1 = global_params.ve[1];
+		double lambda_2 = global_params.ve[2];
+		double A_r = global_params.ve[4];
+		double C_r = global_params.ve[6];
 
 		//Local params
-		double L_H = params->ve[0];
-		double A_H = params->ve[1];
-		double A_up = params->ve[2];
-		double H_b = params->ve[3];
-		double H_h = params->ve[4];
-		double K_SAT = params->ve[6];
-		double S_H = params->ve[7];
-		double n_vh = params->ve[8];
+		double L_H = params.ve[0];
+		double A_H = params.ve[1];
+		double A_up = params.ve[2];
+		double H_b = params.ve[3];
+		double H_h = params.ve[4];
+		double K_SAT = params.ve[6];
+		double S_H = params.ve[7];
+		double n_vh = params.ve[8];
 		double H_relmax = H_h;
 
 
-		params->ve[12] = 60.0*C_r*v_0*pow(A_up/A_r,lambda_2)/((1.0-lambda_1)*L_H);	//K_Q
-		params->ve[13] = 1e3 * H_b * A_H;	//V_T
-		params->ve[14] = 3.6e3 / n_vh * pow(S_H,.5);	//c_1
-		//params->ve[14] = 3.6e6 / n_vh * pow(S_H,.5);	//c_1
-		//params->ve[15] = (2e-6/.6) * (L_H/A_H);	//c_2
-		params->ve[15] = (2e-6) * (L_H/A_H);	//c_2
-		params->ve[16] = 1e3 / params->ve[13] * K_SAT * S_H;	//c_3
-		params->ve[17] = (1.0/3.6) * A_H;	//c_4
-		params->ve[18] = (1e6/60.0) * A_H / H_b;	//c_5
-		params->ve[19] = (1e3 / 60.0) * A_H;	//c_6
-		params->ve[20] = (H_relmax > 1e-12) ? 1e6 * A_H / H_relmax : 0.0;	//c_7
+		params.ve[12] = 60.0*C_r*v_0*pow(A_up/A_r,lambda_2)/((1.0-lambda_1)*L_H);	//K_Q
+		params.ve[13] = 1e3 * H_b * A_H;	//V_T
+		params.ve[14] = 3.6e3 / n_vh * pow(S_H,.5);	//c_1
+		//params.ve[14] = 3.6e6 / n_vh * pow(S_H,.5);	//c_1
+		//params.ve[15] = (2e-6/.6) * (L_H/A_H);	//c_2
+		params.ve[15] = (2e-6) * (L_H/A_H);	//c_2
+		params.ve[16] = 1e3 / params.ve[13] * K_SAT * S_H;	//c_3
+		params.ve[17] = (1.0/3.6) * A_H;	//c_4
+		params.ve[18] = (1e6/60.0) * A_H / H_b;	//c_5
+		params.ve[19] = (1e3 / 60.0) * A_H;	//c_6
+		params.ve[20] = (H_relmax > 1e-12) ? 1e6 * A_H / H_relmax : 0.0;	//c_7
 	}
 	else if(type == 105)
 	{
@@ -1481,12 +1481,12 @@ void Precalculations(Link* link_i,VEC* global_params,VEC* params,unsigned int di
 		//The numbering is:     0   1   2   3   4       5         6    7   8   9   10  11  12    13  14  15 
 		//Order of global_params: v_r,lambda_1,lambda_2,Q_r,A_r,RC
 		//The numbering is:        0      1        2     3   4   5
-		double* vals = params->ve;
-		double v_r = global_params->ve[0];
-		double lambda_1 = global_params->ve[1];
-		double lambda_2 = global_params->ve[2];
-		double A_r = global_params->ve[4];
-		double RC = global_params->ve[5];
+		double* vals = params.ve;
+		double v_r = global_params.ve[0];
+		double lambda_1 = global_params.ve[1];
+		double lambda_2 = global_params.ve[2];
+		double A_r = global_params.ve[4];
+		double RC = global_params.ve[5];
 		double rootS_h = pow(vals[7],.5);
 
 		//invtau
@@ -1504,13 +1504,13 @@ void Precalculations(Link* link_i,VEC* global_params,VEC* params,unsigned int di
 		//The numbering is:	0   1   2    3     4
 		//Order of global_params: v_0,lambda_1,lambda_2
 		//The numbering is:        0      1        2
-		double* vals = params->ve;
-		double A_i = params->ve[0];
-		double L_i = params->ve[1];
-		double A_h = params->ve[2];
-		double v_0 = global_params->ve[0];
-		double lambda_1 = global_params->ve[1];
-		double lambda_2 = global_params->ve[2];
+		double* vals = params.ve;
+		double A_i = params.ve[0];
+		double L_i = params.ve[1];
+		double A_h = params.ve[2];
+		double v_0 = global_params.ve[0];
+		double lambda_1 = global_params.ve[1];
+		double lambda_2 = global_params.ve[2];
 
 		vals[3] = 60.0*v_0*pow(A_i,lambda_2) / ((1.0-lambda_1)*L_i);	//[1/min]  invtau
 		vals[4] = (1e-3/3600.0) * A_h;		//c_1
@@ -1521,16 +1521,16 @@ void Precalculations(Link* link_i,VEC* global_params,VEC* params,unsigned int di
 		//The numbering is:	0   1   2   3    4     5   6   7   8
 		//Order of global_params: v_0,lambda_1,lambda_2,v_h,k_3,k_I_factor,gamma,h_b,e_pot
 		//The numbering is:        0      1        2     3   4     5         6    7	8
-		double* vals = params->ve;
-		double A_i = params->ve[0];
-		double L_i = params->ve[1];
-		double A_h = params->ve[2];
+		double* vals = params.ve;
+		double A_i = params.ve[0];
+		double L_i = params.ve[1];
+		double A_h = params.ve[2];
 
-		double v_0 = global_params->ve[0];
-		double lambda_1 = global_params->ve[1];
-		double lambda_2 = global_params->ve[2];
-		double v_h = global_params->ve[3];
-		double k_I_factor = global_params->ve[5];
+		double v_0 = global_params.ve[0];
+		double lambda_1 = global_params.ve[1];
+		double lambda_2 = global_params.ve[2];
+		double v_h = global_params.ve[3];
+		double k_I_factor = global_params.ve[5];
 
 		vals[4] = 60.0*v_0*pow(A_i,lambda_2) / ((1.0-lambda_1)*L_i);	//[1/min]  invtau
 		vals[5] = v_h * L_i/A_h * 60.0;	//[1/min] k_2
@@ -1544,16 +1544,16 @@ void Precalculations(Link* link_i,VEC* global_params,VEC* params,unsigned int di
 		//The numbering is:	0   1   2    3     4   5   6   7 
 		//Order of global_params: v_0,lambda_1,lambda_2,v_h,k_3,k_I_factor,h_b,S_L,A,B,exponent
 		//The numbering is:        0      1        2     3   4     5        6   7  8 9  10
-		double* vals = params->ve;
-		double A_i = params->ve[0];
-		double L_i = params->ve[1];
-		double A_h = params->ve[2];
+		double* vals = params.ve;
+		double A_i = params.ve[0];
+		double L_i = params.ve[1];
+		double A_h = params.ve[2];
 
-		double v_0 = global_params->ve[0];
-		double lambda_1 = global_params->ve[1];
-		double lambda_2 = global_params->ve[2];
-		double v_h = global_params->ve[3];
-		double k_i_factor = global_params->ve[5];
+		double v_0 = global_params.ve[0];
+		double lambda_1 = global_params.ve[1];
+		double lambda_2 = global_params.ve[2];
+		double v_h = global_params.ve[3];
+		double k_i_factor = global_params.ve[5];
 
 		vals[3] = 60.0*v_0*pow(A_i,lambda_2) / ((1.0-lambda_1)*L_i);	//[1/min]  invtau
 		vals[4] = v_h * L_i/A_h * 60.0;	//[1/min] k_2
@@ -1567,16 +1567,16 @@ void Precalculations(Link* link_i,VEC* global_params,VEC* params,unsigned int di
 		//The numbering is:	0   1   2    3     4   5   6   7 
 		//Order of global_params: v_0,lambda_1,lambda_2,v_h,k_3,k_I_factor,h_b,S_L,A,B,exponent,v_B
 		//The numbering is:        0      1        2     3   4     5        6   7  8 9  10       11
-		double* vals = params->ve;
-		double A_i = params->ve[0];
-		double L_i = params->ve[1];
-		double A_h = params->ve[2];
+		double* vals = params.ve;
+		double A_i = params.ve[0];
+		double L_i = params.ve[1];
+		double A_h = params.ve[2];
 
-		double v_0 = global_params->ve[0];
-		double lambda_1 = global_params->ve[1];
-		double lambda_2 = global_params->ve[2];
-		double v_h = global_params->ve[3];
-		double k_i_factor = global_params->ve[5];
+		double v_0 = global_params.ve[0];
+		double lambda_1 = global_params.ve[1];
+		double lambda_2 = global_params.ve[2];
+		double v_h = global_params.ve[3];
+		double k_i_factor = global_params.ve[5];
 
 		vals[3] = 60.0*v_0*pow(A_i,lambda_2) / ((1.0-lambda_1)*L_i);	//[1/min]  invtau
 		vals[4] = v_h * L_i/A_h * 60.0;	//[1/min] k_2
@@ -1590,16 +1590,16 @@ void Precalculations(Link* link_i,VEC* global_params,VEC* params,unsigned int di
 		//The numbering is:	0   1   2   3   4      5       6   7  8 9   10        11    12  13  14  15
 		//Order of global_params: v_0,lambda_1,lambda_2
 		//The numbering is:        0      1        2
-		double* vals = params->ve;
-		double A_i = params->ve[0];
-		double L_i = params->ve[1];
-		double A_h = params->ve[2];
-		double v_h = params->ve[3];
-		double k_i_factor = params->ve[5];
+		double* vals = params.ve;
+		double A_i = params.ve[0];
+		double L_i = params.ve[1];
+		double A_h = params.ve[2];
+		double v_h = params.ve[3];
+		double k_i_factor = params.ve[5];
 
-		double v_0 = global_params->ve[0];
-		double lambda_1 = global_params->ve[1];
-		double lambda_2 = global_params->ve[2];
+		double v_0 = global_params.ve[0];
+		double lambda_1 = global_params.ve[1];
+		double lambda_2 = global_params.ve[2];
 
 		vals[11] = 60.0*v_0*pow(A_i,lambda_2) / ((1.0-lambda_1)*L_i);	//[1/min]  invtau
 		vals[12] = v_h * L_i/A_h * 60.0;	//[1/min] k_2
@@ -1613,14 +1613,14 @@ void Precalculations(Link* link_i,VEC* global_params,VEC* params,unsigned int di
 		//The numbering is:	0   1   2  |    3    4   5 
 		//Order of global_params: v_0,lambda_1,lambda_2,h_b,k_D,k_2,k_dry,k_i,T_L,N,phi
 		//The numbering is:        0      1        2     3   4   5   6     7   8  9  10
-		double* vals = params->ve;
-		double A_i = params->ve[0];
-		double L_i = params->ve[1];
-		double A_h = params->ve[2];
+		double* vals = params.ve;
+		double A_i = params.ve[0];
+		double L_i = params.ve[1];
+		double A_h = params.ve[2];
 
-		double v_0 = global_params->ve[0];
-		double lambda_1 = global_params->ve[1];
-		double lambda_2 = global_params->ve[2];
+		double v_0 = global_params.ve[0];
+		double lambda_1 = global_params.ve[1];
+		double lambda_2 = global_params.ve[2];
 
 		vals[3] = 60.0*v_0*pow(A_i,lambda_2) / ((1.0-lambda_1)*L_i);	//[1/min]  invtau
 		vals[4] = (0.001/60.0);		//(mm/hr->m/min)  c_1
@@ -1632,15 +1632,15 @@ void Precalculations(Link* link_i,VEC* global_params,VEC* params,unsigned int di
 		//The numbering is:	0   1   2   3   4   5   6   7     8  |   9     10  11  12
 		//Order of global_params: v_0,lambda_1,lambda_2,N,phi,v_B
 		//The numbering is:        0      1        2    3  4   5 
-		double* vals = params->ve;
-		double A_i = params->ve[0];
-		double L_i = params->ve[1];
-		double A_h = params->ve[2];
-		double S_h = params->ve[3];
+		double* vals = params.ve;
+		double A_i = params.ve[0];
+		double L_i = params.ve[1];
+		double A_h = params.ve[2];
+		double S_h = params.ve[3];
 
-		double v_0 = global_params->ve[0];
-		double lambda_1 = global_params->ve[1];
-		double lambda_2 = global_params->ve[2];
+		double v_0 = global_params.ve[0];
+		double lambda_1 = global_params.ve[1];
+		double lambda_2 = global_params.ve[2];
 
 		vals[9] = 60.0*v_0*pow(A_i,lambda_2) / ((1.0-lambda_1)*L_i);	//[1/min]  invtau
 		vals[10] = (0.001/60.0);		//(mm/hr->m/min)  c_1
@@ -1653,16 +1653,16 @@ void Precalculations(Link* link_i,VEC* global_params,VEC* params,unsigned int di
 		//The numbering is:	0   1   2   3   4   5   6   7   8     9  |   10    11  12  13
 		//Order of global_params: v_0,lambda_1,lambda_2,N,phi,v_B
 		//The numbering is:        0      1        2    3  4   5
-		double* vals = params->ve;
-		double A_i = params->ve[0];
-		double L_i = params->ve[1];
-		double A_h = params->ve[2];
-		double S_h = params->ve[3];
-		double eta = params->ve[5];
+		double* vals = params.ve;
+		double A_i = params.ve[0];
+		double L_i = params.ve[1];
+		double A_h = params.ve[2];
+		double S_h = params.ve[3];
+		double eta = params.ve[5];
 
-		double v_0 = global_params->ve[0];
-		double lambda_1 = global_params->ve[1];
-		double lambda_2 = global_params->ve[2];
+		double v_0 = global_params.ve[0];
+		double lambda_1 = global_params.ve[1];
+		double lambda_2 = global_params.ve[2];
 
 		vals[10] = 60.0*v_0*pow(A_i,lambda_2) / ((1.0-lambda_1)*L_i);	//[1/min]  invtau
 		vals[11] = (0.001/60.0);		//(mm/hr->m/min)  c_1
@@ -1677,16 +1677,16 @@ void Precalculations(Link* link_i,VEC* global_params,VEC* params,unsigned int di
 		//Order of global_params: v_r,lambda_1,lambda_2,Q_r,A_r,RC
 		//The numbering is:        0      1        2     3   4   5
 		//Need to set entries 12-19 of params.
-		double* vals = params->ve;
+		double* vals = params.ve;
 		double K_T = 1.0;
 		double s_r = 1.0;
 		double rootS_h = pow(vals[7],.5);
-		double v_r = global_params->ve[0];
-		double lambda_1 = global_params->ve[1];
-		double lambda_2 = global_params->ve[2];
-		double Q_r = global_params->ve[3];
-		double A_r = global_params->ve[4];
-		double RC = global_params->ve[5];
+		double v_r = global_params.ve[0];
+		double lambda_1 = global_params.ve[1];
+		double lambda_2 = global_params.ve[2];
+		double Q_r = global_params.ve[3];
+		double A_r = global_params.ve[4];
+		double RC = global_params.ve[5];
 
 		vals[12] = 60.0*v_r*pow(vals[2]/A_r,lambda_2)/((1.0-lambda_1)*vals[0]);
 		vals[13] = vals[3] / s_r;
@@ -1697,7 +1697,7 @@ void Precalculations(Link* link_i,VEC* global_params,VEC* params,unsigned int di
 		vals[18] = K_T/60.0;
 		vals[19] = vals[6]/(60.0*s_r);
 
-		iparams->ve[0] = link_i->location;
+		iparams.ve[0] = link_i->location;
 */
 	}
 	else if(type == 315)
@@ -1708,19 +1708,19 @@ void Precalculations(Link* link_i,VEC* global_params,VEC* params,unsigned int di
 		//Order of global_params: v_r,lambda_1,lambda_2,v_h,A_r,RC
 		//The numbering is:        0      1        2     3   4   5
 		//Need to set entries 12-19 of params.
-		double* vals = params->ve;
+		double* vals = params.ve;
 		double K_T = 1.0;
 		double s_r = 1.0;
 		double rootS_h = pow(vals[7],.5);
-		double L = params->ve[0];
-		double A_h = params->ve[1] * 1e6;	//Put into m^2
-		double eta = params->ve[8];
-		double v_r = global_params->ve[0];
-		double lambda_1 = global_params->ve[1];
-		double lambda_2 = global_params->ve[2];
-		double v_h = global_params->ve[3];
-		double A_r = global_params->ve[4];
-		double RC = global_params->ve[5];
+		double L = params.ve[0];
+		double A_h = params.ve[1] * 1e6;	//Put into m^2
+		double eta = params.ve[8];
+		double v_r = global_params.ve[0];
+		double lambda_1 = global_params.ve[1];
+		double lambda_2 = global_params.ve[2];
+		double v_h = global_params.ve[3];
+		double A_r = global_params.ve[4];
+		double RC = global_params.ve[5];
 
 
 		vals[12] = 60.0*v_r*pow(vals[2]/A_r,lambda_2)/((1.0-lambda_1)*vals[0]);	//invtau [1/min]
@@ -1733,7 +1733,7 @@ void Precalculations(Link* link_i,VEC* global_params,VEC* params,unsigned int di
 		vals[19] = vals[6]/(60.0*s_r);
 
 
-		iparams->ve[0] = link_i->location;
+		iparams.ve[0] = link_i->location;
 */
 	}
 	else if(type == 2000)
@@ -1743,16 +1743,16 @@ void Precalculations(Link* link_i,VEC* global_params,VEC* params,unsigned int di
 		//Order of global_params: v_r,lambda_1,lambda_2,Q_r,A_r,RC
 		//The numbering is:        0      1        2     3   4   5
 		//Need to set entries 12-19 of params.
-		double* vals = params->ve;
+		double* vals = params.ve;
 		double K_T = 1.0;
 		double s_r = 1.0;
 		double rootS_h = pow(vals[7],.5);
-		double v_r = global_params->ve[0];
-		double lambda_1 = global_params->ve[1];
-		double lambda_2 = global_params->ve[2];
-		double Q_r = global_params->ve[3];
-		double A_r = global_params->ve[4];
-		double RC = global_params->ve[5];
+		double v_r = global_params.ve[0];
+		double lambda_1 = global_params.ve[1];
+		double lambda_2 = global_params.ve[2];
+		double Q_r = global_params.ve[3];
+		double A_r = global_params.ve[4];
+		double RC = global_params.ve[5];
 
 		vals[12] = 60.0*v_r*pow(vals[2]/A_r,lambda_2)/((1.0-lambda_1)*vals[0]);
 		vals[13] = vals[3] / s_r;
@@ -1774,7 +1774,7 @@ void Precalculations(Link* link_i,VEC* global_params,VEC* params,unsigned int di
 //VEC* y_0:		The initial condition vector. Store the initial data here.
 //unsigned int type:	The index of the model.
 //Returns the state of the solution (use 0 if state discontinuities are not a concern). !!!! Should the return value be an int? !!!!
-int ReadInitData(VEC* global_params,VEC* params,QVSData* qvs,unsigned short int dam,VEC* y_0,unsigned int type,unsigned int diff_start,unsigned int no_init_start,void* user,void* external)
+int ReadInitData(VEC global_params,VEC params,QVSData* qvs,unsigned short int dam,VEC y_0,unsigned int type,unsigned int diff_start,unsigned int no_init_start,void* user,void* external)
 {
 	unsigned int state;
 
@@ -1785,16 +1785,16 @@ int ReadInitData(VEC* global_params,VEC* params,QVSData* qvs,unsigned short int 
 	}
 	else if(type == 21)
 	{
-		//For type 21, only the storage (S or y_0->ve[1]) has been set.
+		//For type 21, only the storage (S or y_0.ve[1]) has been set.
 		//Order of parameters: A_i,L_i,A_h,k2,k3,invtau,orifice_area,H_spill,H_max,S_max,alpha,orifice_diam,c_1,c_2,L_spill
 		//The numbering is:	0   1   2  3  4    5	       6      7       8     9	  10	    11       12  13  14
 		//Order of global_params: v_r,lambda_1,lambda_2,RC,S_0,v_h
 		//The numbering is:        0      1        2     3  4   5
-		double RC = global_params->ve[3];
-		double S_0 = global_params->ve[4];
-		double A_h = params->ve[2];
-		y_0->ve[2] = RC * S_0 * A_h;
-		y_0->ve[3] = (1.0 - RC) * S_0 * A_h;
+		double RC = global_params.ve[3];
+		double S_0 = global_params.ve[4];
+		double A_h = params.ve[2];
+		y_0.ve[2] = RC * S_0 * A_h;
+		y_0.ve[3] = (1.0 - RC) * S_0 * A_h;
 
 		state = dam_check(y_0,global_params,params,qvs,dam);
 		dam_q(y_0,global_params,params,qvs,state,user,y_0);
@@ -1802,17 +1802,17 @@ int ReadInitData(VEC* global_params,VEC* params,QVSData* qvs,unsigned short int 
 	}
 	else if(type == 22)
 	{
-		//For type 22, only the storage (S or y_0->ve[1]) has been set.
+		//For type 22, only the storage (S or y_0.ve[1]) has been set.
 		//Order of parameters: A_i,L_i,A_h,RC,v_h,v_r,k2,k3,invtau,orifice_area,H_spill,H_max,S_max,alpha,orifice_diam,c_1,c_2,L_spill
 		//The numbering is:	0   1   2  3   4   5   6  7   8          9	  10	  11   12     13      14        15  16   17
 		//Order of global_params: lambda_1,lambda_2,S_0
 		//The numbering is:         0        1       2
-		double S_0 = global_params->ve[2];
-		double A_h = params->ve[2];
-		double RC = params->ve[3];
+		double S_0 = global_params.ve[2];
+		double A_h = params.ve[2];
+		double RC = params.ve[3];
 
-		y_0->ve[2] = RC * S_0 * A_h;
-		y_0->ve[3] = (1.0 - RC) * S_0 * A_h;
+		y_0.ve[2] = RC * S_0 * A_h;
+		y_0.ve[3] = (1.0 - RC) * S_0 * A_h;
 
 		state = dam_check2(y_0,global_params,params,qvs,dam); 
 		dam_q2(y_0,global_params,params,qvs,state,user,y_0);
@@ -1820,17 +1820,17 @@ int ReadInitData(VEC* global_params,VEC* params,QVSData* qvs,unsigned short int 
 	}
 	else if(type == 23)
 	{
-		//For type 23, only the storage (S or y_0->ve[1]) has been set.
+		//For type 23, only the storage (S or y_0.ve[1]) has been set.
 		//Order of parameters: A_i,L_i,A_h,RC,v_h,v_r,k2,k3,invtau,orifice_area,H_spill,H_max,S_max,alpha,orifice_diam,c_1,c_2,L_spill
 		//The numbering is:	0   1   2  3   4   5   6  7   8          9	  10	  11   12     13      14        15  16   17
 		//Order of global_params: lambda_1,lambda_2,S_0
 		//The numbering is:         0        1       2
-		double S_0 = global_params->ve[2];
-		double A_h = params->ve[2];
-		double RC = params->ve[3];
+		double S_0 = global_params.ve[2];
+		double A_h = params.ve[2];
+		double RC = params.ve[3];
 
-		y_0->ve[2] = RC * S_0 * A_h;
-		y_0->ve[3] = (1.0 - RC) * S_0 * A_h;
+		y_0.ve[2] = RC * S_0 * A_h;
+		y_0.ve[3] = (1.0 - RC) * S_0 * A_h;
 
 		state = dam_check3(y_0,global_params,params,qvs,dam); 
 		dam_q3(y_0,global_params,params,qvs,state,user,y_0);
@@ -1838,17 +1838,17 @@ int ReadInitData(VEC* global_params,VEC* params,QVSData* qvs,unsigned short int 
 	}
 	else if(type == 40)
 	{
-		//For type 40, only the storage (S or y_0->ve[1]) has been set.
+		//For type 40, only the storage (S or y_0.ve[1]) has been set.
 		//Order of parameters: A_i,L_i,A_h,RC,v_h,v_r,k2,k3,invtau
 		//The numbering is:	0   1   2  3   4   5   6  7   8
 		//Order of global_params: lambda_1,lambda_2,S_0,v_g
 		//The numbering is:         0        1       2   3
-		double S_0 = global_params->ve[2];
-		double A_h = params->ve[2];
-		double RC = params->ve[3];
+		double S_0 = global_params.ve[2];
+		double A_h = params.ve[2];
+		double RC = params.ve[3];
 
-		y_0->ve[2] = RC * S_0 * A_h;
-		y_0->ve[3] = (1.0 - RC) * S_0 * A_h;
+		y_0.ve[2] = RC * S_0 * A_h;
+		y_0.ve[3] = (1.0 - RC) * S_0 * A_h;
 
 		state = dam_check_qvs(y_0,global_params,params,qvs,dam);
 		dam_q_qvs(y_0,global_params,params,qvs,state,user,y_0);
@@ -1863,16 +1863,16 @@ int ReadInitData(VEC* global_params,VEC* params,QVSData* qvs,unsigned short int 
 		//Order of global_params: v_0,lambda_1,lambda_2,Q_r,A_r,K_T,C_r,e_pot
 		//The numbering is:        0      1        2     3   4   5   6   7
 /*
-		double H_h = params->ve[4];
+		double H_h = params.ve[4];
 
-params->ve[9] = 1.0;
-params->ve[10] = 0.0;
-params->ve[11] = 0.0;
+params.ve[9] = 1.0;
+params.ve[10] = 0.0;
+params.ve[11] = 0.0;
 
 		if(H_h < 1e-12)		//Flat surface
 		{
-			y_0->ve[2] = 0.0;
-			y_0->ve[3] = 0.0;
+			y_0.ve[2] = 0.0;
+			y_0.ve[3] = 0.0;
 		}
 */
 		return 0;
@@ -1880,9 +1880,9 @@ params->ve[11] = 0.0;
 	else if(type == 191)
 	{
 		//For this type, the extra states need to be set (3,4,5)
-		y_0->ve[3] = 0.0;
-		y_0->ve[4] = 0.0;
-		y_0->ve[5] = y_0->ve[0];	//I'm not really sure what to use here...
+		y_0.ve[3] = 0.0;
+		y_0.ve[4] = 0.0;
+		y_0.ve[5] = y_0.ve[0];	//I'm not really sure what to use here...
 	}
 	else if(type == 200)
 	{
@@ -1891,15 +1891,15 @@ params->ve[11] = 0.0;
 		//The numbering is:     0   1   2   3   4       5         6    7   8   9   10  11  12    13      14  15  16  17  18  19
 		//Order of global_params: v_0,lambda_1,lambda_2,Q_r,A_r,RC,u_0
 		//The numbering is:        0      1        2     3   4   5  6
-		y_0->ve[1] = params->ve[0] / (global_params->ve[6] + global_params->ve[0]) * y_0->ve[0];
+		y_0.ve[1] = params.ve[0] / (global_params.ve[6] + global_params.ve[0]) * y_0.ve[0];
 		return 0;
 	}
 	else if(type == 254)
 	{
 		//For this type, the extra states need to be set (4,5,6)
-		y_0->ve[4] = 0.0;
-		y_0->ve[5] = 0.0;
-		y_0->ve[6] = y_0->ve[0];
+		y_0.ve[4] = 0.0;
+		y_0.ve[5] = 0.0;
+		y_0.ve[6] = y_0.ve[0];
 	}
 	else if(type == 255)
 	{
@@ -1916,14 +1916,14 @@ params->ve[11] = 0.0;
 
 		if(dam)
 		{
-			int i;
-			y_0->ve[0] = y_0->ve[1];
+			unsigned int i;
+			y_0.ve[0] = y_0.ve[1];
 			for(i=0;i<qvs->n_values-1;i++)
-				if(qvs->points[i][1] <= y_0->ve[0] && y_0->ve[0] < qvs->points[i+1][1])	break;
+				if(qvs->points[i][1] <= y_0.ve[0] && y_0.ve[0] < qvs->points[i+1][1])	break;
 			if(i == qvs->n_values - 1)
 			{
-				y_0->ve[0] = qvs->points[i][1];
-				y_0->ve[1] = qvs->points[i][0];
+				y_0.ve[0] = qvs->points[i][1];
+				y_0.ve[1] = qvs->points[i][0];
 			}
 			else
 			{
@@ -1931,16 +1931,16 @@ params->ve[11] = 0.0;
 				double q1 = qvs->points[i][1];
 				double S2 = qvs->points[i+1][0];
 				double S1 = qvs->points[i][0];
-				y_0->ve[1] = (S2-S1)/(q2-q1) * (y_0->ve[0] - q1) + S1;
+				y_0.ve[1] = (S2-S1)/(q2-q1) * (y_0.ve[0] - q1) + S1;
 			}
 			return i;
 		}
 		else
 		{
-			double lambda_1 = global_params->ve[1];
-			double tau_in_secs = 1.0/params->ve[11] * 60.0;
-			y_0->ve[0] = y_0->ve[1];
-			y_0->ve[1] = tau_in_secs / (1.0-lambda_1) * pow(y_0->ve[0],1.0-lambda_1);
+			double lambda_1 = global_params.ve[1];
+			double tau_in_secs = 1.0/params.ve[11] * 60.0;
+			y_0.ve[0] = y_0.ve[1];
+			y_0.ve[1] = tau_in_secs / (1.0-lambda_1) * pow(y_0.ve[0],1.0-lambda_1);
 			return -1;
 		}
 	}
@@ -1957,9 +1957,9 @@ params->ve[11] = 0.0;
 
 
 		//For this model, the extra states need to be set (5,6,7)
-		y_0->ve[5] = 0.0;
-		y_0->ve[6] = 0.0;
-		y_0->ve[7] = y_0->ve[0];
+		y_0.ve[5] = 0.0;
+		y_0.ve[6] = 0.0;
+		y_0.ve[7] = y_0.ve[0];
 
 		if(dam)
 		{
@@ -1969,11 +1969,11 @@ params->ve[11] = 0.0;
 		}
 		else
 		{
-			double lambda_1 = global_params->ve[1];
-			double tau_in_secs = 1.0/params->ve[9] * 60.0;
-			y_0->ve[0] = y_0->ve[1];
-			//y_0->ve[1] = pow(tau_in_secs*y_0->ve[0],1.0-lambda_1);
-			y_0->ve[1] = tau_in_secs / (1.0-lambda_1) * pow(y_0->ve[0],1.0-lambda_1);
+			double lambda_1 = global_params.ve[1];
+			double tau_in_secs = 1.0/params.ve[9] * 60.0;
+			y_0.ve[0] = y_0.ve[1];
+			//y_0.ve[1] = pow(tau_in_secs*y_0.ve[0],1.0-lambda_1);
+			y_0.ve[1] = tau_in_secs / (1.0-lambda_1) * pow(y_0.ve[0],1.0-lambda_1);
 			return -1;
 		}
 	}
@@ -1989,20 +1989,20 @@ params->ve[11] = 0.0;
 		//The numbering is:        0      1        2    3  4   5
 
 		//For this model, the extra states need to be set (5,6,7)
-		y_0->ve[5] = 0.0;
-		y_0->ve[6] = 0.0;
-		y_0->ve[7] = y_0->ve[1];	//Note: See comment above. y_0[1] as the initial discharge.
+		y_0.ve[5] = 0.0;
+		y_0.ve[6] = 0.0;
+		y_0.ve[7] = y_0.ve[1];	//Note: See comment above. y_0[1] as the initial discharge.
 
 		if(dam)
 		{
-			int i;
-			y_0->ve[0] = y_0->ve[1];
+			unsigned int i;
+			y_0.ve[0] = y_0.ve[1];
 			for(i=0;i<qvs->n_values-1;i++)
-				if(qvs->points[i][1] <= y_0->ve[0] && y_0->ve[0] < qvs->points[i+1][1])	break;
+				if(qvs->points[i][1] <= y_0.ve[0] && y_0.ve[0] < qvs->points[i+1][1])	break;
 			if(i == qvs->n_values - 1)
 			{
-				y_0->ve[0] = qvs->points[i][1];
-				y_0->ve[1] = qvs->points[i][0];
+				y_0.ve[0] = qvs->points[i][1];
+				y_0.ve[1] = qvs->points[i][0];
 			}
 			else
 			{
@@ -2010,16 +2010,16 @@ params->ve[11] = 0.0;
 				double q1 = qvs->points[i][1];
 				double S2 = qvs->points[i+1][0];
 				double S1 = qvs->points[i][0];
-				y_0->ve[1] = (S2-S1)/(q2-q1) * (y_0->ve[0] - q1) + S1;
+				y_0.ve[1] = (S2-S1)/(q2-q1) * (y_0.ve[0] - q1) + S1;
 			}
 			return i;
 		}
 		else
 		{
-			double lambda_1 = global_params->ve[1];
-			double tau_in_secs = 1.0/params->ve[10] * 60.0;
-			y_0->ve[0] = y_0->ve[1];
-			y_0->ve[1] = tau_in_secs / (1.0-lambda_1) * pow(y_0->ve[0],1.0-lambda_1);
+			double lambda_1 = global_params.ve[1];
+			double tau_in_secs = 1.0/params.ve[10] * 60.0;
+			y_0.ve[0] = y_0.ve[1];
+			y_0.ve[1] = tau_in_secs / (1.0-lambda_1) * pow(y_0.ve[0],1.0-lambda_1);
 			return -1;
 		}
 	}
@@ -2033,8 +2033,8 @@ params->ve[11] = 0.0;
 		//The numbering is:        0      1        2     3   4   5
 		unsigned int i;
 		unsigned int offset = type - 299;
-		for(i=offset;i<y_0->dim;i++)	y_0->ve[i] = 0.0;
-		y_0->ve[iparams->ve[0] + offset] = 1.0;
+		for(i=offset;i<y_0.dim;i++)	y_0.ve[i] = 0.0;
+		y_0.ve[iparams.ve[0] + offset] = 1.0;
 */
 		return 0;
 	}
@@ -2050,10 +2050,10 @@ params->ve[11] = 0.0;
 		unsigned int offset = type - 299;
 
 		//New
-		y_0->ve[offset] = 1.0;
-		y_0->ve[offset + 1] = 1.0;
-		y_0->ve[offset + 2] = 0.0;
-		for(i=offset+3;i<y_0->dim;i++)	y_0->ve[i] = 0.0;
+		y_0.ve[offset] = 1.0;
+		y_0.ve[offset + 1] = 1.0;
+		y_0.ve[offset + 2] = 0.0;
+		for(i=offset+3;i<y_0.dim;i++)	y_0.ve[i] = 0.0;
 */
 		return 0;
 	}
@@ -2068,10 +2068,10 @@ params->ve[11] = 0.0;
 		unsigned int offset = 2;
 
 		//New
-		y_0->ve[offset] = 1.0;
-		y_0->ve[offset + 1] = 1.0;
-		y_0->ve[offset + 2] = 0.0;
-		for(i=offset+3;i<y_0->dim;i++)	y_0->ve[i] = 0.0;
+		y_0.ve[offset] = 1.0;
+		y_0.ve[offset + 1] = 1.0;
+		y_0.ve[offset + 2] = 0.0;
+		for(i=offset+3;i<y_0.dim;i++)	y_0.ve[i] = 0.0;
 
 		return 0;
 	}
@@ -2104,21 +2104,21 @@ void AssimError(unsigned int N,UnivVars* GlobalVars,ErrorData* GlobalErrors)
 
 	old_num_dense = GlobalVars->num_dense;
 
-	GlobalVars->dim = GlobalVars->problem_dim + N*GlobalVars->problem_dim*GlobalVars->problem_dim;
+	GlobalVars.dim = GlobalVars->problem_dim + N*GlobalVars->problem_dim*GlobalVars->problem_dim;
 	GlobalVars->num_dense += N*GlobalVars->problem_dim*GlobalVars->problem_dim;
-	GlobalErrors->abstol->ve = realloc(GlobalErrors->abstol->ve,GlobalVars->dim*sizeof(double));
-	GlobalErrors->reltol->ve = realloc(GlobalErrors->reltol->ve,GlobalVars->dim*sizeof(double));
-	GlobalErrors->abstol_dense->ve = realloc(GlobalErrors->abstol_dense->ve,GlobalVars->dim*sizeof(double));
-	GlobalErrors->reltol_dense->ve = realloc(GlobalErrors->reltol_dense->ve,GlobalVars->dim*sizeof(double));
-	GlobalErrors->abstol->dim = GlobalErrors->reltol->dim = GlobalErrors->reltol_dense->dim = GlobalErrors->reltol_dense->dim = GlobalVars->dim;
+	GlobalErrors->abstol.ve = realloc(GlobalErrors->abstol.ve,GlobalVars.dim*sizeof(double));
+	GlobalErrors->reltol.ve = realloc(GlobalErrors->reltol.ve,GlobalVars.dim*sizeof(double));
+	GlobalErrors->abstol_dense.ve = realloc(GlobalErrors->abstol_dense.ve,GlobalVars.dim*sizeof(double));
+	GlobalErrors->reltol_dense.ve = realloc(GlobalErrors->reltol_dense.ve,GlobalVars.dim*sizeof(double));
+	GlobalErrors->abstol.dim = GlobalErrors->reltol.dim = GlobalErrors->reltol_dense.dim = GlobalErrors->reltol_dense.dim = GlobalVars.dim;
 
 	//Setup error
-	for(i=GlobalVars->problem_dim+1;i<GlobalVars->dim;i++)
+	for(i=GlobalVars->problem_dim+1;i<GlobalVars.dim;i++)
 	{
-		GlobalErrors->abstol->ve[i] = GlobalErrors->abstol->ve[GlobalVars->problem_dim];
-		GlobalErrors->reltol->ve[i] = GlobalErrors->reltol->ve[GlobalVars->problem_dim];
-		GlobalErrors->abstol_dense->ve[i] = GlobalErrors->abstol_dense->ve[GlobalVars->problem_dim];
-		GlobalErrors->reltol_dense->ve[i] = GlobalErrors->reltol_dense->ve[GlobalVars->problem_dim];
+		GlobalErrors->abstol.ve[i] = GlobalErrors->abstol.ve[GlobalVars->problem_dim];
+		GlobalErrors->reltol.ve[i] = GlobalErrors->reltol.ve[GlobalVars->problem_dim];
+		GlobalErrors->abstol_dense.ve[i] = GlobalErrors->abstol_dense.ve[GlobalVars->problem_dim];
+		GlobalErrors->reltol_dense.ve[i] = GlobalErrors->reltol_dense.ve[GlobalVars->problem_dim];
 	}
 
 	//Setup dense indices

@@ -1,6 +1,10 @@
 #ifndef DATA_TYPES_H
 #define DATA_TYPES_H
 
+#if _MSC_VER > 1000
+#pragma once
+#endif // _MSC_VER > 1000
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
@@ -11,14 +15,16 @@
 #define ASYNCH_INT 2
 #define ASYNCH_FLOAT 3
 #define ASYNCH_DOUBLE 4
+#define ASYNCH_NUM_DATA_TYPES 5
 
-typedef struct data_types
+
+typedef struct DataTypes
 {
-	int (**is_equal)(void*,void*);
-} data_types;
+	int (*is_equal[ASYNCH_NUM_DATA_TYPES])(void*,void*);
+} DataTypes;
 
-data_types* Init_DataTypes();
-void Free_DataTypes(data_types** dt_info);
+void Init_DataTypes(DataTypes* dt_info);
+void Free_DataTypes(DataTypes* dt_info);
 
 //Comparison functions ***********************************************************************************************
 int IsEqualInt(void* a,void* b);

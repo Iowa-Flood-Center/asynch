@@ -1,6 +1,10 @@
 #ifndef RKMETHODS_H
 #define RKMETHODS_H
 
+#if _MSC_VER > 1000
+#pragma once
+#endif // _MSC_VER > 1000
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
@@ -18,8 +22,7 @@ extern int my_rank;
 extern int np;
 
 double InitialStepSize(double t,Link* link_i,UnivVars* GlobalVars,TempStorage* workspace);
-void BackupParent(Link* currentp,double time,VEC** backup,UnivVars* GlobalVars);
-void store_k(VEC** full_k,VEC** k,unsigned int s,unsigned int* dense_indices,unsigned int num_dense);
+//void BackupParent(Link* currentp,double time,VEC* backup,UnivVars* GlobalVars);
 
 //RKSolver methods
 //int ExplicitRKSolverLinear(Link* link_i,UnivVars* GlobalVars,int* assignments,FILE* outputfile,TempStorage* workspace);
@@ -35,15 +38,15 @@ int ForcedSolutionSolver(Link* link_i,UnivVars* GlobalVars,int* assignments,shor
 
 //RK methods data
 RKMethod* RKDense3_2();
-void RKDense3_2_b(double theta,VEC* b);
-void RKDense3_2_bderiv(double theta,VEC* b);
+void RKDense3_2_b(double theta,VEC b);
+void RKDense3_2_bderiv(double theta,VEC b);
 RKMethod* TheRKDense4_3();
-void TheRKDense4_3_b(double theta,VEC* b);
+void TheRKDense4_3_b(double theta,VEC b);
 RKMethod* DOPRI5_dense();
-void DOPRI5_b(double theta,VEC* b);
-void DOPRI5_bderiv(double theta,VEC* b);
+void DOPRI5_b(double theta,VEC b);
+void DOPRI5_bderiv(double theta,VEC b);
 RKMethod* RadauIIA3_dense();
-void RadauIIA3_b(double theta,VEC* b);
+void RadauIIA3_b(double theta,VEC b);
 
 #endif
 

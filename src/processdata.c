@@ -49,9 +49,9 @@ int Process_Data(Link** sys,UnivVars* GlobalVars,unsigned int N,unsigned int* sa
 					sprintf(outputfilename,"%s",GlobalVars->hydros_loc_filename);
 				else
 					sprintf(outputfilename,"%s_%s",GlobalVars->hydros_loc_filename,additional_out);
-				for(i=0;i<GlobalVars->global_params->dim;i++)
+				for(i=0;i<GlobalVars->global_params.dim;i++)
 				{
-					sprintf(filenamespace,"_%.4e",GlobalVars->global_params->ve[i]);
+					sprintf(filenamespace,"_%.4e",GlobalVars->global_params.ve[i]);
 					strcat(outputfilename,filenamespace);
 				}
 				sprintf(filenamespace,".dat");
@@ -184,9 +184,9 @@ int Process_Data(Link** sys,UnivVars* GlobalVars,unsigned int N,unsigned int* sa
 					sprintf(outputfilename,"%s",GlobalVars->hydros_loc_filename);
 				else
 					sprintf(outputfilename,"%s_%s",GlobalVars->hydros_loc_filename,additional_out);
-				for(i=0;i<GlobalVars->global_params->dim;i++)
+				for(i=0;i<GlobalVars->global_params.dim;i++)
 				{
-					sprintf(filenamespace,"_%.4e",GlobalVars->global_params->ve[i]);
+					sprintf(filenamespace,"_%.4e",GlobalVars->global_params.ve[i]);
 					strcat(outputfilename,filenamespace);
 				}
 				sprintf(filenamespace,".csv");
@@ -358,9 +358,9 @@ int Process_Data(Link** sys,UnivVars* GlobalVars,unsigned int N,unsigned int* sa
 					sprintf(outputfilename,"%s",GlobalVars->hydros_loc_filename);
 				else
 					sprintf(outputfilename,"%s_%s",GlobalVars->hydros_loc_filename,additional_out);
-				for(i=0;i<GlobalVars->global_params->dim;i++)
+				for(i=0;i<GlobalVars->global_params.dim;i++)
 				{
-					sprintf(filenamespace,"_%.4e",GlobalVars->global_params->ve[i]);
+					sprintf(filenamespace,"_%.4e",GlobalVars->global_params.ve[i]);
 					strcat(outputfilename,filenamespace);
 				}
 
@@ -496,9 +496,9 @@ int Process_Data(Link** sys,UnivVars* GlobalVars,unsigned int N,unsigned int* sa
 					sprintf(outputfilename,"%s",GlobalVars->hydros_loc_filename);
 				else
 					sprintf(outputfilename,"%s_%s",GlobalVars->hydros_loc_filename,additional_out);
-				for(i=0;i<GlobalVars->global_params->dim;i++)
+				for(i=0;i<GlobalVars->global_params.dim;i++)
 				{
-					sprintf(filenamespace,"_%.4e",GlobalVars->global_params->ve[i]);
+					sprintf(filenamespace,"_%.4e",GlobalVars->global_params.ve[i]);
 					strcat(outputfilename,filenamespace);
 				}
 
@@ -796,11 +796,10 @@ void PrepareDatabaseTable(UnivVars* GlobalVars,ConnData* conninfo)
 int UploadHydrosDB(Link** sys,UnivVars* GlobalVars,unsigned int N,unsigned int* save_list,unsigned int save_size,unsigned int my_save_size,unsigned int** id_to_loc,int* assignments,char* additional_temp,char* additional_out,ConnData* conninfo,FILE** my_tempfile)
 {
 	int i,k,nbytes,my_result = 0,result = 0,return_val = 0;
-	unsigned int j,l,m,loc,id,total_spaces,max_disk;
-	char filename[ASYNCH_MAX_PATH_LENGTH],filenamespace[ASYNCH_MAX_PATH_LENGTH],temptablename[ASYNCH_MAX_PATH_LENGTH],tempfilename[ASYNCH_MAX_PATH_LENGTH];
+	unsigned int j,loc,id,total_spaces;
+	char filename[ASYNCH_MAX_PATH_LENGTH],temptablename[ASYNCH_MAX_PATH_LENGTH];
 	char* submission;
 	char data_storage[16];
-	fpos_t **positions;
 	unsigned int dim = GlobalVars->num_print;
 	FILE *inputfile;
 	PGresult *res;
@@ -1079,9 +1078,9 @@ int PreparePeakFlowFiles(UnivVars* GlobalVars,unsigned int peaksave_size)
 		sprintf(outputfilename,"%s",GlobalVars->peaks_loc_filename);
 		if(GlobalVars->print_par_flag == 1)
 		{
-			for(i=0;i<GlobalVars->global_params->dim;i++)
+			for(i=0;i<GlobalVars->global_params.dim;i++)
 			{
-				sprintf(filename,"_%.4e",GlobalVars->global_params->ve[i]);
+				sprintf(filename,"_%.4e",GlobalVars->global_params.ve[i]);
 				strcat(outputfilename,filename);
 			}
 		}
@@ -1402,10 +1401,11 @@ int DataDump2(Link** sys,unsigned int N,int* assignments,UnivVars* GlobalVars,ch
 
 		for(i=0;i<N;i++)
 		{
-			if(assignments[i] != 0)
-				MPI_Recv(buffer,sys[i]->dim,MPI_DOUBLE,assignments[i],i,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
-			else
-				for(j=0;j<sys[i]->dim;j++)	buffer[j] = sys[i]->list->tail->y_approx->ve[j];
+            assert(sys[i]->dim <= ASYNCH_MAX_DIM);
+            if (assignments[i] != 0)
+                MPI_Recv(buffer, sys[i]->dim, MPI_DOUBLE, assignments[i], i, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+            else
+                memcpy(buffer, sys[i]->list->tail->y_approx.ve, sys[i]->dim * sizeof(double));
 
 			fprintf(output,"%u\n",sys[i]->ID);
 			for(j=0;j<sys[i]->dim;j++)	fprintf(output,"%.6e ",buffer[j]);
@@ -1424,7 +1424,7 @@ int DataDump2(Link** sys,unsigned int N,int* assignments,UnivVars* GlobalVars,ch
 		{
 			if(assignments[i] == my_rank)
 			{
-				for(j=0;j<sys[i]->dim;j++)	buffer[j] = sys[i]->list->tail->y_approx->ve[j];
+                memcpy(buffer, sys[i]->list->tail->y_approx.ve, sys[i]->dim * sizeof(double));
 				MPI_Send(buffer,sys[i]->dim,MPI_DOUBLE,0,i,MPI_COMM_WORLD);
 			}
 		}
@@ -1436,14 +1436,16 @@ int DataDump2(Link** sys,unsigned int N,int* assignments,UnivVars* GlobalVars,ch
 
 int UploadDBDataDump(Link** sys,unsigned int N,int* assignments,UnivVars* GlobalVars,char* preface,ConnData* conninfo)
 {
-	unsigned int i,j,init_length,nbytes;
-	char query[ASYNCH_MAX_QUERY_LENGTH],state_name[32],temptablename[ASYNCH_MAX_QUERY_LENGTH];
+    unsigned int i, j, init_length;
+    size_t nbytes;
+	char query[ASYNCH_MAX_QUERY_LENGTH],temptablename[ASYNCH_MAX_QUERY_LENGTH];
 	unsigned int size = GlobalVars->max_dim*(16+1)+16+1+16+1;
 	char submission[ASYNCH_MAX_DIM * (16 + 1) + 16 + 1 + 16 + 1];	//Assumes 16 bytes for each double
 	static short int first_call = 0;
 	PGresult* res;
 	int result,error;
-	for(i=0;i<size;i++)	submission[i] = 0;	//Just to keep valgrind from complaining
+
+    memset(submission, 0, size);
 
 	//Since forecast_time does not change, just put them in submission once
 	if(preface)
@@ -1530,7 +1532,7 @@ int UploadDBDataDump(Link** sys,unsigned int N,int* assignments,UnivVars* Global
 				{
 					nbytes += CatBinaryToString(&(submission[nbytes]),"%i",(char*)&(sys[i]->ID),ASYNCH_INT,",");
 					for(j=0;j<sys[i]->dim;j++)
-						nbytes += CatBinaryToString(&(submission[nbytes]),"%.6e",(char*)&(sys[i]->list->tail->y_approx->ve[j]),ASYNCH_DOUBLE,",");
+						nbytes += CatBinaryToString(&(submission[nbytes]),"%.6e",(char*)&(sys[i]->list->tail->y_approx.ve[j]),ASYNCH_DOUBLE,",");
 					submission[nbytes-1] = '\n';
 				}
 				else
@@ -1589,7 +1591,7 @@ int UploadDBDataDump(Link** sys,unsigned int N,int* assignments,UnivVars* Global
 					nbytes = init_length;
 					nbytes += CatBinaryToString(&(submission[nbytes]),"%i",(char*)&(sys[i]->ID),ASYNCH_INT,",");
 					for(j=0;j<sys[i]->dim;j++)
-						nbytes += CatBinaryToString(&(submission[nbytes]),"%.6e",(char*)&(sys[i]->list->tail->y_approx->ve[j]), ASYNCH_DOUBLE,",");
+						nbytes += CatBinaryToString(&(submission[nbytes]),"%.6e",(char*)&(sys[i]->list->tail->y_approx.ve[j]), ASYNCH_DOUBLE,",");
 					submission[nbytes-1] = '\n';
 					MPI_Send(&(submission[init_length]),size-init_length,MPI_CHAR,0,sys[i]->ID,MPI_COMM_WORLD);
 				}
@@ -1611,8 +1613,8 @@ FILE* PrepareTempFiles(Link** sys,unsigned int N,int* assignments,UnivVars* Glob
 	FILE* outputfile = NULL;
 	//double* dummy_value;
 	char filename[ASYNCH_MAX_PATH_LENGTH];
-	VEC* dummy_y = NULL;	//Used for blanking lines in the temp files
-	double dummy_t = 0.0;			//For blanking lines in the temp files
+	VEC dummy_y;	            //Used for blanking lines in the temp files
+	double dummy_t = 0.0;		//For blanking lines in the temp files
 	//fpos_t holder1,holder2;
 	long int current_pos = SEEK_SET,total;
 
@@ -1670,7 +1672,7 @@ FILE* PrepareTempFiles(Link** sys,unsigned int N,int* assignments,UnivVars* Glob
 				//Update current_pos
 				current_pos += total;
 
-				v_free(dummy_y);
+				v_free(&dummy_y);
 			}
 		}
 
@@ -1712,7 +1714,7 @@ int RemoveTemporaryFiles(UnivVars* GlobalVars,unsigned int my_save_size,char* ad
 //Returns 2 if there is an error, 1 if a warning, 0 if good, -1 if no tempfile is open.
 int ResetTempFiles(double set_time,Link** sys,unsigned int N,FILE* tempfile,UnivVars* GlobalVars,unsigned int my_save_size,unsigned int** id_to_loc)
 {
-	unsigned int i,j,id;
+	unsigned int i,id;
 	long int current_pos = SEEK_SET;
 	Link* current;
 
@@ -1760,9 +1762,9 @@ int ResetTempFiles(double set_time,Link** sys,unsigned int N,FILE* tempfile,Univ
 //Sets all temp files to set_value. The set_value is in the component_idx spot. All data that has been stored later can be overwritten.
 //set_time is the time that is used for the next_save times.
 //Returns 2 if there is an error, 1 if a warning, 0 if good, -1 if no file is open.
-int SetTempFiles(double set_time,void* set_value,short int data_type,unsigned int component_idx,Link** sys,unsigned int N,FILE* tempfile,UnivVars* GlobalVars,unsigned int my_save_size,unsigned int** id_to_loc,data_types* dt_info)
+int SetTempFiles(double set_time,void* set_value,short int data_type,unsigned int component_idx,Link** sys,unsigned int N,FILE* tempfile,UnivVars* GlobalVars,unsigned int my_save_size,unsigned int** id_to_loc,DataTypes* dt_info)
 {
-	unsigned int i,j,k,id;
+	unsigned int i,j,id;
 	int warning = 0;
 	long int current_pos = SEEK_SET;
 	//double current_time;
@@ -1982,7 +1984,7 @@ void LoadRecoveryFile(char* filename,Link** sys,unsigned int N,unsigned int my_N
 {
 	FILE* input;
 	unsigned int i,j,read_type,read_N,id,counter=0;
-	VEC* buffer = NULL;
+	VEC buffer;
 
 	MPI_Barrier(MPI_COMM_WORLD);
 
@@ -2012,15 +2014,16 @@ void LoadRecoveryFile(char* filename,Link** sys,unsigned int N,unsigned int my_N
 			}
 
 			buffer = v_get(sys[i]->dim);
-			for(j=0;j<sys[i]->dim;j++)	fscanf(input,"%lf",&(buffer->ve[j]));
+			for(j=0;j<sys[i]->dim;j++)	fscanf(input,"%lf",&(buffer.ve[j]));
 
-			if(assignments[i] == my_rank)	v_copy(buffer,sys[i]->list->tail->y_approx);
+			if(assignments[i] == my_rank)
+                v_copy(buffer,sys[i]->list->tail->y_approx);
 			else
 			{
 				MPI_Send(&i,1,MPI_UNSIGNED,assignments[i],0,MPI_COMM_WORLD);
-				MPI_Send(buffer->ve,buffer->dim,MPI_DOUBLE,assignments[i],0,MPI_COMM_WORLD);
+				MPI_Send(buffer.ve,buffer.dim,MPI_DOUBLE,assignments[i],0,MPI_COMM_WORLD);
 			}
-			v_free(buffer);
+			v_free(&buffer);
 		}
 	}
 	else
@@ -2028,7 +2031,7 @@ void LoadRecoveryFile(char* filename,Link** sys,unsigned int N,unsigned int my_N
 		while(counter < my_N)
 		{
 			MPI_Recv(&i,1,MPI_UNSIGNED,0,0,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
-			MPI_Recv(sys[i]->list->tail->y_approx,sys[i]->dim,MPI_DOUBLE,0,0,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
+			MPI_Recv(sys[i]->list->tail->y_approx.ve,sys[i]->dim,MPI_DOUBLE,0,0,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
 			counter++;
 		}
 	}

@@ -452,16 +452,16 @@ void CalculateWidth(Link** sys,unsigned int N)
 	unsigned int count_I = 0;
 	for(i=0;i<N;i++)
 	{
-		ave_l += sys[i]->params->ve[1];
-		ave_a += sys[i]->params->ve[2];
+		ave_l += sys[i]->params.ve[1];
+		ave_a += sys[i]->params.ve[2];
 		if(sys[i]->numparents == 0)
 		{
-			ave_l_E += sys[i]->params->ve[1];
+			ave_l_E += sys[i]->params.ve[1];
 			count_E++;
 		}
 		else
 		{
-			ave_l_I += sys[i]->params->ve[1];
+			ave_l_I += sys[i]->params.ve[1];
 			count_I++;
 		}
 	}

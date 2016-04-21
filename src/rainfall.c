@@ -1094,10 +1094,9 @@ void SetRain0(Link** sys,unsigned int my_N,double maxtime,unsigned int* my_sys,U
 //Assumes the rates are already set.
 double CreateForcing_Monthly(Link** sys,unsigned int my_N,unsigned int* my_sys,UnivVars* GlobalVars,ForcingData* GlobalForcing,unsigned int forcing_idx,struct tm *current_time,time_t first_time,time_t last_time,double t_0)
 {
-	unsigned int j,k,num_months = 12;
+	unsigned int num_months = 12;
 	int i;
 	int month_0,current_year;
-	Link* current;
 	char buffer[4];
 	double t = t_0;
 

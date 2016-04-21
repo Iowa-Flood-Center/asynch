@@ -1,3 +1,6 @@
+#include <assert.h>
+#include <memory.h>
+
 #include "system.h"
 
 //Frees link_i.
@@ -9,7 +12,7 @@ void Destroy_Link(Link* link_i,unsigned int list_length,int rkd_flag,Forcing** f
 	unsigned int i;
 	if(link_i == NULL)	return;
 
-	if(link_i->params != NULL)		v_free(link_i->params);
+	v_free(&link_i->params);
 
 	if(link_i->method != NULL)
 	{
@@ -19,7 +22,7 @@ void Destroy_Link(Link* link_i,unsigned int list_length,int rkd_flag,Forcing** f
 		if(rkd_flag)	Destroy_ErrorData(link_i->errorinfo);
 		Destroy_List(link_i->list,list_length);
 		//v_free(link_i->params);
-		v_free(link_i->peak_value);
+		v_free(&link_i->peak_value);
 		if(link_i->discont != NULL)	free(link_i->discont);
 		if(link_i->discont_send != NULL)
 		{
@@ -42,21 +45,21 @@ void Destroy_Link(Link* link_i,unsigned int list_length,int rkd_flag,Forcing** f
 			free(link_i->qvs->points_array);
 			free(link_i->qvs);
 		}
-		if(link_i->JMatrix != NULL)
-		{
-			m_free(link_i->JMatrix);
-			m_free(link_i->CoefMat);
-			v_free(link_i->sol_diff);
-			for(i=0;i<GlobalVars->max_s;i++)
-				v_free(link_i->Z_i[i]);
-			free(link_i->Z_i);
-		}
+		m_free(&link_i->JMatrix);
+		m_free(&link_i->CoefMat);
+		v_free(&link_i->sol_diff);
+        if (link_i->Z_i != NULL)
+        {
+		    for(i=0;i<GlobalVars->max_s;i++)
+			    v_free(&link_i->Z_i[i]);
+		    free(link_i->Z_i);
+        }
 /*
 		if(GlobalVars->template_flag && link_i->equations != NULL)
 		{
 			//mupRelease(link_i->equations->parser);
 			printf("Warning: Not freeing parser in system.c, Destroy_Link\n");
-			v_free(link_i->equations->variable_values);
+			v_free(&link_i->equations->variable_values);
 			free(link_i->equations);
 		}
 */
@@ -90,7 +93,7 @@ void Destroy_ForcingData(ForcingData** forcing_buff)
 //int s: the number of steps in the RKMethod.
 //unsigned int list_length: the maximum number of steps to store in the list.
 //Returns the created list.
-RKSolutionList* Create_List(VEC* y0,double t0,int dim,unsigned int num_dense,unsigned short int s,unsigned int list_length)
+RKSolutionList* Create_List(VEC y0,double t0,int dim,unsigned int num_dense,unsigned short int s,unsigned int list_length)
 {
 	unsigned int i,j;
 
@@ -98,33 +101,37 @@ RKSolutionList* Create_List(VEC* y0,double t0,int dim,unsigned int num_dense,uns
 
 	//Allocate space
 	RKSolutionList* list = (RKSolutionList*) malloc(sizeof(RKSolutionList));
-	list->list_data = (RKSolutionNode**) malloc(list_length * sizeof(RKSolutionNode*));
-	for(i=0;i<list_length;i++)	list->list_data[i] = (RKSolutionNode*) malloc(sizeof(RKSolutionNode));
+    memset(list, 0, sizeof(RKSolutionList));
+	list->list_data = (RKSolutionNode*) malloc(list_length * sizeof(RKSolutionNode));
+    memset(list->list_data, 0, sizeof(list_length * sizeof(RKSolutionNode)));
+	//for(i=0;i<list_length;i++)
+    //  list->list_data[i] = (RKSolutionNode*) malloc(sizeof(RKSolutionNode));
 
 	//Set the next and prev ptrs for each node
-	list->list_data[0]->next = list->list_data[1];
-	list->list_data[0]->prev = list->list_data[list_length-1];
+	list->list_data[0].next = &list->list_data[1];
+	list->list_data[0].prev = &list->list_data[list_length-1];
 
 	for(i=1;i<list_length-1;i++)
 	{
-		list->list_data[i]->next = list->list_data[i+1];
-		list->list_data[i]->prev = list->list_data[i-1];
+		list->list_data[i].next = &list->list_data[i+1];
+		list->list_data[i].prev = &list->list_data[i-1];
 	}
 
-	list->list_data[list_length-1]->next = list->list_data[0];
-	list->list_data[list_length-1]->prev = list->list_data[list_length-2];
+	list->list_data[list_length-1].next = &list->list_data[0];
+	list->list_data[list_length-1].prev = &list->list_data[list_length-2];
 
 	//Allocate space for all the vectors
 	for(i=0;i<list_length;i++)
 	{
-		list->list_data[i]->y_approx = v_get(dim);
-		list->list_data[i]->k = (VEC**) malloc(s*sizeof(VEC*));
-		for(j=0;j<s;j++)	list->list_data[i]->k[j] = v_get(num_dense);
+		list->list_data[i].y_approx = v_get(dim);
+		list->list_data[i].k = (VEC*) malloc(s * sizeof(VEC));
+		for(j=0;j<s;j++)
+            list->list_data[i].k[j] = v_get(num_dense);
 	}
 
 	//Set remaining fields
-	list->head = list->list_data[0];
-	list->tail = list->list_data[0];
+	list->head = &list->list_data[0];
+	list->tail = &list->list_data[0];
 	list->s = s;
 
 	//Store the initial step
@@ -140,8 +147,7 @@ void Destroy_List(RKSolutionList* list,unsigned int list_length)
 	unsigned int i;
 	for(i=0;i<list_length;i++)
 	{
-		Destroy_Node(list->list_data[i],list->s);
-		free(list->list_data[i]);
+		Destroy_Node(&list->list_data[i],list->s);
 	}
 	free(list->list_data);
 	free(list);
@@ -159,17 +165,17 @@ void Remove_Head_Node(RKSolutionList* list)
 //Frees a node from a data list.
 //RKSolutionNode* node: node to be freed.
 //int s: size of node->k (number of steps).
-void Destroy_Node(RKSolutionNode* node,unsigned short int s)
+void Destroy_Node(RKSolutionNode *node,unsigned short int s)
 {
 	unsigned int i;
-	//if(node->k != NULL)
-	//{
+	if(node->k != NULL)
+	{
 		for(i=0;i<s;i++)
-			v_free(node->k[i]);
+			v_free(&node->k[i]);
 		free(node->k);
-	//}
+	}
 
-	v_free(node->y_approx);
+	v_free(&node->y_approx);
 	node->next = NULL;
 	node->prev = NULL;
 }
@@ -191,14 +197,14 @@ void Undo_Step(RKSolutionList* list)
 //Frees an RKMethod
 void Destroy_RKMethod(RKMethod* method)
 {
-	m_free(method->A);
-	v_free(method->b);
-	v_free(method->b_theta);
-	v_free(method->b_theta_deriv);
-	v_free(method->c);
-	v_free(method->e);
-	v_free(method->d);
-	if(method->w != NULL)	v_free(method->w);
+	m_free(&method->A);
+	v_free(&method->b);
+	v_free(&method->b_theta);
+	v_free(&method->b_theta_deriv);
+	v_free(&method->c);
+	v_free(&method->e);
+	v_free(&method->d);
+	v_free(&method->w);
 
 	free(method);
 }
@@ -206,13 +212,11 @@ void Destroy_RKMethod(RKMethod* method)
 //Frees an ErrorData
 void Destroy_ErrorData(ErrorData* error)
 {
-	if(error->abstol != NULL)
-	{
-		v_free(error->abstol);
-		v_free(error->reltol);
-		v_free(error->abstol_dense);
-		v_free(error->reltol_dense);
-	}
+    assert(error != NULL);
+	v_free(&error->abstol);
+	v_free(&error->reltol);
+	v_free(&error->abstol_dense);
+	v_free(&error->reltol_dense);
 	free(error);
 }
 
@@ -222,20 +226,22 @@ TempStorage* Create_Workspace(unsigned int dim,unsigned short int s,unsigned sho
 	unsigned int i,j;
 
 	TempStorage* workspace = (TempStorage*) malloc(sizeof(TempStorage));
+    memset(workspace, 0, sizeof(TempStorage));
+
 	workspace->temp = v_get(dim);
 	workspace->sum = v_get(dim);
 	workspace->temp2 = v_get(dim);
 	workspace->temp3 = v_get(dim);
 
-	workspace->temp_parent_approx = (VEC***) malloc(s*sizeof(VEC**));
+	workspace->temp_parent_approx = (VEC**) malloc(s*sizeof(VEC*));
 	for(i=0;i<s;i++)
 	{
-		workspace->temp_parent_approx[i] = malloc(max_parents*sizeof(VEC*));
+		workspace->temp_parent_approx[i] = malloc(max_parents*sizeof(VEC));
 		for(j=0;j<max_parents;j++)
 			workspace->temp_parent_approx[i][j] = v_get(dim);
 	}
 
-	workspace->temp_k = (VEC**) malloc(s*sizeof(VEC*));
+	workspace->temp_k = (VEC*) malloc(s*sizeof(VEC));
 	for(i=0;i<s;i++)
 		workspace->temp_k[i] = v_get(dim);
 
@@ -243,7 +249,7 @@ TempStorage* Create_Workspace(unsigned int dim,unsigned short int s,unsigned sho
 	workspace->RHS = v_get(s*dim);
 	//workspace->CoefMat = m_get(s*dim,s*dim);
 	workspace->JMatrix = m_get(dim,dim);
-	workspace->Z_i = (VEC**) malloc(s*sizeof(VEC*));
+	workspace->Z_i = (VEC*) malloc(s*sizeof(VEC));
 	for(i=0;i<s;i++)	workspace->Z_i[i] = v_get(dim);
 	workspace->err = v_get(dim);
 
@@ -255,29 +261,31 @@ void Destroy_Workspace(TempStorage* workspace,unsigned short int s,unsigned shor
 {
 	unsigned int i,j;
 
-	v_free(workspace->temp);
-	v_free(workspace->sum);
-	v_free(workspace->temp2);
-	v_free(workspace->temp3);
+	v_free(&workspace->temp);
+	v_free(&workspace->sum);
+	v_free(&workspace->temp2);
+	v_free(&workspace->temp3);
 
 	for(i=0;i<s;i++)
 	{
-		for(j=0;j<max_parents;j++)	v_free(workspace->temp_parent_approx[i][j]);
+		for(j=0;j<max_parents;j++)
+            v_free(&workspace->temp_parent_approx[i][j]);
 		free(workspace->temp_parent_approx[i]);
 	}
 	free(workspace->temp_parent_approx);
 
 	for(i=0;i<s;i++)
-		v_free(workspace->temp_k[i]);
+		v_free(&workspace->temp_k[i]);
 	free(workspace->temp_k);
 
 	free(workspace->ipiv);
-	v_free(workspace->RHS);
-	//m_free(workspace->CoefMat);
-	m_free(workspace->JMatrix);
-	for(i=0;i<s;i++)	v_free(workspace->Z_i[i]);
+	v_free(&workspace->RHS);
+	//m_free(&workspace->CoefMat);
+	m_free(&workspace->JMatrix);
+	for(i=0;i<s;i++)
+        v_free(&workspace->Z_i[i]);
 	free(workspace->Z_i);
-	v_free(workspace->err);
+	v_free(&workspace->err);
 }
 
 //Deallocates UnivVars
@@ -313,7 +321,7 @@ void Destroy_UnivVars(UnivVars* GlobalVars)
 	if(GlobalVars->peak_table)	free(GlobalVars->peak_table);
 	if(GlobalVars->dump_table)	free(GlobalVars->dump_table);
 	if(GlobalVars->dump_loc_filename)	free(GlobalVars->dump_loc_filename);
-	v_free(GlobalVars->global_params);
+	v_free(&GlobalVars->global_params);
 	free(GlobalVars->print_indices);
 	free(GlobalVars);
 }

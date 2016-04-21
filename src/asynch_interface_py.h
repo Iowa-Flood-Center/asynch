@@ -1,6 +1,10 @@
 #ifndef ASYNCH_INTERFACE_PY_H
 #define ASYNCH_INTERFACE_PY_H
 
+#if _MSC_VER > 1000
+#pragma once
+#endif // _MSC_VER > 1000
+
 #include <Python.h>
 #include "asynch_interface.h"
 

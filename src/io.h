@@ -1,6 +1,10 @@
 #ifndef IO_H
 #define IO_H
 
+#if _MSC_VER > 1000
+#pragma once
+#endif // _MSC_VER > 1000
+
 #include <stdio.h>
 #include "structs.h"
 #include "comm.h"
@@ -28,7 +32,7 @@ io* BuildIO(UnivVars* GlobalVars);
 
 ConnData* ReadDBC(char* filename,unsigned int string_size);
 void WriteValue(FILE* outputfile,char* specifier,char* data_storage,short int data_type,char* delim);
-unsigned int WriteStep(double t,VEC* y,UnivVars* GlobalVars,VEC* params,unsigned int state,FILE* outputfile,void* user,long int* pos_offset);
+unsigned int WriteStep(double t,VEC y,UnivVars* GlobalVars,VEC params,unsigned int state,FILE* outputfile,void* user,long int* pos_offset);
 unsigned int CatBinaryToString(char* submission,char* specifier,char* data_storage,short int data_type,char* delim);
 
 #endif

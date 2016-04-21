@@ -3,15 +3,17 @@
 #include <process.h>
 #endif
 
+#include <hdf5_hl.h>
+
 
 //Read topo data and build the network.
 //Also creates id_to_loc.
 Link** Create_River_Network(UnivVars* GlobalVars,unsigned int* N,unsigned int*** id_to_loc,ConnData** db_connections)
 {
-	Link **system,**upstream_order;
+	Link **system;
 	FILE* riverdata = NULL;
 	PGresult *mainres,*res;
-	unsigned int *link_ids,*dbres_link_id,*dbres_parent,sizeres = 0,i,j,k,**loc_to_children,*numparents,id,max_children = 10,*loc_to_children_array,loc,curr_loc;
+	unsigned int *link_ids,*dbres_link_id,*dbres_parent,sizeres = 0,i,j,k,**loc_to_children,*numparents,id,max_children = 10,*loc_to_children_array,curr_loc;
 	link_ids = dbres_link_id = dbres_parent = NULL;
 	int db;
 
@@ -256,7 +258,7 @@ Link** Create_River_Network(UnivVars* GlobalVars,unsigned int* N,unsigned int***
 		system[i]->output_user = NULL;
 		system[i]->peakoutput_user = NULL;
 		system[i]->f = NULL;
-		system[i]->params = NULL;
+		system[i]->params = v_get(0);
 		system[i]->dam = 0;
 		system[i]->method = NULL;
 		system[i]->errorinfo = NULL;
@@ -461,10 +463,12 @@ int Load_Local_Parameters(Link** system,unsigned int N,unsigned int* my_sys,unsi
 			}
 			system[curr_loc]->params = v_get(GlobalVars->params_size);
 			for(j=0;j<GlobalVars->disk_params;j++)
-				system[curr_loc]->params->ve[j] = db_params[i][j];
+				system[curr_loc]->params.ve[j] = db_params[i][j];
 
-			if(custom_model)	custom_model->Convert(system[curr_loc]->params,GlobalVars->type,external);
-			else	ConvertParams(system[curr_loc]->params,GlobalVars->type,external);
+			if(custom_model)
+                custom_model->Convert(system[curr_loc]->params,GlobalVars->type,external);
+			else
+                ConvertParams(system[curr_loc]->params,GlobalVars->type,external);
 		}
 	}
 	else	//Just load the local parameters
@@ -483,7 +487,7 @@ int Load_Local_Parameters(Link** system,unsigned int N,unsigned int* my_sys,unsi
 				{
 					system[curr_loc]->params = v_get(GlobalVars->params_size);
 					for(j=0;j<GlobalVars->disk_params;j++)
-						system[curr_loc]->params->ve[j] = db_params[i][j];
+						system[curr_loc]->params.ve[j] = db_params[i][j];
 
 					if(custom_model)	custom_model->Convert(system[curr_loc]->params,GlobalVars->type,external);
 					else	ConvertParams(system[curr_loc]->params,GlobalVars->type,external);
@@ -702,10 +706,10 @@ int Build_RKData(Link** system,char rk_filename[],unsigned int N,unsigned int* m
 
 				for(j=0;j<size;j++)
 				{
-					system[i]->errorinfo->abstol->ve[j] = filedata_abs[i*size+j];
-					system[i]->errorinfo->reltol->ve[j] = filedata_rel[i*size+j];
-					system[i]->errorinfo->abstol_dense->ve[j] = filedata_abs_dense[i*size+j];
-					system[i]->errorinfo->reltol_dense->ve[j] = filedata_rel_dense[i*size+j];
+					system[i]->errorinfo->abstol.ve[j] = filedata_abs[i*size+j];
+					system[i]->errorinfo->reltol.ve[j] = filedata_rel[i*size+j];
+					system[i]->errorinfo->abstol_dense.ve[j] = filedata_abs_dense[i*size+j];
+					system[i]->errorinfo->reltol_dense.ve[j] = filedata_rel_dense[i*size+j];
 				}
 				system[i]->method = (*AllMethods)[methods[i]];
 			}
@@ -753,10 +757,13 @@ int Initialize_Model(Link** system,unsigned int N,unsigned int* my_sys,unsigned 
 			//Be sure the problem dimension and number of error tolerances are compatible
 			if(assignments[i] == my_rank)
 			{
-				smallest_dim = system[i]->errorinfo->abstol->dim;
-				if(smallest_dim > system[i]->errorinfo->reltol->dim)	smallest_dim = system[i]->errorinfo->reltol->dim;
-				if(smallest_dim > system[i]->errorinfo->abstol_dense->dim)	smallest_dim = system[i]->errorinfo->abstol_dense->dim;
-				if(smallest_dim > system[i]->errorinfo->reltol_dense->dim)	smallest_dim = system[i]->errorinfo->reltol_dense->dim;
+				smallest_dim = system[i]->errorinfo->abstol.dim;
+				if(smallest_dim > system[i]->errorinfo->reltol.dim)
+                    smallest_dim = system[i]->errorinfo->reltol.dim;
+				if(smallest_dim > system[i]->errorinfo->abstol_dense.dim)
+                    smallest_dim = system[i]->errorinfo->abstol_dense.dim;
+				if(smallest_dim > system[i]->errorinfo->reltol_dense.dim)
+                    smallest_dim = system[i]->errorinfo->reltol_dense.dim;
 				if(GlobalVars->min_error_tolerances > smallest_dim)
 				{
 					printf("[%i] Error: link id %u does not have enough error tolerances (got %u, expected %u)\n",my_rank,system[i]->ID,smallest_dim,system[i]->dim);
@@ -822,11 +829,11 @@ int Initialize_Model(Link** system,unsigned int N,unsigned int* my_sys,unsigned 
 //Initial state (0 = .ini, 1 = .uini, 2 = .rec, 3 = .dbc)
 int Load_Initial_Conditions(Link** system,unsigned int N,int* assignments,short int* getting,unsigned int** id_to_loc,UnivVars* GlobalVars,ConnData** db_connections,model* custom_model,void* external)
 {
-	unsigned int i,j,id,loc,no_ini_start,diff_start = 0;
+	unsigned int i,j,id,loc,no_ini_start,diff_start = 0,dim;
 	FILE* initdata = NULL;
 	short int *who_needs = NULL;
 	short int my_need;
-	VEC *y_0 = v_get(0);
+	VEC y_0 = v_get(0);
 	PGresult *res;
 
 	if(GlobalVars->init_flag == 0)	//.ini   ******************************************************************************************
@@ -880,20 +887,20 @@ int Load_Initial_Conditions(Link** system,unsigned int N,int* assignments,short 
 				{
 					no_ini_start = system[loc]->no_ini_start;
 					diff_start = system[loc]->diff_start;
-					y_0->dim = system[loc]->dim;
+					dim = system[loc]->dim;
 				}
 				else
 				{
 					MPI_Recv(&no_ini_start,1,MPI_UNSIGNED,assignments[loc],1,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
 					MPI_Recv(&diff_start,1,MPI_UNSIGNED,assignments[loc],1,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
-					MPI_Recv(&(y_0->dim),1,MPI_UNSIGNED,assignments[loc],1,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
+					MPI_Recv(&dim,1,MPI_UNSIGNED,assignments[loc],1,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
 				}
 
 				//Read init data
-				y_0->ve = (double*) realloc(y_0->ve,y_0->dim*sizeof(double));
+                v_resize(&y_0, dim);
 				for(j=diff_start;j<no_ini_start;j++)
 				{
-					if( 0 == fscanf(initdata,"%lf",&(y_0->ve[j])) )
+					if( 0 == fscanf(initdata,"%lf",&(y_0.ve[j])) )
 					{
 						printf("Error: not enough states in .ini file.\n");
 						return 1;
@@ -907,18 +914,18 @@ int Load_Initial_Conditions(Link** system,unsigned int N,int* assignments,short 
 						system[loc]->state = custom_model->InitializeEqs(GlobalVars->global_params,system[loc]->params,system[loc]->qvs,system[loc]->dam,y_0,GlobalVars->type,diff_start,no_ini_start,system[loc]->user,external);
 					else
 						system[loc]->state = ReadInitData(GlobalVars->global_params,system[loc]->params,system[loc]->qvs,system[loc]->dam,y_0,GlobalVars->type,diff_start,no_ini_start,system[loc]->user,external);
-					system[loc]->list = Create_List(y_0,GlobalVars->t_0,y_0->dim,system[loc]->num_dense,system[loc]->method->s,GlobalVars->iter_limit);
+					system[loc]->list = Create_List(y_0,GlobalVars->t_0,y_0.dim,system[loc]->num_dense,system[loc]->method->s,GlobalVars->iter_limit);
 					system[loc]->list->head->state = system[loc]->state;
 					system[loc]->last_t = GlobalVars->t_0;
 				}
 
 				if(assignments[loc] != my_rank)
-					MPI_Send(&(y_0->ve[diff_start]),no_ini_start-diff_start,MPI_DOUBLE,assignments[loc],2,MPI_COMM_WORLD);
+					MPI_Send(&(y_0.ve[diff_start]),no_ini_start-diff_start,MPI_DOUBLE,assignments[loc],2,MPI_COMM_WORLD);
 				if(!(getting[loc]))
 				{
 					for(j=0;j<np;j++)	if(who_needs[j] == 2)	break;
 					if(j < np)
-						MPI_Send(&(y_0->ve[diff_start]),no_ini_start-diff_start,MPI_DOUBLE,(int) j,2,MPI_COMM_WORLD);
+						MPI_Send(&(y_0.ve[diff_start]),no_ini_start-diff_start,MPI_DOUBLE,(int) j,2,MPI_COMM_WORLD);
 				}
 			}
 
@@ -945,23 +952,23 @@ int Load_Initial_Conditions(Link** system,unsigned int N,int* assignments,short 
 				{
 					no_ini_start = system[loc]->no_ini_start;
 					diff_start = system[loc]->diff_start;
-					y_0->dim = system[loc]->dim;
+					dim = system[loc]->dim;
 
 					if(assignments[loc] == my_rank)
 					{
 						MPI_Send(&no_ini_start,1,MPI_UNSIGNED,0,1,MPI_COMM_WORLD);
 						MPI_Send(&diff_start,1,MPI_UNSIGNED,0,1,MPI_COMM_WORLD);
-						MPI_Send(&(y_0->dim),1,MPI_UNSIGNED,0,1,MPI_COMM_WORLD);	//!!!! Actually, this might be available everywhere now !!!!
+						MPI_Send(&dim,1,MPI_UNSIGNED,0,1,MPI_COMM_WORLD);	//!!!! Actually, this might be available everywhere now !!!!
 					}
 
-					y_0->ve = (double*) realloc(y_0->ve,y_0->dim*sizeof(double));
-					MPI_Recv(&(y_0->ve[diff_start]),no_ini_start-diff_start,MPI_DOUBLE,0,2,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
+                    v_resize(&y_0, dim);
+					MPI_Recv(&(y_0.ve[diff_start]),no_ini_start-diff_start,MPI_DOUBLE,0,2,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
 
 					if(custom_model)
 						system[loc]->state = custom_model->InitializeEqs(GlobalVars->global_params,system[loc]->params,system[loc]->qvs,system[loc]->dam,y_0,GlobalVars->type,diff_start,no_ini_start,system[loc]->user,external);
 					else
 						system[loc]->state = ReadInitData(GlobalVars->global_params,system[loc]->params,system[loc]->qvs,system[loc]->dam,y_0,GlobalVars->type,diff_start,no_ini_start,system[loc]->user,external);
-					system[loc]->list = Create_List(y_0,GlobalVars->t_0,y_0->dim,system[loc]->num_dense,system[loc]->method->s,GlobalVars->iter_limit);
+					system[loc]->list = Create_List(y_0,GlobalVars->t_0,y_0.dim,system[loc]->num_dense,system[loc]->method->s,GlobalVars->iter_limit);
 					system[loc]->list->head->state = system[loc]->state;
 					system[loc]->last_t = GlobalVars->t_0;
 				}
@@ -971,7 +978,7 @@ int Load_Initial_Conditions(Link** system,unsigned int N,int* assignments,short 
 		}
 
 		//Clean up
-		v_free(y_0);
+		v_free(&y_0);
 	}
 	else if(GlobalVars->init_flag == 1)	//.uini   ******************************************************************************************
 	{
@@ -1005,13 +1012,13 @@ int Load_Initial_Conditions(Link** system,unsigned int N,int* assignments,short 
 				loc = i;
 				no_ini_start = system[loc]->no_ini_start;
 				diff_start = system[loc]->diff_start;
-				//y_0->dim = system[loc]->dim;
+				//y_0.dim = system[loc]->dim;
 				break;
 			}
 		}
 		for(;i<N;i++)
 		{
-			//if(assignments[i] == my_rank && y_0->dim != system[i]->dim)
+			//if(assignments[i] == my_rank && y_0.dim != system[i]->dim)
 			if(assignments[i] == my_rank && (no_ini_start != system[i]->no_ini_start || diff_start != system[i]->diff_start))
 			{
 				printf("[%i]: Error: model type %u does not support .uini files (because a variable number of states must be specified for the initial conditions).\n",my_rank,GlobalVars->type);
@@ -1021,16 +1028,16 @@ int Load_Initial_Conditions(Link** system,unsigned int N,int* assignments,short 
 
 		//no_ini_start = system[loc]->no_ini_start;
 		//diff_start = system[loc]->diff_start;
-		VEC* y_0_backup = v_get(no_ini_start-diff_start);
+		VEC y_0_backup = v_get(no_ini_start-diff_start);
 		//y_0_backup->dim = no_ini_start - diff_start;
-		//y_0_backup->ve = (double*) calloc(y_0_backup->dim,sizeof(double));
+		//y_0_backup.ve = (double*) calloc(y_0_backup->dim,sizeof(double));
 
 		if(my_rank == 0)
 		{
 			//for(i=diff_start;i<no_ini_start;i++)
-			for(i=0;i<y_0_backup->dim;i++)
+			for(i=0;i<y_0_backup.dim;i++)
 			{
-				if( fscanf(initdata,"%lf",&(y_0_backup->ve[i])) == 0 )
+				if( fscanf(initdata,"%lf",&(y_0_backup.ve[i])) == 0 )
 				{
 					printf("Error reading .uini file: Not enough initial states.\n");
 					return 1;
@@ -1041,9 +1048,9 @@ int Load_Initial_Conditions(Link** system,unsigned int N,int* assignments,short 
 			fclose(initdata);
 		}
 
-		MPI_Bcast(y_0_backup->ve,no_ini_start-diff_start,MPI_DOUBLE,0,MPI_COMM_WORLD);
+		MPI_Bcast(y_0_backup.ve,no_ini_start-diff_start,MPI_DOUBLE,0,MPI_COMM_WORLD);
 
-		//VEC* y_0_backup = v_get(y_0->dim);
+		//VEC* y_0_backup = v_get(y_0.dim);
 		//v_copy(y_0,y_0_backup);
 
 		//Store the data
@@ -1051,12 +1058,14 @@ int Load_Initial_Conditions(Link** system,unsigned int N,int* assignments,short 
 		{
 			if(assignments[i] == my_rank || getting[i])
 			{
-				y_0->dim = system[i]->dim;
-				y_0->ve = (double*) realloc(y_0->ve,y_0->dim*sizeof(double));
-				for(j=diff_start;j<no_ini_start;j++)	y_0->ve[j] = y_0_backup->ve[j-diff_start];
+                v_resize(&y_0, system[i]->dim);
+				for(j=diff_start;j<no_ini_start;j++)
+                    y_0.ve[j] = y_0_backup.ve[j-diff_start];
 
-				if(custom_model)	system[i]->state = custom_model->InitializeEqs(GlobalVars->global_params,system[i]->params,system[i]->qvs,system[i]->dam,y_0,GlobalVars->type,diff_start,no_ini_start,system[i]->user,external);
-				else			system[i]->state = ReadInitData(GlobalVars->global_params,system[i]->params,system[i]->qvs,system[i]->dam,y_0,GlobalVars->type,diff_start,no_ini_start,system[i]->user,external);
+				if(custom_model)
+                    system[i]->state = custom_model->InitializeEqs(GlobalVars->global_params,system[i]->params,system[i]->qvs,system[i]->dam,y_0,GlobalVars->type,diff_start,no_ini_start,system[i]->user,external);
+				else
+                    system[i]->state = ReadInitData(GlobalVars->global_params,system[i]->params,system[i]->qvs,system[i]->dam,y_0,GlobalVars->type,diff_start,no_ini_start,system[i]->user,external);
 				system[i]->list = Create_List(y_0,GlobalVars->t_0,system[i]->dim,system[i]->num_dense,system[i]->method->s,GlobalVars->iter_limit);
 				system[i]->list->head->state = system[i]->state;
 				system[i]->last_t = GlobalVars->t_0;
@@ -1065,8 +1074,8 @@ int Load_Initial_Conditions(Link** system,unsigned int N,int* assignments,short 
 		}
 
 		//Clean up
-		v_free(y_0);
-		v_free(y_0_backup);
+		v_free(&y_0);
+		v_free(&y_0_backup);
 	}
 	if(GlobalVars->init_flag == 2)	//.rec   ******************************************************************************************
 	{
@@ -1116,15 +1125,15 @@ int Load_Initial_Conditions(Link** system,unsigned int N,int* assignments,short 
 				my_need = (assignments[loc] == my_rank) ? 1 : ((getting[loc]) ? 2 : 0);
 				MPI_Gather(&my_need,1,MPI_SHORT,who_needs,1,MPI_SHORT,0,MPI_COMM_WORLD);
 				if(my_need == 1)
-					y_0->dim = system[loc]->dim;
+					dim = system[loc]->dim;
 				else
-					MPI_Recv(&(y_0->dim),1,MPI_UNSIGNED,assignments[loc],1,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
+					MPI_Recv(&dim,1,MPI_UNSIGNED,assignments[loc],1,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
 
 				//Read init data
-				y_0->ve = (double*) realloc(y_0->ve,y_0->dim*sizeof(double));
-				for(j=0;j<y_0->dim;j++)
+                v_resize(&y_0, dim);
+				for(j=0;j<y_0.dim;j++)
 				{
-					if( 0 == fscanf(initdata,"%lf",&(y_0->ve[j])) )
+					if( 0 == fscanf(initdata,"%lf",&(y_0.ve[j])) )
 					{
 						printf("Error: not enough states in .rec file.\n");
 						return 1;
@@ -1136,18 +1145,18 @@ int Load_Initial_Conditions(Link** system,unsigned int N,int* assignments,short 
 				{
 					if(system[loc]->state_check)
 						system[loc]->state = system[loc]->state_check(y_0,GlobalVars->global_params,system[loc]->params,system[loc]->qvs,system[loc]->dam);
-					system[loc]->list = Create_List(y_0,GlobalVars->t_0,y_0->dim,system[loc]->num_dense,system[loc]->method->s,GlobalVars->iter_limit);
+					system[loc]->list = Create_List(y_0,GlobalVars->t_0,y_0.dim,system[loc]->num_dense,system[loc]->method->s,GlobalVars->iter_limit);
 					system[loc]->list->head->state = system[loc]->state;
 					system[loc]->last_t = GlobalVars->t_0;
 				}
 
 				if(assignments[loc] != my_rank)
-					MPI_Send(y_0->ve,y_0->dim,MPI_DOUBLE,assignments[loc],2,MPI_COMM_WORLD);
+					MPI_Send(y_0.ve,y_0.dim,MPI_DOUBLE,assignments[loc],2,MPI_COMM_WORLD);
 				if(!(getting[loc]))
 				{
 					for(j=0;j<np;j++)	if(who_needs[j] == 2)	break;
 					if(j < np)
-						MPI_Send(y_0->ve,y_0->dim,MPI_DOUBLE,(int) j,2,MPI_COMM_WORLD);
+						MPI_Send(y_0.ve,y_0.dim,MPI_DOUBLE,(int) j,2,MPI_COMM_WORLD);
 				}
 			}
 
@@ -1171,17 +1180,17 @@ int Load_Initial_Conditions(Link** system,unsigned int N,int* assignments,short 
 
 				if(my_need)
 				{
-					y_0->dim = system[loc]->dim;
+					dim = system[loc]->dim;
 
 					if(assignments[loc] == my_rank)
-						MPI_Send(&(y_0->dim),1,MPI_UNSIGNED,0,1,MPI_COMM_WORLD);
+						MPI_Send(&dim,1,MPI_UNSIGNED,0,1,MPI_COMM_WORLD);
 
-					y_0->ve = (double*) realloc(y_0->ve,y_0->dim*sizeof(double));
-					MPI_Recv(y_0->ve,y_0->dim,MPI_DOUBLE,0,2,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
+                    v_resize(&y_0, dim);
+					MPI_Recv(y_0.ve,y_0.dim,MPI_DOUBLE,0,2,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
 
 					if(system[loc]->state_check)
 						system[loc]->state = system[loc]->state_check(y_0,GlobalVars->global_params,system[loc]->params,system[loc]->qvs,system[loc]->dam);
-					system[loc]->list = Create_List(y_0,GlobalVars->t_0,y_0->dim,system[loc]->num_dense,system[loc]->method->s,GlobalVars->iter_limit);
+					system[loc]->list = Create_List(y_0,GlobalVars->t_0,y_0.dim,system[loc]->num_dense,system[loc]->method->s,GlobalVars->iter_limit);
 					system[loc]->list->head->state = system[loc]->state;
 					system[loc]->last_t = GlobalVars->t_0;
 				}
@@ -1189,7 +1198,7 @@ int Load_Initial_Conditions(Link** system,unsigned int N,int* assignments,short 
 		}
 
 		//Clean up
-		v_free(y_0);
+		v_free(&y_0);
 	}
 	if(GlobalVars->init_flag == 3)	//.dbc   ******************************************************************************************
 	{
@@ -1218,16 +1227,16 @@ int Load_Initial_Conditions(Link** system,unsigned int N,int* assignments,short 
 			}
 
 			//Get dim
-			y_0->dim = PQnfields(res) - 1;
-			y_0->ve = (double*) realloc(y_0->ve,y_0->dim*sizeof(double));
-			MPI_Bcast(&(y_0->dim),1,MPI_UNSIGNED,0,MPI_COMM_WORLD);
+			y_0.dim = PQnfields(res) - 1;
+			y_0.ve = (double*) realloc(y_0.ve,y_0.dim*sizeof(double));
+			MPI_Bcast(&(y_0.dim),1,MPI_UNSIGNED,0,MPI_COMM_WORLD);
 			who_needs = (short int*) malloc(np*sizeof(short int));
 
 			//Read data
 			for(i=0;i<N;i++)
 			{
 				loc = find_link_by_idtoloc(atoi(PQgetvalue(res,i,0)),id_to_loc,N);
-				for(j=0;j<y_0->dim;j++)	y_0->ve[j] = atof(PQgetvalue(res,i,j+1));
+				for(j=0;j<y_0.dim;j++)	y_0.ve[j] = atof(PQgetvalue(res,i,j+1));
 				MPI_Bcast(&loc,1,MPI_UNSIGNED,0,MPI_COMM_WORLD);
 
 				//See who needs info about this link.
@@ -1240,31 +1249,31 @@ int Load_Initial_Conditions(Link** system,unsigned int N,int* assignments,short 
 				{
 					if(system[loc]->state_check != NULL)
 						system[loc]->state = system[loc]->state_check(y_0,GlobalVars->global_params,system[loc]->params,system[loc]->qvs,system[loc]->dam);
-					system[loc]->list = Create_List(y_0,GlobalVars->t_0,y_0->dim,system[loc]->num_dense,system[loc]->method->s,GlobalVars->iter_limit);
+					system[loc]->list = Create_List(y_0,GlobalVars->t_0,y_0.dim,system[loc]->num_dense,system[loc]->method->s,GlobalVars->iter_limit);
 					system[loc]->list->head->state = system[loc]->state;
 					system[loc]->last_t = GlobalVars->t_0;
 				}
 
 				if(assignments[loc] != my_rank)
-					MPI_Send(y_0->ve,y_0->dim,MPI_DOUBLE,assignments[loc],2,MPI_COMM_WORLD);
+					MPI_Send(y_0.ve,y_0.dim,MPI_DOUBLE,assignments[loc],2,MPI_COMM_WORLD);
 				if(!(getting[loc]))
 				{
 					for(j=0;j<np;j++)	if(who_needs[j] == 2)	break;
-					if(j < np)	MPI_Send(y_0->ve,y_0->dim,MPI_DOUBLE,(int) j,2,MPI_COMM_WORLD);
+					if(j < np)	MPI_Send(y_0.ve,y_0.dim,MPI_DOUBLE,(int) j,2,MPI_COMM_WORLD);
 				}
 			}
 
 			//Clean up
 			PQclear(res);
 			DisconnectPGDB(db_connections[ASYNCH_DB_LOC_INIT]);
-			v_free(y_0);
+			v_free(&y_0);
 			free(who_needs);
 		}
 		else
 		{
 			//Get dim
-			MPI_Bcast(&(y_0->dim),1,MPI_UNSIGNED,0,MPI_COMM_WORLD);
-			y_0->ve = (double*) realloc(y_0->ve,y_0->dim*sizeof(double));
+			MPI_Bcast(&(y_0.dim),1,MPI_UNSIGNED,0,MPI_COMM_WORLD);
+			y_0.ve = (double*) realloc(y_0.ve,y_0.dim*sizeof(double));
 
 			for(i=0;i<N;i++)
 			{
@@ -1277,18 +1286,18 @@ int Load_Initial_Conditions(Link** system,unsigned int N,int* assignments,short 
 
 				if(my_need)
 				{
-					MPI_Recv(y_0->ve,y_0->dim,MPI_DOUBLE,0,2,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
+					MPI_Recv(y_0.ve,y_0.dim,MPI_DOUBLE,0,2,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
 
 					if(system[loc]->state_check != NULL)
 						system[loc]->state = system[loc]->state_check(y_0,GlobalVars->global_params,system[loc]->params,system[loc]->qvs,system[loc]->dam);
-					system[loc]->list = Create_List(y_0,GlobalVars->t_0,y_0->dim,system[loc]->num_dense,system[loc]->method->s,GlobalVars->iter_limit);
+					system[loc]->list = Create_List(y_0,GlobalVars->t_0,y_0.dim,system[loc]->num_dense,system[loc]->method->s,GlobalVars->iter_limit);
 					system[loc]->list->head->state = system[loc]->state;
 					system[loc]->last_t = GlobalVars->t_0;
 				}
 			}
 
 			//Clean up
-			v_free(y_0);
+			v_free(&y_0);
 		}
 	}
 
@@ -1980,11 +1989,11 @@ int Load_Dams(Link** system,unsigned int N,unsigned int* my_sys,unsigned int my_
 				//Either store the parameters or send them
 				if(my_rank == assignments[m] || my_rank == needs[m])
 				{
-					system[m]->params->ve = (double*) realloc(system[m]->params->ve,GlobalVars->dam_params_size*sizeof(double));
-					system[m]->params->dim = GlobalVars->dam_params_size;
+					system[m]->params.ve = (double*) realloc(system[m]->params.ve,GlobalVars->dam_params_size*sizeof(double));
+					system[m]->params.dim = GlobalVars->dam_params_size;
 
 					for(j=GlobalVars->params_size;j<GlobalVars->dam_params_size;j++)
-						system[m]->params->ve[j] = buffer[j-GlobalVars->params_size];
+						system[m]->params.ve[j] = buffer[j-GlobalVars->params_size];
 					system[m]->dam = 1;
 				}
 
@@ -2009,11 +2018,11 @@ int Load_Dams(Link** system,unsigned int N,unsigned int* my_sys,unsigned int my_
 				{
 					MPI_Recv(buffer,size,MPI_DOUBLE,0,1,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
 
-					system[m]->params->ve = (double*) realloc(system[m]->params->ve,GlobalVars->dam_params_size*sizeof(double));
-					system[m]->params->dim = GlobalVars->dam_params_size;
+					system[m]->params.ve = (double*) realloc(system[m]->params.ve,GlobalVars->dam_params_size*sizeof(double));
+					system[m]->params.dim = GlobalVars->dam_params_size;
 
 					for(j=GlobalVars->params_size;j<GlobalVars->dam_params_size;j++)
-						system[m]->params->ve[j] = buffer[j-GlobalVars->params_size];
+						system[m]->params.ve[j] = buffer[j-GlobalVars->params_size];
 					system[m]->dam = 1;
 				}
 			}
@@ -2025,7 +2034,7 @@ int Load_Dams(Link** system,unsigned int N,unsigned int* my_sys,unsigned int my_
 		//Set error tolerance
 		if(GlobalVars->rkd_flag == 0)
 		{
-			GlobalVars->discont_tol = GlobalErrors->abstol->ve[0];
+			GlobalVars->discont_tol = GlobalErrors->abstol.ve[0];
 			if(GlobalVars->discont_tol < 1e-12 && my_rank == 0)
 				printf("Warning: Discontinuity tolerance has been set to %e.\n",GlobalVars->discont_tol);
 		}
@@ -2152,7 +2161,7 @@ int Load_Dams(Link** system,unsigned int N,unsigned int* my_sys,unsigned int my_
 		//Set error tolerance
 		if(GlobalVars->rkd_flag == 0)
 		{
-			GlobalVars->discont_tol = GlobalErrors->abstol->ve[0];
+			GlobalVars->discont_tol = GlobalErrors->abstol.ve[0];
 			if(GlobalVars->discont_tol < 1e-12 && my_rank == 0)
 				printf("Warning: Discontinuity tolerance has been set to %e.\n",GlobalVars->discont_tol);
 		}
@@ -2169,7 +2178,6 @@ int Load_Dams(Link** system,unsigned int N,unsigned int* my_sys,unsigned int my_
 		num_dams = 0;
 		short int procs_sending_to[ASYNCH_MAX_NUMBER_OF_PROCESS],mine;
 		double* array_holder;
-		MPI_Status status;
 
 		//Connect to the database and download data
 		if(my_rank == 0)
@@ -2287,7 +2295,7 @@ int Load_Dams(Link** system,unsigned int N,unsigned int* my_sys,unsigned int my_
 		//Set error tolerance
 		if(GlobalVars->rkd_flag == 0)
 		{
-			GlobalVars->discont_tol = GlobalErrors->abstol->ve[0];
+			GlobalVars->discont_tol = GlobalErrors->abstol.ve[0];
 			if(GlobalVars->discont_tol < 1e-12 && my_rank == 0)
 				printf("Warning: Discontinuity tolerance has been set to %e.\n",GlobalVars->discont_tol);
 		}
@@ -2302,7 +2310,7 @@ int Load_Dams(Link** system,unsigned int N,unsigned int* my_sys,unsigned int my_
 		//Set error tolerance
 		if(GlobalVars->rkd_flag == 0)
 		{
-			GlobalVars->discont_tol = GlobalErrors->abstol->ve[0];
+			GlobalVars->discont_tol = GlobalErrors->abstol.ve[0];
 			if(GlobalVars->discont_tol < 1e-12 && my_rank == 0)
 				printf("Warning: Discontinuity tolerance has been set to %e.\n",GlobalVars->discont_tol);
 		}
@@ -2357,7 +2365,7 @@ int Load_Dams(Link** system,unsigned int N,unsigned int* my_sys,unsigned int my_
 //Returns 0 if initial conditions set. 1 if a forcing is not ready.
 int CalculateInitialStepSizes(Link** system,unsigned int* my_sys,unsigned int my_N,UnivVars* GlobalVars,TempStorage* workspace,short int watch_forcings)
 {
-	unsigned int i,j,l,loc;
+	unsigned int i,j;
 
 	for(i=0;i<my_N;i++)
 		system[my_sys[i]]->h = InitialStepSize(GlobalVars->t_0,system[my_sys[i]],GlobalVars,workspace);
@@ -2365,9 +2373,9 @@ int CalculateInitialStepSizes(Link** system,unsigned int* my_sys,unsigned int my
 	{
 		for(i=0;i<my_N;i++)
 		{
-			for(l=0;l<GlobalVars->num_forcings;l++)
-				if(system[my_sys[i]]->forcing_buff[l])
-					system[my_sys[i]]->h = min(system[my_sys[i]]->h,system[my_sys[i]]->forcing_change_times[l] - system[my_sys[i]]->last_t);
+			for(j=0;j<GlobalVars->num_forcings;j++)
+				if(system[my_sys[i]]->forcing_buff[j])
+					system[my_sys[i]]->h = min(system[my_sys[i]]->h,system[my_sys[i]]->forcing_change_times[j] - system[my_sys[i]]->last_t);
 		}
 	}
 
@@ -2379,7 +2387,7 @@ int CalculateInitialStepSizes(Link** system,unsigned int* my_sys,unsigned int my
 //Also sets: my_save_size.
 int BuildSaveLists(Link** system,unsigned int N,unsigned int* my_sys,unsigned int my_N,unsigned int* assignments,unsigned int** id_to_loc,UnivVars* GlobalVars,unsigned int** save_list,unsigned int* save_size,unsigned int* my_save_size,unsigned int** peaksave_list,unsigned int* peaksave_size,unsigned int* my_peaksave_size,ConnData** db_connections)
 {
-	unsigned int i,j,k;
+	unsigned int j,k;
 	Link* current;
 
 	if(!save_list || !peaksave_list)
@@ -2419,7 +2427,7 @@ int BuildSaveLists(Link** system,unsigned int N,unsigned int* my_sys,unsigned in
 				if(GlobalVars->print_time > 0.0)
 					current->print_time = GlobalVars->print_time;
 				else
-					current->print_time = pow(current->params->ve[GlobalVars->area_idx]*0.1,0.5);
+					current->print_time = pow(current->params.ve[GlobalVars->area_idx]*0.1,0.5);
 			}
 		}
 	}
@@ -2558,10 +2566,10 @@ int FinalizeSystem(Link** system,unsigned int N,unsigned int* my_sys,unsigned in
 			}
 			else
 			{
-				system[i]->JMatrix = NULL;
-				system[i]->CoefMat = NULL;
+				system[i]->JMatrix = m_get(0, 0);
+				system[i]->CoefMat = m_get(0, 0);
 				system[i]->Z_i = NULL;
-				system[i]->sol_diff = NULL;
+				system[i]->sol_diff = v_get(0);
 			}
 
 		}
@@ -2569,16 +2577,16 @@ int FinalizeSystem(Link** system,unsigned int N,unsigned int* my_sys,unsigned in
 		{
 			system[i]->method = NULL;
 			system[i]->list = NULL;
-			system[i]->peak_value = NULL;
-			system[i]->params = NULL;
+			system[i]->peak_value = v_get(0);
+			system[i]->params = v_get(0);
 
 			//NULL out the unneeded data
 			system[i]->f = NULL;
 			system[i]->Jacobian = NULL;
-			system[i]->JMatrix = NULL;
-			system[i]->CoefMat = NULL;
+			system[i]->JMatrix = m_get(0, 0);
+			system[i]->CoefMat = m_get(0, 0);
 			system[i]->Z_i = NULL;
-			system[i]->sol_diff = NULL;
+			system[i]->sol_diff = v_get(0);
 		}
 	}
 
@@ -2598,13 +2606,15 @@ int FinalizeSystem(Link** system,unsigned int N,unsigned int* my_sys,unsigned in
 //Returns a UnivVars that contains all the global data read in from the file globalfilename.
 UnivVars* Read_Global_Data(char globalfilename[],ErrorData** GlobalErrors,Forcing** forcings,ConnData** db_connections,char* rkdfilename,model* custom_model,void* external)
 {
-	unsigned int i,j,k,total,written;
+	unsigned int i,total,written;
 	int flag,valsread;
 	char endmark;
 	unsigned int string_size = 256;	//This is the max size of all strings for filenames and location
 	unsigned int buff_size = string_size + 20;
 	char* linebuffer = (char*) malloc(buff_size*sizeof(char));
 	UnivVars* GlobalVars = (UnivVars*) malloc(sizeof(UnivVars));
+    memset(GlobalVars, 0, sizeof(UnivVars));
+
 	GlobalVars->string_size = string_size;
 	char* db_filename = (char*) malloc(string_size*sizeof(char));
 	GlobalVars->query_size = 1024;
@@ -2665,9 +2675,9 @@ UnivVars* Read_Global_Data(char globalfilename[],ErrorData** GlobalErrors,Forcin
 	valsread = sscanf(linebuffer,"%u%n",&i,&total);
 	if(ReadLineError(valsread,1,"number of global parameters"))	return NULL;
 	GlobalVars->global_params = v_get(i);
-	for(i=0;i<GlobalVars->global_params->dim;i++)
+	for(i=0;i<GlobalVars->global_params.dim;i++)
 	{
-		valsread = sscanf(&(linebuffer[total]),"%lf%n",&(GlobalVars->global_params->ve[i]),&written);
+		valsread = sscanf(&(linebuffer[total]),"%lf%n",&(GlobalVars->global_params.ve[i]),&written);
 		if(ReadLineError(valsread,1,"a global parameter"))	return NULL;
 		total += written;
 	}
@@ -3113,7 +3123,7 @@ UnivVars* Read_Global_Data(char globalfilename[],ErrorData** GlobalErrors,Forcin
 		total = 0;
 		for(i=0;i<error_dim;i++)	//Note: Don't read the line from disk again
 		{
-			valsread = sscanf(&(linebuffer[total]),"%lf%n",&((*GlobalErrors)->abstol->ve[i]),&written);
+			valsread = sscanf(&(linebuffer[total]),"%lf%n",&((*GlobalErrors)->abstol.ve[i]),&written);
 			//if(ReadLineError(valsread,1,"an abstol component"))	return NULL;
 			total += written;
 		}
@@ -3122,7 +3132,7 @@ UnivVars* Read_Global_Data(char globalfilename[],ErrorData** GlobalErrors,Forcin
 		total = 0;
 		for(i=0;i<error_dim;i++)
 		{
-			valsread = sscanf(&(linebuffer[total]),"%lf%n",&((*GlobalErrors)->reltol->ve[i]),&written);
+			valsread = sscanf(&(linebuffer[total]),"%lf%n",&((*GlobalErrors)->reltol.ve[i]),&written);
 			if(ReadLineError(valsread,1,"a reltol component"))	return NULL;
 			total += written;
 		}
@@ -3131,7 +3141,7 @@ UnivVars* Read_Global_Data(char globalfilename[],ErrorData** GlobalErrors,Forcin
 		total = 0;
 		for(i=0;i<error_dim;i++)
 		{
-			valsread = sscanf((&linebuffer[total]),"%lf%n",&((*GlobalErrors)->abstol_dense->ve[i]),&written);
+			valsread = sscanf((&linebuffer[total]),"%lf%n",&((*GlobalErrors)->abstol_dense.ve[i]),&written);
 			if(ReadLineError(valsread,1,"an abstol dense output component"))	return NULL;
 			total += written;
 		}
@@ -3140,7 +3150,7 @@ UnivVars* Read_Global_Data(char globalfilename[],ErrorData** GlobalErrors,Forcin
 		total = 0;
 		for(i=0;i<error_dim;i++)
 		{
-			valsread = sscanf(&(linebuffer[total]),"%lf%n",&((*GlobalErrors)->reltol_dense->ve[i]),&written);
+			valsread = sscanf(&(linebuffer[total]),"%lf%n",&((*GlobalErrors)->reltol_dense.ve[i]),&written);
 			if(ReadLineError(valsread,1,"a reltol dense output component"))	return NULL;
 			total += written;
 		}
@@ -3148,15 +3158,17 @@ UnivVars* Read_Global_Data(char globalfilename[],ErrorData** GlobalErrors,Forcin
 	else if(GlobalVars->rkd_flag == 1)	//Error data is in an .rkd file
 	{
 		GlobalVars->method = -1;
-		(*GlobalErrors)->abstol = NULL;
-		(*GlobalErrors)->reltol = NULL;
-		(*GlobalErrors)->abstol_dense = NULL;
-		(*GlobalErrors)->reltol_dense = NULL;
+		(*GlobalErrors)->abstol = v_get(0);
+		(*GlobalErrors)->reltol = v_get(0);
+		(*GlobalErrors)->abstol_dense = v_get(0);
+		(*GlobalErrors)->reltol_dense = v_get(0);
 
 		//ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size);
 		valsread = sscanf(linebuffer,"%*i %s",rkdfilename);
-		if(ReadLineError(valsread,1,".rkd filename"))	return NULL;
-		if(!CheckFilenameExtension(rkdfilename,".rkd"))	return NULL;
+		if(ReadLineError(valsread,1,".rkd filename"))
+            return NULL;
+		if(!CheckFilenameExtension(rkdfilename,".rkd"))
+            return NULL;
 	}
 	else
 	{
@@ -3285,7 +3297,7 @@ int Create_SAV_Data(char filename[],Link** sys,unsigned int N,unsigned int** sav
 
 void ReadLineFromTextFile(FILE* globalfile,char* linebuffer,unsigned int size,unsigned int string_size)
 {
-	unsigned int linebuffer_length;
+    size_t linebuffer_length;
 	if(my_rank == 0)
 	{
 		linebuffer[0] = '%';
@@ -3313,9 +3325,9 @@ int ReadLineError(int valsread,int valswant,char message[])
 //0 if not (not present)
 int RemoveSuffix(char* filename,char suffix[])
 {
-	unsigned int filename_length = strlen(filename);
-	unsigned int suffix_length = strlen(suffix);
-	int i,j;
+    size_t filename_length = strlen(filename);
+    size_t suffix_length = strlen(suffix);
+    size_t i,j;
 
 	if(suffix_length > filename_length)	return 0;
 
@@ -3330,17 +3342,17 @@ int RemoveSuffix(char* filename,char suffix[])
 //Put a vector of global_params onto the end of a filename.
 //Returns 1 if filename is not long enough to support this.
 //Retruns 0 if the parameters are attached.
-int AttachParameters(char* filename,unsigned int max_size,VEC* v,unsigned int string_size)
+int AttachParameters(char* filename,unsigned int max_size,VEC v,unsigned int string_size)
 {
 	unsigned int i,count,total=0;
 	char *buffer;
-	unsigned int length = strlen(filename);
+    size_t length = strlen(filename);
 
     buffer = (char *) malloc(string_size);
 
-	for(i=0;i<v->dim;i++)
+	for(i=0;i<v.dim;i++)
 	{
-		sprintf(buffer,"_%.4e%n",v->ve[i],&count);
+		sprintf(buffer,"_%.4e%n",v.ve[i],&count);
 		total += count;
 		if(count+1 > string_size)	return 1;
 		if(total+1 > max_size)		return 1;
@@ -3357,7 +3369,7 @@ int AttachParameters(char* filename,unsigned int max_size,VEC* v,unsigned int st
 //Returns 1 if the extension is correct, 0 if not.
 int CheckFilenameExtension(char* filename,char* extension)
 {
-	unsigned int l_filename,l_extension,i;
+    size_t l_filename,l_extension,i;
 	
 	if(!extension)	return 1;
 	if(!filename)
@@ -3410,8 +3422,8 @@ int CheckWinFormat(FILE* file)
 //Returns 2 if filename is just a path (the path variable is still set).
 int FindPath(char* filename,char* path)
 {
-	int i;
-	unsigned int len = strlen(filename);
+    size_t i;
+    size_t len = strlen(filename);
 	char holder;
 
 	if(len == 0)
@@ -3426,7 +3438,7 @@ int FindPath(char* filename,char* path)
 		return 2;
 	}
 
-	for(i=len-2;i>-1;i--)
+	for(i=len-2;i>=0;i--)
 	{
 		if(filename[i] == '/')
 		{
@@ -3447,8 +3459,8 @@ int FindPath(char* filename,char* path)
 //Returns 1 if fullpath is just a path (the filename variable is set to empty).
 int FindFilename(char* fullpath,char* filename)
 {
-	int i;
-	unsigned int len = strlen(fullpath);
+    size_t i;
+    size_t len = strlen(fullpath);
 
 	if(len == 0 || fullpath[len-1] == '/')
 	{
@@ -3456,7 +3468,7 @@ int FindFilename(char* fullpath,char* filename)
 		return 1;
 	}
 
-	for(i=len-2;i>-1;i--)
+	for(i=len-2;i>=0;i--)
 	{
 		if(fullpath[i] == '/')
 			break;

@@ -60,9 +60,9 @@ void Transfer_Data(TransData* my_data,Link** sys,int* assignments,UnivVars* Glob
 						for(m=0;m<steps_to_transfer;m++)
 						{
 							MPI_Pack(&(node->t),1,MPI_DOUBLE,my_data->send_buffer[i],my_data->send_buffer_size[i],&position,MPI_COMM_WORLD);
-							MPI_Pack(node->y_approx->ve,dim,MPI_DOUBLE,my_data->send_buffer[i],my_data->send_buffer_size[i],&position,MPI_COMM_WORLD);
+							MPI_Pack(node->y_approx.ve,dim,MPI_DOUBLE,my_data->send_buffer[i],my_data->send_buffer_size[i],&position,MPI_COMM_WORLD);
 							for(n=0;n<s;n++)
-								MPI_Pack(node->k[n]->ve,num_dense,MPI_DOUBLE,my_data->send_buffer[i],my_data->send_buffer_size[i],&position,MPI_COMM_WORLD);
+								MPI_Pack(node->k[n].ve,num_dense,MPI_DOUBLE,my_data->send_buffer[i],my_data->send_buffer_size[i],&position,MPI_COMM_WORLD);
 							MPI_Pack(&(node->state),1,MPI_INT,my_data->send_buffer[i],my_data->send_buffer_size[i],&position,MPI_COMM_WORLD);
 
 							Remove_Head_Node(current->list);
@@ -135,9 +135,9 @@ void Transfer_Data(TransData* my_data,Link** sys,int* assignments,UnivVars* Glob
 						node = New_Step(current->list);
 						node->t = 0.0; node->state = 0;
 						MPI_Unpack(my_data->receive_buffer[i],count,&position,&(node->t),1,MPI_DOUBLE,MPI_COMM_WORLD);
-						MPI_Unpack(my_data->receive_buffer[i],count,&position,node->y_approx->ve,dim,MPI_DOUBLE,MPI_COMM_WORLD);
+						MPI_Unpack(my_data->receive_buffer[i],count,&position,node->y_approx.ve,dim,MPI_DOUBLE,MPI_COMM_WORLD);
 						for(n=0;n<s;n++)
-							MPI_Unpack(my_data->receive_buffer[i],count,&position,node->k[n]->ve,num_dense,MPI_DOUBLE,MPI_COMM_WORLD);
+							MPI_Unpack(my_data->receive_buffer[i],count,&position,node->k[n].ve,num_dense,MPI_DOUBLE,MPI_COMM_WORLD);
 						MPI_Unpack(my_data->receive_buffer[i],count,&position,&(node->state),1,MPI_INT,MPI_COMM_WORLD);
 					}
 
@@ -293,10 +293,10 @@ void Transfer_Data_Finish(TransData* my_data,Link** sys,int* assignments,UnivVar
 							for(m=0;m<steps_to_transfer;m++)
 							{
 								MPI_Pack(&(node->t),1,MPI_DOUBLE,my_data->send_buffer[i],my_data->send_buffer_size[i], &position,MPI_COMM_WORLD);
-								MPI_Pack(node->y_approx->ve,dim,MPI_DOUBLE,my_data->send_buffer[i],my_data->send_buffer_size[i],&position,MPI_COMM_WORLD);
+								MPI_Pack(node->y_approx.ve,dim,MPI_DOUBLE,my_data->send_buffer[i],my_data->send_buffer_size[i],&position,MPI_COMM_WORLD);
 								for(n=0;n<s;n++)
-									MPI_Pack(node->k[n]->ve,num_dense,MPI_DOUBLE,my_data->send_buffer[i],my_data->send_buffer_size[i],&position,MPI_COMM_WORLD);
-									//MPI_Pack(node->k[n]->ve,dim,MPI_DOUBLE,my_data->send_buffer[i],my_data->send_buffer_size[i],&position,MPI_COMM_WORLD);
+									MPI_Pack(node->k[n].ve,num_dense,MPI_DOUBLE,my_data->send_buffer[i],my_data->send_buffer_size[i],&position,MPI_COMM_WORLD);
+									//MPI_Pack(node->k[n].ve,dim,MPI_DOUBLE,my_data->send_buffer[i],my_data->send_buffer_size[i],&position,MPI_COMM_WORLD);
 								MPI_Pack(&(node->state),1,MPI_INT,my_data->send_buffer[i],my_data->send_buffer_size[i],&position,MPI_COMM_WORLD);
 
 								Remove_Head_Node(current->list);
@@ -368,10 +368,10 @@ void Transfer_Data_Finish(TransData* my_data,Link** sys,int* assignments,UnivVar
 							node = New_Step(current->list);
 							node->t = 0.0; node->state = 0;
 							MPI_Unpack(my_data->receive_buffer[i],count,&position,&(node->t),1,MPI_DOUBLE,MPI_COMM_WORLD);
-							MPI_Unpack(my_data->receive_buffer[i],count,&position,node->y_approx->ve,dim,MPI_DOUBLE,MPI_COMM_WORLD);
+							MPI_Unpack(my_data->receive_buffer[i],count,&position,node->y_approx.ve,dim,MPI_DOUBLE,MPI_COMM_WORLD);
 							for(n=0;n<s;n++)
-								MPI_Unpack(my_data->receive_buffer[i],count,&position,node->k[n]->ve,num_dense,MPI_DOUBLE,MPI_COMM_WORLD);
-								//MPI_Unpack(my_data->receive_buffer[i],count,&position,node->k[n]->ve,dim,MPI_DOUBLE,MPI_COMM_WORLD);
+								MPI_Unpack(my_data->receive_buffer[i],count,&position,node->k[n].ve,num_dense,MPI_DOUBLE,MPI_COMM_WORLD);
+								//MPI_Unpack(my_data->receive_buffer[i],count,&position,node->k[n].ve,dim,MPI_DOUBLE,MPI_COMM_WORLD);
 							MPI_Unpack(my_data->receive_buffer[i],count,&position,&(node->state),1,MPI_INT,MPI_COMM_WORLD);
 						}
 
@@ -468,10 +468,10 @@ void Exchange_InitState_At_Forced(Link** system,unsigned int N,unsigned int* ass
 
 				//Check if this initial state needs to be sent to other procs
 				if(system[loc]->c && assignments[system[loc]->c->location] != my_rank)
-					MPI_Send(system[loc]->list->tail->y_approx->ve,system[loc]->dim,MPI_DOUBLE,assignments[system[loc]->c->location],0,MPI_COMM_WORLD);
+					MPI_Send(system[loc]->list->tail->y_approx.ve,system[loc]->dim,MPI_DOUBLE,assignments[system[loc]->c->location],0,MPI_COMM_WORLD);
 			}
 			else if(getting[loc])
-				MPI_Recv(system[loc]->list->tail->y_approx->ve,system[loc]->dim,MPI_DOUBLE,assignments[loc],0,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
+				MPI_Recv(system[loc]->list->tail->y_approx.ve,system[loc]->dim,MPI_DOUBLE,assignments[loc],0,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
 		}
 	}
 }
@@ -630,14 +630,15 @@ ConnData* CreateConnData(char* connectstring)
 //Destroy a ConnData object
 void ConnData_Free(ConnData* conninfo)
 {
-	int i;
+	unsigned int i;
 	if(conninfo)
 	{
 		//if(my_rank == 0 && conninfo->conn != NULL)	PQfinish(conninfo->conn);
 		if(conninfo->conn && PQstatus(conninfo->conn) == CONNECTION_OK)
 			PQfinish(conninfo->conn);
 		free(conninfo->query);
-		for(i=0;i<conninfo->num_queries;i++)	free(conninfo->queries[i]);
+		for(i=0;i<conninfo->num_queries;i++)
+            free(conninfo->queries[i]);
 		if(conninfo->queries)	free(conninfo->queries);
 		free(conninfo->connectinfo);
 		free(conninfo);

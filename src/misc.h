@@ -1,3 +1,10 @@
+#ifndef MISC_H
+#define MISC_H
+
+#if _MSC_VER > 1000
+#pragma once
+#endif // _MSC_VER > 1000
+
 #include "system.h"
 #include <stdlib.h>
 #include <stdio.h>
@@ -10,3 +17,5 @@ int* Partition_System_File(Link** sys,unsigned int N,Link** leaves,unsigned int 
 void CreateStrComplete(Link** sys,unsigned int N);
 void EvapRates(double t,VEC* y_i,VEC* params,VEC* global_params,VEC* ans);
 void EvapRates_linear(double t,VEC* y_i,VEC* params,VEC* global_params,VEC* ans);
+
+#endif //MISC_H

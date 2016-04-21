@@ -1,6 +1,10 @@
 #ifndef RIVERSYS_H
 #define RIVERSYS_H
 
+#if _MSC_VER > 1000
+#pragma once
+#endif // _MSC_VER > 1000
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
@@ -44,7 +48,7 @@ int ReadLineError(int valsread,int valswant,char message[]);
 
 int RemoveSuffix(char* filename,char suffix[]);
 
-int AttachParameters(char* filename,unsigned int max_size,VEC* v,unsigned int string_size);
+int AttachParameters(char* filename,unsigned int max_size,VEC v,unsigned int string_size);
 
 int CheckFilenameExtension(char* filename,char* extension);
 int CheckWinFormat(FILE* file);

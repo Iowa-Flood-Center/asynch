@@ -1,6 +1,10 @@
 #ifndef ASYNCH_INTERFACE_H
 #define ASYNCH_INTERFACE_H
 
+#if _MSC_VER > 1000
+#pragma once
+#endif // _MSC_VER > 1000
+
 #include "comm.h"
 #include "riversys.h"
 #include "processdata.h"
@@ -68,15 +72,19 @@ typedef struct
 	char* peakfilename;		//Filename for .pea file
 	ConnData* db_connections[ASYNCH_MAX_DB_CONNECTIONS];	//Database connection information
 	Forcing* forcings[ASYNCH_MAX_DB_CONNECTIONS - ASYNCH_DB_LOC_FORCING_START];	//Forcing information
-	data_types* dt_info;
+	DataTypes dt_info;
 	model* custom_model;
 	void* ExternalInterface;
 } asynchsolver;
 
 //Constructor / Destructor related routings
 asynchsolver* Asynch_Init(MPI_Comm comm,int* argc,char** argv[]);
-int Asynch_Custom_Model(asynchsolver* asynch,void (*SetParamSizes)(UnivVars*,void*),void (*Convert)(VEC*,unsigned int,void*),void (*Routines)(Link*,unsigned int,unsigned int,unsigned short int,void*),
-	void (*Precalculations)(Link*,VEC*,VEC*,unsigned int,unsigned int,unsigned short int,unsigned int,void*),int (*InitializeEqs)(VEC*,VEC*,QVSData*,unsigned short int,VEC*,unsigned int,unsigned int,unsigned int,void*,void*));
+int Asynch_Custom_Model(asynchsolver* asynch,
+    void (*SetParamSizes)(UnivVars*,void*),
+    void (*Convert)(VEC,unsigned int,void*),
+    void (*Routines)(Link*,unsigned int,unsigned int,unsigned short int,void*),
+	void (*Precalculations)(Link*,VEC,VEC,unsigned int,unsigned int,unsigned short int,unsigned int,void*),
+    int (*InitializeEqs)(VEC,VEC,QVSData*,unsigned short int,VEC,unsigned int,unsigned int,unsigned int,void*,void*));
 int Asynch_Custom_Partitioning(asynchsolver* asynch,int* (*Partition_Routine)(Link**,unsigned int,Link**,unsigned int,unsigned int**,unsigned int*,TransData*,short int*));
 void Asynch_Free(asynchsolver* asynch);
 
@@ -125,7 +133,7 @@ void Asynch_Set_RainDB_Starttime(asynchsolver* asynch,unsigned int epoch_timesta
 void Asynch_Set_Init_File(asynchsolver* asynch,char* filename);
 unsigned int Asynch_Get_Number_Links(asynchsolver* asynch);
 unsigned int Asynch_Get_Local_Number_Links(asynchsolver* asynch);
-void Asynch_Set_System_State(asynchsolver* asynch,double t_0,VEC** backup);
+void Asynch_Set_System_State(asynchsolver* asynch,double t_0,VEC* backup);
 void Asynch_Reset_Peakflow_Data(asynchsolver* asynch);
 int Asynch_Set_Forcing_State(asynchsolver* asynch,unsigned int idx,double t_0,unsigned int first_file,unsigned int last_file);
 int Asynch_Set_Temp_Files(asynchsolver* asynch,double set_time,void* set_value,unsigned int output_idx);
@@ -139,14 +147,14 @@ int Asynch_Get_Snapshot_Output_Name(asynchsolver* asynch,char* filename);
 int Asynch_Set_Snapshot_Output_Name(asynchsolver* asynch,char* filename);
 int Asynch_Get_Reservoir_Forcing(asynchsolver* asynch);
 unsigned int Asynch_Get_Size_Global_Parameters(asynchsolver* asynch);
-int Asynch_Get_Global_Parameters(asynchsolver* asynch,double* gparams);
-int Asynch_Set_Global_Parameters(asynchsolver* asynch,double* gparams,unsigned int n);
+int Asynch_Get_Global_Parameters(asynchsolver* asynch,VEC gparams);
+int Asynch_Set_Global_Parameters(asynchsolver* asynch,VEC gparams,unsigned int n);
 
 //Routines for output
-int Asynch_Set_Output(asynchsolver* asynch,char* name,short int data_type,void (*func)(double,VEC*,VEC*,VEC*,int,void*),int* used_states,int num_states);
+int Asynch_Set_Output(asynchsolver* asynch,char* name,short int data_type,void (*func)(double,VEC,VEC,VEC,int,void*),unsigned int* used_states,unsigned int num_states);
 int Asynch_Check_Output(asynchsolver* asynch,char* name);
 int Asynch_Check_Peakflow_Output(asynchsolver* asynch,char* name);
-int Asynch_Set_Peakflow_Output(asynchsolver* asynch,char* name,void (*func)(unsigned int,double,VEC*,VEC*,VEC*,double,unsigned int,void*,char*));
+int Asynch_Set_Peakflow_Output(asynchsolver* asynch,char* name,void (*func)(unsigned int,double,VEC,VEC,VEC,double,unsigned int,void*,char*));
 int Asynch_Create_OutputUser_Data(asynchsolver* asynch,unsigned int data_size);
 int Asynch_Free_OutputUser_Data(asynchsolver* asynch);
 void Asynch_Copy_Local_OutputUser_Data(asynchsolver* asynch,unsigned int location,void* source,unsigned int size);

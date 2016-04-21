@@ -1,6 +1,10 @@
 #ifndef PROCESSDATA_H
 #define PROCESSDATA_H
 
+#if _MSC_VER > 1000
+#pragma once
+#endif // _MSC_VER > 1000
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
@@ -39,7 +43,7 @@ int UploadPeakFlowData(Link** sys,UnivVars* GlobalVars,unsigned int N,int* assig
 int RemoveTemporaryFiles(UnivVars* GlobalVars,unsigned int my_save_size,char* additional_temp);
 FILE* PrepareTempFiles(Link** sys,unsigned int N,int* assignments,UnivVars* GlobalVars,unsigned int* save_list,unsigned int save_size,unsigned int my_save_size,char* additional,unsigned int** id_to_loc);
 int ResetTempFiles(double set_time,Link** sys,unsigned int N,FILE* tempfile,UnivVars* GlobalVars,unsigned int my_save_size,unsigned int** id_to_loc);
-int SetTempFiles(double set_time,void* set_value,short int data_type,unsigned int component_idx,Link** sys,unsigned int N,FILE* tempfile,UnivVars* GlobalVars,unsigned int my_save_size,unsigned int** id_to_loc,data_types* dt_info);
+int SetTempFiles(double set_time,void* set_value,short int data_type,unsigned int component_idx,Link** sys,unsigned int N,FILE* tempfile,UnivVars* GlobalVars,unsigned int my_save_size,unsigned int** id_to_loc,DataTypes* dt_info);
 void LoadRecoveryFile(char* filename,Link** sys,unsigned int N,unsigned int my_N,unsigned int* assignments,UnivVars* GlobalVars);
 int ConvertBinaryToString(double* data_storage,char* submission,unsigned int blocks,unsigned int dimp1,unsigned int id);
 int overwrite_last_step(Link* link_i,UnivVars *GlobalVars,FILE* outputfile);

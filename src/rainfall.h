@@ -1,6 +1,10 @@
 #ifndef RAINFALL_H
 #define RAINFALL_H
 
+#if _MSC_VER > 1000
+#pragma once
+#endif // _MSC_VER > 1000
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <libpq-fe.h>

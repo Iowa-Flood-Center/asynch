@@ -23,7 +23,7 @@ void merge_sort(Link** array,unsigned int size,unsigned int idx)
 		{
 			while (l <= l_max && r <= r_max)
 			{
-				if (array[r]->params->ve[idx] > array[l]->params->ve[idx])
+				if (array[r]->params.ve[idx] > array[l]->params.ve[idx])
 					tmp[current] = array[r++];
 				else
 					tmp[current] = array[l++];

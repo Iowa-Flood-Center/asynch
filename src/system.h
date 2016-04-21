@@ -1,6 +1,10 @@
 #ifndef SYSTEM_H
 #define SYSTEM_H
 
+#if _MSC_VER > 1000
+#pragma once
+#endif // _MSC_VER > 1000
+
 #include <stdio.h>
 #include <stdlib.h>
 #include "mathmethods.h"
@@ -27,7 +31,7 @@ void Destroy_UnivVars(UnivVars* GlobalVars);
 RKSolutionNode* New_Step(RKSolutionList* list);
 void Undo_Step(RKSolutionList* list);
 void Remove_Head_Node(RKSolutionList* list);
-RKSolutionList* Create_List(VEC* y0,double t0,int dim,unsigned int dense_dim,unsigned short int s,unsigned int list_length);
+RKSolutionList* Create_List(VEC y0,double t0,int dim,unsigned int dense_dim,unsigned short int s,unsigned int list_length);
 
 //Workspace methods
 TempStorage* Create_Workspace(unsigned int dim,unsigned short int s,unsigned short int max_parents);

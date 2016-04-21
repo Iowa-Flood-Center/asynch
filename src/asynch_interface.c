@@ -8,6 +8,9 @@ asynchsolver* Asynch_Init(MPI_Comm comm,int* argc,char** argv[])
 	int init_flag;
 
 	asynchsolver* asynch = (asynchsolver*) malloc(sizeof(asynchsolver));
+    if (asynch == NULL) return NULL;
+    memset(asynch, 0, sizeof(asynchsolver));
+
 	asynch->comm = comm;
 	if(comm != MPI_COMM_WORLD)	printf("Warning: asynchsolver object my not work fully with in a comm other than MPI_COMM_WORLD.\n");
 
@@ -46,15 +49,19 @@ asynchsolver* Asynch_Init(MPI_Comm comm,int* argc,char** argv[])
 	asynch->setup_finalized = 0;
 
 	//Initialize data types
-	asynch->dt_info = Init_DataTypes();
+	Init_DataTypes(&asynch->dt_info);
 
 	return asynch;
 }
 
 //Creates and loads a custom model
 //Return 1 if there is an error, 0 if everything is ok
-int Asynch_Custom_Model(asynchsolver* asynch,void (*SetParamSizes)(UnivVars*,void*),void (*Convert)(VEC*,unsigned int,void*),void (*Routines)(Link*,unsigned int,unsigned int,unsigned short int,void*),
-	void (*Precalculations)(Link*,VEC*,VEC*,unsigned int,unsigned int,unsigned short int,unsigned int,void*),int (*InitializeEqs)(VEC*,VEC*,QVSData*,unsigned short int,VEC*,unsigned int,unsigned int,unsigned int,void*,void*))
+int Asynch_Custom_Model(asynchsolver* asynch,
+    void (*SetParamSizes)(UnivVars*,void*),
+    void (*Convert)(VEC,unsigned int,void*),
+    void (*Routines)(Link*,unsigned int,unsigned int,unsigned short int,void*),
+	void (*Precalculations)(Link*,VEC,VEC,unsigned int,unsigned int,unsigned short int,unsigned int,void*),
+    int (*InitializeEqs)(VEC,VEC,QVSData*,unsigned short int,VEC,unsigned int,unsigned int,unsigned int,void*,void*))
 {
 	if(!(asynch->custom_model))
 	{
@@ -402,7 +409,7 @@ void Asynch_Finalize_Network(asynchsolver* asynch)
 //Trash an asynchsolver object
 void Asynch_Free(asynchsolver* asynch)
 {
-	int i,finalized_flag;
+	unsigned int i,finalized_flag;
 
 	Free_DataTypes(&(asynch->dt_info));
 	TransData_Free(asynch->my_data);
@@ -665,7 +672,7 @@ int Asynch_Create_Peakflows_Output(asynchsolver* asynch)
 //Return 0 means ok, 1 means no peakflows to output, 2 means the filename is a bad format
 int Asynch_Set_Peakflow_Output_Name(asynchsolver* asynch,char* peakflowname)
 {
-	int l;
+	size_t l;
 
 	if(asynch->GlobalVars->peaks_loc_filename)
 	{
@@ -715,7 +722,7 @@ int Asynch_Upload_Hydrographs_Database(asynchsolver* asynch)
 
 int Asynch_Set_Temp_Files(asynchsolver* asynch,double set_time,void* set_value,unsigned int output_idx)
 {
-	return SetTempFiles(set_time,set_value,asynch->GlobalVars->output_types[output_idx],output_idx,asynch->sys,asynch->N,asynch->outputfile,asynch->GlobalVars,asynch->my_save_size,asynch->id_to_loc,asynch->dt_info);
+	return SetTempFiles(set_time,set_value,asynch->GlobalVars->output_types[output_idx],output_idx,asynch->sys,asynch->N,asynch->outputfile,asynch->GlobalVars,asynch->my_save_size,asynch->id_to_loc,&asynch->dt_info);
 	//return SetTempFiles(set_time,asynch->sys,asynch->N,asynch->outputfile,asynch->GlobalVars,asynch->my_save_size,asynch->id_to_loc);
 }
 
@@ -724,7 +731,7 @@ int Asynch_Reset_Temp_Files(asynchsolver* asynch,double set_time)
 	return ResetTempFiles(set_time,asynch->sys,asynch->N,asynch->outputfile,asynch->GlobalVars,asynch->my_save_size,asynch->id_to_loc);
 }
 
-int Asynch_Set_Output(asynchsolver* asynch,char* name,short int data_type,void (*func)(double,VEC*,VEC*,VEC*,int,void*),int* used_states,int num_states)
+int Asynch_Set_Output(asynchsolver* asynch,char* name,short int data_type,void (*func)(double,VEC,VEC,VEC,int,void*),unsigned int* used_states, unsigned int num_states)
 {
 	Link **sys = asynch->sys,*current;
 	unsigned int *my_sys = asynch->my_sys,my_N = asynch->my_N;
@@ -752,11 +759,11 @@ int Asynch_Set_Output(asynchsolver* asynch,char* name,short int data_type,void (
 	{
 		case ASYNCH_DOUBLE:
 			asynch->GlobalVars->output_types[idx] = ASYNCH_DOUBLE;
-			asynch->GlobalVars->outputs_d[idx] = (double (*)(double,VEC*,VEC*,VEC*,int,void*)) *func;
+			asynch->GlobalVars->outputs_d[idx] = (double (*)(double,VEC,VEC,VEC,int,void*)) *func;
 			break;
 		case ASYNCH_INT:
 			asynch->GlobalVars->output_types[idx] = ASYNCH_INT;
-			asynch->GlobalVars->outputs_i[idx] = (int (*)(double,VEC*,VEC*,VEC*,int,void*)) *func;
+			asynch->GlobalVars->outputs_i[idx] = (int (*)(double,VEC,VEC,VEC,int,void*)) *func;
 			break;
 		default:
 			printf("[%i]: Error: Cannot set output. Bad function type (%hi).\n",my_rank,data_type);
@@ -774,7 +781,8 @@ int Asynch_Set_Output(asynchsolver* asynch,char* name,short int data_type,void (
 		states_to_add = (unsigned int*) realloc(states_to_add,num_states*sizeof(unsigned int));
 		for(i=0;i<num_states;i++)
 		{
-			if(used_states[i] > current->dim)	continue;	//State is not present at this link
+			if(used_states[i] > current->dim)
+                continue;	//State is not present at this link
 			for(j=0;j<current->num_dense;j++)
 			{
 				if(used_states[i] == current->dense_indices[j])
@@ -801,9 +809,10 @@ int Asynch_Set_Output(asynchsolver* asynch,char* name,short int data_type,void (
 }
 
 //Returns 1 if output function set successfully, 0 if there was a problem
-int Asynch_Set_Peakflow_Output(asynchsolver* asynch,char* name,void (*func)(unsigned int,double,VEC*,VEC*,VEC*,double,unsigned int,void*,char*))
+int Asynch_Set_Peakflow_Output(asynchsolver* asynch,char* name,void (*func)(unsigned int,double,VEC,VEC,VEC,double,unsigned int,void*,char*))
 {
-	if(!asynch->GlobalVars->peakflow_function_name)	asynch->GlobalVars->peakflow_function_name = (char*) malloc(asynch->GlobalVars->string_size*sizeof(char));
+	if(!asynch->GlobalVars->peakflow_function_name)
+        asynch->GlobalVars->peakflow_function_name = (char*) malloc(asynch->GlobalVars->string_size*sizeof(char));
 
 	if(strcmp(name,asynch->GlobalVars->peakflow_function_name))
 	{
@@ -888,7 +897,7 @@ int Asynch_Activate_Forcing(asynchsolver* asynch,unsigned int idx)
 {
 	//unsigned int i,j,l,my_N = asynch->my_N;
     unsigned int my_N = asynch->my_N;
-	Link* current;
+/*	Link* current;*/
 
 	if(idx >= asynch->GlobalVars->num_forcings)
 	{
@@ -1004,7 +1013,7 @@ void Asynch_Reset_Peakflow_Data(asynchsolver* asynch)
 	}
 }
 
-void Asynch_Set_System_State(asynchsolver* asynch,double t_0,VEC** backup)
+void Asynch_Set_System_State(asynchsolver* asynch,double t_0,VEC* backup)
 {
 	unsigned i,j,k,l;
 	Link* current;
@@ -1035,9 +1044,14 @@ void Asynch_Set_System_State(asynchsolver* asynch,double t_0,VEC** backup)
 			current->steps_on_diff_proc = 1;
 			current->iters_removed = 0;
 			current->rejected = 0;
-			if(current->numparents == 0)	current->ready = 1;
-			else				current->ready = 0;
-			for(j=0;j<current->dim;j++)	current->list->head->y_approx->ve[j] = backup[i]->ve[j];
+			if(current->numparents == 0)
+                current->ready = 1;
+			else
+                current->ready = 0;
+			
+
+            for(j=0;j<current->dim;j++)
+                current->list->head->y_approx.ve[j] = backup[i].ve[j];
 			v_copy(backup[i],current->list->head->y_approx);
 
 /*
@@ -1158,34 +1172,27 @@ int Asynch_Get_Reservoir_Forcing(asynchsolver* asynch)
 //Returns the number of global parameters in the system.
 unsigned int Asynch_Get_Size_Global_Parameters(asynchsolver* asynch)
 {
-	return asynch->GlobalVars->global_params->dim;
+	return asynch->GlobalVars->global_params.dim;
 }
 
 //Returns in gparams the global parameters of the system.
 //This assumes gparams has enough memory allocated.
 //Returns 1 if an error occurred. 0 otherwise.
-int Asynch_Get_Global_Parameters(asynchsolver* asynch,double* gparams)
+int Asynch_Get_Global_Parameters(asynchsolver* asynch, VEC gparams)
 {
-	if(!asynch || !asynch->GlobalVars)	return 1;
-	unsigned int i,n = asynch->GlobalVars->global_params->dim;
-	for(i=0;i<n;i++)
-		gparams[i] = asynch->GlobalVars->global_params->ve[i];
+	if(!asynch || !asynch->GlobalVars || gparams.dim < asynch->GlobalVars->global_params.dim)
+        return 1;
+    v_copy(asynch->GlobalVars->global_params, gparams);
 	return 0;
 }
 
 //Sets the global parameters. n is the number of new parameters.
 //Internally, memory is allocated/deallocated automatically.
 //Returns 1 if an error occurred. 0 otherwise.
-int Asynch_Set_Global_Parameters(asynchsolver* asynch,double* gparams,unsigned int n)
+int Asynch_Set_Global_Parameters(asynchsolver* asynch,VEC gparams,unsigned int n)
 {
-	unsigned int i;
 	if(!asynch || !asynch->GlobalVars)	return 1;
-	asynch->GlobalVars->global_params->dim = n;
-	asynch->GlobalVars->global_params->ve = (double*) realloc(asynch->GlobalVars->global_params->ve,n*sizeof(double));
-	for(i=0;i<n;i++)
-		asynch->GlobalVars->global_params->ve[i] = gparams[i];
+	v_resize(&asynch->GlobalVars->global_params, n);
+    v_copy_n(gparams, asynch->GlobalVars->global_params, n);
 	return 0;
 }
-
-
-

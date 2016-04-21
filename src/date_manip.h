@@ -1,6 +1,10 @@
 #ifndef DATE_MANIP_H
 #define DATE_MANIP_H
 
+#if _MSC_VER > 1000
+#pragma once
+#endif // _MSC_VER > 1000
+
 #include <stdio.h>
 #include <time.h>
 

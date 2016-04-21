@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include <stdbool.h>
-#include <stdarg.h>
 
 #if !defined(_MSC_VER)
 #include <unistd.h>
@@ -20,7 +19,7 @@
 int my_rank = 0;
 int np = 0;
 
-int Output_Linkid(double t,VEC* y_i,VEC* global_params,VEC* params,int state,void* user);
+int Output_Linkid(double t,VEC y_i,VEC global_params,VEC params,int state,void* user);
 void Set_Output_User_LinkID(asynchsolver* asynch);
 
 //Print to stdout only for process of rank 0
@@ -197,7 +196,7 @@ int main(int argc,char* argv[])
 	if(id_setup != -1)
 	{
 		Set_Output_User_LinkID(asynch);
-		Asynch_Set_Output(asynch,"LinkID",ASYNCH_INT,(void (*)(double,VEC*,VEC*,VEC*,int,void*)) &Output_Linkid,NULL,0);
+		Asynch_Set_Output(asynch,"LinkID",ASYNCH_INT,&Output_Linkid,NULL,0);
 	}
 
 	//Prepare output files
@@ -251,7 +250,7 @@ int main(int argc,char* argv[])
 
 
 
-int Output_Linkid(double t,VEC* y_i,VEC* global_params,VEC* params,int state,void* user)
+int Output_Linkid(double t,VEC y_i,VEC global_params,VEC params,int state,void* user)
 {
 	return ((Link*)user)->ID;
 }
