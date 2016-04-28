@@ -151,7 +151,7 @@ int Asynch_Get_Global_Parameters(asynchsolver* asynch,VEC gparams);
 int Asynch_Set_Global_Parameters(asynchsolver* asynch,VEC gparams,unsigned int n);
 
 //Routines for output
-int Asynch_Set_Output(asynchsolver* asynch,char* name,short int data_type,void (*func)(double,VEC,VEC,VEC,int,void*),unsigned int* used_states,unsigned int num_states);
+int Asynch_Set_Output(asynchsolver* asynch,char* name,short int data_type,void* func,unsigned int* used_states,unsigned int num_states);
 int Asynch_Check_Output(asynchsolver* asynch,char* name);
 int Asynch_Check_Peakflow_Output(asynchsolver* asynch,char* name);
 int Asynch_Set_Peakflow_Output(asynchsolver* asynch,char* name,void (*func)(unsigned int,double,VEC,VEC,VEC,double,unsigned int,void*,char*));

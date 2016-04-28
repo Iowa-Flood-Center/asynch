@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdbool.h>
+#include <stdarg.h>
 
 #if !defined(_MSC_VER)
 #include <unistd.h>

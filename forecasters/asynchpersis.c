@@ -46,12 +46,11 @@ int main(int argc,char* argv[])
 	}
 
 	//Declare variables
-	unsigned int i,j,k,current_offset;
+	unsigned int i,k,current_offset;
 	double holder,longest,total_time = 0.0;
-	time_t start,start2,stop;
+	time_t start,stop;
 	asynchsolver* asynch;
 	PGresult *res;
-	MPI_Status status;
 	char* query = (char*) malloc(1024*sizeof(char));
 	Link* current;
 
@@ -129,13 +128,13 @@ int main(int argc,char* argv[])
 	}
 
 	//Reserve space for backups
-	VEC** backup = (VEC**) malloc(N*sizeof(VEC*));
+	VEC* backup = (VEC*) malloc(N*sizeof(VEC));
 	for(i=0;i<N;i++)
 	{
 		if(asynch->assignments[i] == my_rank || asynch->getting[i] == 1)
 			backup[i] = v_get(asynch->sys[i]->dim);
 		else
-			backup[i] = NULL;
+			backup[i] = v_get(0);
 	}
 
 	if(my_rank == 0)
@@ -189,7 +188,7 @@ int main(int argc,char* argv[])
 		printf("Warning: Increment for rain should probably be %u.\n",num_rainsteps + 3);
 	asynch->forcings[forecast_idx]->increment = num_rainsteps;	//!!!! Not necessary, but makes me feel better. The solvers should really not do the last step where they download nothing. !!!!
 
-	unsigned int nextraintime,nextforcingtime;
+	unsigned int nextforcingtime;
 	short int halt = 0;
 	int isnull,repeat_for_errors;
 	short int vac = 0;	//0 if no vacuum has occured, 1 if vacuum has occured (during a specific hour)
@@ -197,7 +196,7 @@ int main(int argc,char* argv[])
 	unsigned int first_file = asynch->forcings[forecast_idx]->first_file;
 	k = 0;
 	for(i=0;i<N;i++)
-		if(backup[i] != NULL)	v_copy(asynch->sys[i]->list->tail->y_approx,backup[i]);
+		if(backup[i].dim > 0)	v_copy(asynch->sys[i]->list->tail->y_approx,backup[i]);
 
 	double simulation_time_with_data = 0.0;
 	simulation_time_with_data = max(simulation_time_with_data,asynch->forcings[forecast_idx]->file_time * Forecaster->num_rainsteps);
@@ -213,7 +212,7 @@ int main(int argc,char* argv[])
 	dump_filename[strlen(dump_filename)-4] = '\0';	//Removes .rec	!!!! Uh, is this ok? No chance for memory corruption? !!!!
 
 	//Check if there is a schema used for the hydrograph archive
-	int place,tablename_len = strlen(asynch->GlobalVars->hydro_table);
+	size_t place,tablename_len = strlen(asynch->GlobalVars->hydro_table);
 	char schema[128]; schema[0] = '\0';
 	for(place=tablename_len-1;place>-1;place--)
 	{
@@ -606,7 +605,8 @@ printf("first: %u last: %u\n",first_file,last_file);
 
 	//Clean up *************************************************************************
 	free(query);
-	for(i=0;i<N;i++)	v_free(backup[i]);
+	for(i=0;i<N;i++)
+        v_free(&backup[i]);
 	free(backup);
 	Free_ForecastData(&Forecaster);
 	Asynch_Delete_Temporary_Files(asynch);

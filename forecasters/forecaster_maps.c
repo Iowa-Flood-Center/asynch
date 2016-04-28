@@ -2,7 +2,9 @@
 #include <time.h>
 #include <libpq-fe.h>
 #include <string.h>
+#if !defined(_MSC_VER)
 #include <unistd.h>
+#endif
 #include "asynch_interface.h"
 #include "forecaster_methods.h"
 
@@ -27,9 +29,9 @@ typedef struct CustomParamsMaps
 //void PerformTableMaintainance_Maps(ConnData* conninfo_hydros,ConnData* conninfo_peakflows,ConnData* conninfo_maps,UnivVars* GlobalVars,ForecastData* Forecaster,short int* vac,short unsigned int hr1,unsigned int num_tables);
 void UploadPeakflows(asynchsolver* asynch,unsigned int wait_time);
 
-int Output_Linkid(double t,VEC* y_i,VEC* global_params,VEC* params,int state,void* user);
-int Output_Timestamp(double t,VEC* y_i,VEC* global_params,VEC* params,int state,void* user);
-void OutputPeakflow_Forecast_Maps(unsigned int ID,double peak_time,VEC* peak_value,VEC* params,VEC* global_params,double conversion,unsigned int area_idx,void* user,char* buffer);
+int Output_Linkid(double t,VEC y_i,VEC global_params,VEC params,int state,void* user);
+int Output_Timestamp(double t,VEC y_i,VEC global_params,VEC params,int state,void* user);
+void OutputPeakflow_Forecast_Maps(unsigned int ID,double peak_time,VEC peak_value,VEC params,VEC global_params,double conversion,unsigned int area_idx,void* user,char* buffer);
 void Init_Output_User_forecastparams(asynchsolver* asynch);
 void Free_Output_User_forecastparams(asynchsolver* asynch);
 void Set_Output_User_forecastparams(asynchsolver* asynch,unsigned int offset);
@@ -55,12 +57,11 @@ int main(int argc,char* argv[])
 	}
 
 	//Declare variables
-	unsigned int i,j,k,current_offset;
+	unsigned int i,k,current_offset;
 	double longest,holder,total_time = 0.0;
-	time_t start,start2,stop;
+	time_t start,stop;
 	asynchsolver* asynch;
 	PGresult *res;
-	MPI_Status status;
 	char* query = (char*) malloc(1024*sizeof(char));
 	Link* current;
 
@@ -128,12 +129,12 @@ int main(int argc,char* argv[])
 		MPI_Abort(MPI_COMM_WORLD,1);
 	}
 	Init_Output_PeakflowUser_Offset(asynch);
-	Asynch_Set_Peakflow_Output(asynch,"Forecast_Maps",(void (*)(unsigned int,double,VEC*,VEC*,VEC*,double,unsigned int,void*,char*)) &OutputPeakflow_Forecast_Maps);
+	Asynch_Set_Peakflow_Output(asynch,"Forecast_Maps",&OutputPeakflow_Forecast_Maps);
 
 	//Get some values about the river system
 	unsigned int N = Asynch_Get_Number_Links(asynch);
 	unsigned int my_N = Asynch_Get_Local_Number_Links(asynch);
-	char dump_filename[asynch->GlobalVars->string_size];
+	char dump_filename[ASYNCH_MAX_PATH_LENGTH];
 
 	//Create halt file
 	CreateHaltFile(Forecaster->halt_filename);
@@ -147,13 +148,13 @@ int main(int argc,char* argv[])
 	}
 
 	//Reserve space for backups
-	VEC** backup = (VEC**) malloc(N*sizeof(VEC*));
+	VEC* backup = (VEC*) malloc(N*sizeof(VEC));
 	for(i=0;i<N;i++)
 	{
 		if(asynch->assignments[i] == my_rank || asynch->getting[i] == 1)
 			backup[i] = v_get(asynch->sys[i]->dim);
 		else
-			backup[i] = NULL;
+			backup[i] = v_get(0);
 	}
 
 	if(my_rank == 0)
@@ -168,7 +169,7 @@ int main(int argc,char* argv[])
 	total_time = difftime(stop,start);
 	if(my_rank == 0)	printf("Finished initializations. Total time: %f\n",total_time);
 	MPI_Barrier(MPI_COMM_WORLD);
-	sleep(1);
+	ASYNCH_SLEEP(1);
 
 	//Make sure everyone is good before getting down to it...
 	printf("Process %i (%i total) is good to go with %i links.\n",my_rank,np,my_N);
@@ -200,7 +201,7 @@ int main(int argc,char* argv[])
 	//Make some initializations and checks
 	short unsigned int hr1 = 0;	//Hour of the day to perform maintainance on database
 	short unsigned int hr2 = 12;	//Hour of the day to perform maintainance on database
-	unsigned int wait_time = 120;	//Time to sleep if no rainfall data is available
+	unsigned int wait_time = 120;	//Time to ASYNCH_SLEEP if no rainfall data is available
 	unsigned int num_tables = 10;
 	unsigned int db_retry_time = 5;	//Time (secs) to wait if a database error occurs
 	unsigned int num_future_peakflow_times = 9;
@@ -211,7 +212,7 @@ int main(int argc,char* argv[])
 	asynch->forcings[forecast_idx]->increment = num_rainsteps;	//!!!! Not necessary, but makes me feel better. The solvers should really not do the last step where they download nothing. !!!!
 	double db_stepsize = asynch->forcings[forecast_idx]->file_time,t;
 
-	unsigned int nextraintime,repeat_for_errors,nextforcingtime;
+	unsigned int repeat_for_errors,nextforcingtime;
 	short int halt = 0;
 	int isnull;
 	short int vac_hydros = 0,vac_maps = 0,vac_peakflows = 0;	//0 if no vacuum has occured, 1 if vacuum has occured (during a specific hour)
@@ -219,7 +220,7 @@ int main(int argc,char* argv[])
 	unsigned int first_file = asynch->forcings[forecast_idx]->first_file;
 	k = 0;
 	for(i=0;i<N;i++)
-		if(backup[i] != NULL)	v_copy(asynch->sys[i]->list->tail->y_approx,backup[i]);
+		if(backup[i].dim)	v_copy(asynch->sys[i]->list->tail->y_approx,backup[i]);
 
 	double simulation_time_with_data = 0.0;
 	simulation_time_with_data = max(simulation_time_with_data,asynch->forcings[forecast_idx]->file_time * Forecaster->num_rainsteps);
@@ -230,7 +231,7 @@ int main(int argc,char* argv[])
 	Asynch_Prepare_Temp_Files(asynch);
 
 	//Check if there is a schema used for the hydrograph archive
-	int place,tablename_len = strlen(asynch->GlobalVars->hydro_table);
+	size_t place,tablename_len = strlen(asynch->GlobalVars->hydro_table);
 	char schema[128]; schema[0] = '\0';
 	for(place=tablename_len-1;place>-1;place--)
 	{
@@ -387,7 +388,7 @@ int main(int argc,char* argv[])
 				if(!halt)
 				{
 					fflush(stdout);
-					sleep(wait_time);
+					ASYNCH_SLEEP(wait_time);
 				}
 			}
 		} while(isnull && !halt);
@@ -504,7 +505,7 @@ printf("first: %u last: %u\n",first_file,last_file);
 		while(repeat_for_errors > 0)
 		{
 			if(my_rank == 0)	printf("[%i]: Attempting resend of hydrographs data.\n",my_rank);
-			sleep(5);
+			ASYNCH_SLEEP(5);
 			repeat_for_errors = Asynch_Create_Output(asynch,NULL);
 		}
 
@@ -529,7 +530,7 @@ printf("first: %u last: %u\n",first_file,last_file);
 					if(repeat_for_errors)
 					{
 						printf("[%i]: Attempting to call stage function again...\n",my_rank);
-						sleep(5);
+						ASYNCH_SLEEP(5);
 						CheckConnConnection(asynch->db_connections[ASYNCH_DB_LOC_HYDRO_OUTPUT]);
 					}
 				}
@@ -546,7 +547,7 @@ printf("first: %u last: %u\n",first_file,last_file);
 					if(repeat_for_errors)
 					{
 						printf("[%i]: Attempting to call warning function again...\n",my_rank);
-						sleep(5);
+						ASYNCH_SLEEP(5);
 						CheckConnConnection(asynch->db_connections[ASYNCH_DB_LOC_HYDRO_OUTPUT]);
 					}
 				}
@@ -575,7 +576,7 @@ printf("first: %u last: %u\n",first_file,last_file);
 				if(repeat_for_errors)
 				{
 					printf("[%i]: Attempting to call stage archive function again...\n",my_rank);
-					sleep(5);
+					ASYNCH_SLEEP(5);
 					CheckConnConnection(asynch->db_connections[ASYNCH_DB_LOC_HYDRO_OUTPUT]);
 				}
 			}
@@ -599,7 +600,8 @@ printf("first: %u last: %u\n",first_file,last_file);
 
 	//Clean up **********************************************************************************************************************************
 	free(query);
-	for(i=0;i<N;i++)	v_free(backup[i]);
+	for(i=0;i<N;i++)
+        v_free(&backup[i]);
 	free(backup);
 	Free_ForecastData(&Forecaster);
 	Asynch_Delete_Temporary_Files(asynch);
@@ -621,28 +623,28 @@ void UploadPeakflows(asynchsolver* asynch,unsigned int wait_time)
 	while(repeat_for_errors > 0)
 	{
 		if(my_rank == 0)	printf("[%i]: Attempting resend of peakflow data.\n",my_rank);
-		sleep(wait_time);
+		ASYNCH_SLEEP(wait_time);
 		repeat_for_errors = Asynch_Create_Peakflows_Output(asynch);
 	}
 }
 
 //Output functions ****************************************************************************
-int Output_Linkid(double t,VEC* y_i,VEC* global_params,VEC* params,int state,void* user)
+int Output_Linkid(double t,VEC y_i,VEC global_params,VEC params,int state,void* user)
 {
 	CustomParams* forecastparams = (CustomParams*) user;
 	return forecastparams->ID;
 }
 
-int Output_Timestamp(double t,VEC* y_i,VEC* global_params,VEC* params,int state,void* user)
+int Output_Timestamp(double t,VEC y_i,VEC global_params,VEC params,int state,void* user)
 {
 	CustomParams* forecastparams = (CustomParams*) user;
 	return (int)(round(t * 60.0 + forecastparams->offset) + 0.1);
 }
 
-void OutputPeakflow_Forecast_Maps(unsigned int ID,double peak_time,VEC* peak_value,VEC* params,VEC* global_params,double conversion,unsigned int area_idx,void* user,char* buffer)
+void OutputPeakflow_Forecast_Maps(unsigned int ID,double peak_time,VEC peak_value,VEC params,VEC global_params,double conversion,unsigned int area_idx,void* user,char* buffer)
 {
 	CustomParamsMaps* forecastparams = (CustomParamsMaps*) user;
-	sprintf(buffer,"%u %u %.6e %u %u\n",ID,forecastparams->forecast_time + (unsigned int)(peak_time*60 + .1),peak_value->ve[0],forecastparams->forecast_time,forecastparams->period);
+	sprintf(buffer,"%u %u %.6e %u %u\n",ID,forecastparams->forecast_time + (unsigned int)(peak_time*60 + .1),peak_value.ve[0],forecastparams->forecast_time,forecastparams->period);
 }
 
 

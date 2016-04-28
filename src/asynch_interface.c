@@ -731,7 +731,7 @@ int Asynch_Reset_Temp_Files(asynchsolver* asynch,double set_time)
 	return ResetTempFiles(set_time,asynch->sys,asynch->N,asynch->outputfile,asynch->GlobalVars,asynch->my_save_size,asynch->id_to_loc);
 }
 
-int Asynch_Set_Output(asynchsolver* asynch,char* name,short int data_type,void (*func)(double,VEC,VEC,VEC,int,void*),unsigned int* used_states, unsigned int num_states)
+int Asynch_Set_Output(asynchsolver* asynch,char* name,short int data_type,void* func,unsigned int* used_states, unsigned int num_states)
 {
 	Link **sys = asynch->sys,*current;
 	unsigned int *my_sys = asynch->my_sys,my_N = asynch->my_N;
@@ -759,11 +759,11 @@ int Asynch_Set_Output(asynchsolver* asynch,char* name,short int data_type,void (
 	{
 		case ASYNCH_DOUBLE:
 			asynch->GlobalVars->output_types[idx] = ASYNCH_DOUBLE;
-			asynch->GlobalVars->outputs_d[idx] = (double (*)(double,VEC,VEC,VEC,int,void*)) *func;
+			asynch->GlobalVars->outputs_d[idx] = (double (*)(double,VEC,VEC,VEC,int,void*)) func;
 			break;
 		case ASYNCH_INT:
 			asynch->GlobalVars->output_types[idx] = ASYNCH_INT;
-			asynch->GlobalVars->outputs_i[idx] = (int (*)(double,VEC,VEC,VEC,int,void*)) *func;
+			asynch->GlobalVars->outputs_i[idx] = (int (*)(double,VEC,VEC,VEC,int,void*)) func;
 			break;
 		default:
 			printf("[%i]: Error: Cannot set output. Bad function type (%hi).\n",my_rank,data_type);

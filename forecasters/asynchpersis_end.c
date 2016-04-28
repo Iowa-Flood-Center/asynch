@@ -2,7 +2,9 @@
 #include <time.h>
 #include <libpq-fe.h>
 #include <string.h>
+#if !defined(_MSC_VER)
 #include <unistd.h>
+#endif
 #include "asynch_interface.h"
 #include "forecaster_methods.h"
 
@@ -44,13 +46,12 @@ int main(int argc,char* argv[])
 	}
 
 	//Declare variables
-	unsigned int i,j,k,current_offset;
+	unsigned int i,k,current_offset;
 	int isnull;
 	double total_time = 0.0;
-	time_t start,start2,stop;
+	time_t start,stop;
 	asynchsolver* asynch;
 	PGresult *res;
-	MPI_Status status;
 	char* query = (char*) malloc(1024*sizeof(char));
 	Link* current;
 
@@ -132,7 +133,7 @@ int main(int argc,char* argv[])
 	//Get some values about the river system
 	unsigned int N = Asynch_Get_Number_Links(asynch);
 	unsigned int my_N = Asynch_Get_Local_Number_Links(asynch);
-	char dump_filename[asynch->GlobalVars->string_size];
+	char dump_filename[ASYNCH_MAX_PATH_LENGTH];
 
 	//Create halt file
 	CreateHaltFile(Forecaster->halt_filename);
@@ -153,13 +154,13 @@ int main(int argc,char* argv[])
 	Asynch_Set_Last_Rainfall_Timestamp(asynch,override_endtime,forecast_idx);
 
 	//Reserve space for backups
-	VEC** backup = (VEC**) malloc(N*sizeof(VEC*));
+	VEC* backup = (VEC*) malloc(N*sizeof(VEC));
 	for(i=0;i<N;i++)
 	{
 		if(asynch->assignments[i] == my_rank || asynch->getting[i] == 1)
 			backup[i] = v_get(asynch->sys[i]->dim);
 		else
-			backup[i] = NULL;
+			backup[i] = v_get(0);
 	}
 
 	if(my_rank == 0)
@@ -174,7 +175,7 @@ int main(int argc,char* argv[])
 	total_time = difftime(stop,start);
 	if(my_rank == 0)	printf("Finished initializations. Total time: %f\n",total_time);
 	MPI_Barrier(MPI_COMM_WORLD);
-	sleep(1);
+	ASYNCH_SLEEP(1);
 
 	//Make sure everyone is good before getting down to it...
 	printf("Process %i (%i total) is good to go with %i links.\n",my_rank,np,my_N);
@@ -198,7 +199,7 @@ int main(int argc,char* argv[])
 	}
 
 	//Check if there is a schema used for the hydrograph archive
-	int place,tablename_len = strlen(asynch->GlobalVars->hydro_table);
+	size_t place,tablename_len = strlen(asynch->GlobalVars->hydro_table);
 	char schema[128]; schema[0] = '\0';
 	for(place=tablename_len-1;place>-1;place--)
 	{
@@ -223,7 +224,7 @@ int main(int argc,char* argv[])
 	//unsigned int history_time = 5*24*60*60;	//Amount of history to store for hydrographs and peakflows
 	//short unsigned int hr1 = 0;	//Hour of the day to perform maintainance on database
 	//short unsigned int hr2 = 12;	//Hour of the day to perform maintainance on database
-	unsigned int wait_time = 120;	//Time to sleep if no rainfall data is available
+	unsigned int wait_time = 120;	//Time to ASYNCH_SLEEP if no rainfall data is available
 	//double forecast_time = 10.0*24*60;	//Time (mins) in future to make forecasts
 	unsigned int naptime = 2;
 	unsigned int num_tables = 10;
@@ -234,14 +235,14 @@ int main(int argc,char* argv[])
 		printf("Warning: Increment for rain should probably be %u.\n",num_rainsteps + 3);
 	asynch->forcings[forecast_idx]->increment = num_rainsteps;	//!!!! Not necessary, but makes me feel better. The solvers should really not do the last step where they download nothing. !!!!
 
-	unsigned int nextraintime,nextforcingtime;
+	unsigned int nextforcingtime;
 	short int halt = 0;
 	int repeat_for_errors;
 	unsigned int last_file = asynch->forcings[forecast_idx]->last_file;
 	unsigned int first_file = asynch->forcings[forecast_idx]->first_file;
 	k = 0;
 	for(i=0;i<N;i++)
-		if(backup[i] != NULL)	v_copy(asynch->sys[i]->list->tail->y_approx,backup[i]);
+		if(backup[i].dim)	v_copy(asynch->sys[i]->list->tail->y_approx,backup[i]);
 
 	double simulation_time_with_data = 0.0;
 	simulation_time_with_data = max(simulation_time_with_data,asynch->forcings[forecast_idx]->file_time * Forecaster->num_rainsteps);
@@ -399,7 +400,7 @@ int main(int argc,char* argv[])
 			else
 			{
 				fflush(stdout);
-				//sleep(wait_time);
+				//ASYNCH_SLEEP(wait_time);
 			}
 		}
 
@@ -486,7 +487,7 @@ printf("first: %u last: %u\n",first_file,last_file);
 			while(repeat_for_errors > 0)
 			{
 				if(my_rank == 0)	printf("[%i]: Attempting resend of peakflow data.\n",my_rank);
-				sleep(5);
+				ASYNCH_SLEEP(5);
 				repeat_for_errors = Asynch_Create_Peakflows_Output(asynch);
 			}
 
@@ -521,7 +522,7 @@ printf("first: %u last: %u\n",first_file,last_file);
 		while(repeat_for_errors > 0)
 		{
 			if(my_rank == 0)	printf("[%i]: Attempting resend of hydrographs data.\n",my_rank);
-			sleep(5);
+			ASYNCH_SLEEP(5);
 			repeat_for_errors = Asynch_Create_Output(asynch,NULL);
 		}
 
@@ -547,7 +548,7 @@ printf("first: %u last: %u\n",first_file,last_file);
 					if(repeat_for_errors)
 					{
 						printf("[%i]: Attempting to call stage function again...\n",my_rank);
-						sleep(5);
+						ASYNCH_SLEEP(5);
 						CheckConnConnection(asynch->db_connections[ASYNCH_DB_LOC_HYDRO_OUTPUT]);
 					}
 				}
@@ -564,7 +565,7 @@ printf("first: %u last: %u\n",first_file,last_file);
 					if(repeat_for_errors)
 					{
 						printf("[%i]: Attempting to call warning function again...\n",my_rank);
-						sleep(5);
+						ASYNCH_SLEEP(5);
 						CheckConnConnection(asynch->db_connections[ASYNCH_DB_LOC_HYDRO_OUTPUT]);
 					}
 				}
@@ -577,7 +578,7 @@ printf("first: %u last: %u\n",first_file,last_file);
 					if(repeat_for_errors == -1)
 					{
 						printf("[%i]: Attempting to launch php script again...\n",my_rank);
-						sleep(5);
+						ASYNCH_SLEEP(5);
 					}
 				} while(repeat_for_errors == -1);
 			}
@@ -605,7 +606,7 @@ printf("first: %u last: %u\n",first_file,last_file);
 				if(repeat_for_errors)
 				{
 					printf("[%i]: Attempting to call stage archive function again...\n",my_rank);
-					sleep(5);
+					ASYNCH_SLEEP(5);
 					CheckConnConnection(asynch->db_connections[ASYNCH_DB_LOC_HYDRO_OUTPUT]);
 				}
 			}
@@ -659,7 +660,8 @@ printf("first: %u last: %u\n",first_file,last_file);
 	//Clean up **********************************************************************************************************************************
 	if(my_rank == 0)	printf("[%i]: All done!\n",my_rank);
 	free(query);
-	for(i=0;i<N;i++)	v_free(backup[i]);
+	for(i=0;i<N;i++)
+        v_free(&backup[i]);
 	free(backup);
 	Free_ForecastData(&Forecaster);
 	Asynch_Delete_Temporary_Files(asynch);
