@@ -3,9 +3,6 @@
 #include <process.h>
 #endif
 
-#include <hdf5_hl.h>
-
-
 //Read topo data and build the network.
 //Also creates id_to_loc.
 Link** Create_River_Network(UnivVars* GlobalVars,unsigned int* N,unsigned int*** id_to_loc,ConnData** db_connections)
@@ -2689,8 +2686,8 @@ UnivVars* Read_Global_Data(char globalfilename[],ErrorData** GlobalErrors,Forcin
 	//Find the states needed for printing
 	GlobalVars->num_states_for_printing = 0;
 	GlobalVars->print_indices = (unsigned int*) calloc(GlobalVars->num_print,sizeof(unsigned int));
-	GlobalVars->outputs_i = (int (**)(double,VEC*,VEC*,VEC*,int,void*)) calloc( GlobalVars->num_print, sizeof(int (*)(double,VEC*,VEC*,VEC*,int,void*)) );
-	GlobalVars->outputs_d = (double (**)(double,VEC*,VEC*,VEC*,int,void*)) calloc( GlobalVars->num_print, sizeof(double (*)(double,VEC*,VEC*,VEC*,int,void*)) );
+	GlobalVars->outputs_i = (int (**)(double,VEC,VEC,VEC,int,void*)) calloc( GlobalVars->num_print, sizeof(int (*)(double,VEC,VEC,VEC,int,void*)) );
+	GlobalVars->outputs_d = (double (**)(double,VEC,VEC,VEC,int,void*)) calloc( GlobalVars->num_print, sizeof(double (*)(double,VEC,VEC,VEC,int,void*)) );
 	GlobalVars->output_types = (short int*) malloc(GlobalVars->num_print*sizeof(short int));
 	GlobalVars->output_sizes = (short int*) malloc(GlobalVars->num_print*sizeof(short int));
 	GlobalVars->output_specifiers = (char**) malloc(GlobalVars->num_print*sizeof(char*));

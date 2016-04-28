@@ -113,7 +113,7 @@ void v_free(VEC *v)
     assert(v != NULL);
 	if(v->ve)
         free(v->ve);
-    memset(&v, 0, sizeof(VEC));
+    memset(v, 0, sizeof(VEC));
 }
 
 //Deallocates the ivector v.
@@ -122,7 +122,7 @@ void iv_free(IVEC *v)
     assert(v != NULL);
 	if(v->ve)
         free(v->ve);
-    memset(&v, 0, sizeof(IVEC));
+    memset(v, 0, sizeof(IVEC));
 }
 
 //Deallocates the matrix A.
@@ -133,7 +133,7 @@ void m_free(MAT *A)
 	    free(A->storage);
     if (A->me)
         free(A->me);
-    memset(&A, 0, sizeof(MAT));
+    memset(A, 0, sizeof(MAT));
 }
 
 //Calculates w = u + v. start is the index of the first entry of u.
