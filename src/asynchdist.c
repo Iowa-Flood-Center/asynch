@@ -149,13 +149,13 @@ int main(int argc,char* argv[])
     }
 
 	//Declare variables
-	time_t start,stop;
+    double start, stop;
 	double total_time;
 	asynchsolver* asynch;
 
     print_out("\nBeginning initialization...\n*****************************\n");
 	MPI_Barrier(MPI_COMM_WORLD);
-	start = time(NULL);
+	start = MPI_Wtime();
 
 	//Init asynch object and the river network
 	asynch = Asynch_Init(MPI_COMM_WORLD,&argc,&argv);
@@ -212,22 +212,22 @@ int main(int argc,char* argv[])
 
 	if(my_rank == 0)
 	{
-		stop = time(NULL);
-		total_time = difftime(stop,start);
-		printf("Finished initialization. Total time: %f\n\n\nComputing solution at each link...\n************************************\n",total_time);
+		stop = MPI_Wtime();
+		total_time = stop - start;
+		printf("Finished initialization. Total time for initialization: %f\n\n\nComputing solution at each link...\n************************************\n", stop - start);
 	}
 	fflush(stdout);
 	MPI_Barrier(MPI_COMM_WORLD);
 
 	//Perform the calculations
-	time(&start);
+    start = MPI_Wtime();
 	Asynch_Advance(asynch,1);
 	MPI_Barrier(MPI_COMM_WORLD);
-	time(&stop);
+    stop = MPI_Wtime();
 
 	//Out information
-	total_time += difftime(stop,start);
-	print_out("\nComputations complete. Total time for calculations: %f\n",difftime(stop,start));
+	total_time += stop - start;
+	print_out("\nComputations complete. Total time for calculations: %f\n", stop - start);
 	if(asynch->sys[asynch->my_sys[0]]->c == NULL)
 	{
 		printf("[%i]: The solution at ID %i at time %.12f is\n",my_rank,asynch->sys[asynch->my_sys[0]]->ID,asynch->sys[asynch->my_sys[0]]->last_t);
