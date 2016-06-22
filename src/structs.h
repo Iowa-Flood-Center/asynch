@@ -161,13 +161,18 @@ typedef struct io
 typedef struct UnivVars
 {
     unsigned short int type;        //!< Index for the model used
+
+    double maxtime;                 //!< Integrate up to this time (duration)
+    double t_0;                     //!< Initial time to start integration
+
+    unsigned int start_time;        //!< Unix start time
+    unsigned int end_time;          //!< Unix end time
+
     unsigned short int method;      //!< RK method to use (if it is the same for all links)
     unsigned short int max_s;       //!< The largest number of internal stages of any RK method used    !!!! Is this needed? !!!!
     unsigned short int max_parents; //!< The largest number of parents any link has
     int iter_limit;                 //!< If a link has >= iter_limit of steps stored, no new computations occur
     int max_transfer_steps;         //!< Maximum number of steps to communicate at once between processes
-    double maxtime;                 //!< Integrate up to this time
-    double t_0;                     //!< Initial time to start integration
     //unsigned int dim;             //!< The dimension of the ODE to solve at each link
     //unsigned int problem_dim;     //!< Same as dim when not using data assimilation. Otherwise, it's the model dimension
     //unsigned int increment;       //!< Number of rainfall files to store in memory at a time

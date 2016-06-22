@@ -1,7 +1,13 @@
-#include "riversys.h"
 #if defined(_MSC_VER)
 #include <process.h>
 #endif
+
+#if defined(ASYNCH_WITH_HDF5)
+#include <hdf5.h>
+#include <hdf5_hl.h>
+#endif
+
+#include "riversys.h"
 
 //Read topo data and build the network.
 //Also creates id_to_loc.
@@ -821,484 +827,698 @@ int Initialize_Model(Link** system,unsigned int N,unsigned int* my_sys,unsigned 
 }
 
 
+static int Load_Initial_Conditions_Ini(Link** system, unsigned int N, int* assignments, short int* getting, unsigned int** id_to_loc, UnivVars* GlobalVars, ConnData** db_connections, model* custom_model, void* external)
+{
+    unsigned int i, j, id, loc, no_ini_start, diff_start = 0, dim;
+    FILE* initdata = NULL;
+    short int *who_needs = NULL;
+    short int my_need;
+    VEC y_0 = v_get(0);
+
+    //Proc 0 reads the file and sends the data to the other procs
+    if (my_rank == 0)
+    {
+        initdata = fopen(GlobalVars->init_filename, "r");
+        if (!initdata)
+        {
+            printf("Error: file %s not found for .ini file.\n", GlobalVars->init_filename);
+            return 1;
+        }
+        if (CheckWinFormat(initdata))
+        {
+            printf("Error: File %s appears to be in Windows format. Try converting to unix format using 'dos2unix' at the command line.\n", GlobalVars->init_filename);
+            fclose(initdata);
+            return 1;
+        }
+
+        fscanf(initdata, "%*i %u %lf", &i, &(GlobalVars->t_0));	//Read model type, number of links, init time
+
+        if (i != N)
+        {
+            printf("Error: the number of links in %s differs from the number in the topology data. (Got %u, expected %u)\n", GlobalVars->init_filename, i, N);
+            return 1;
+        }
+
+        //Broadcast initial time
+        MPI_Bcast(&(GlobalVars->t_0), 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+
+        //Read the .ini file
+        who_needs = (short int*)malloc(np*sizeof(short int));
+        for (i = 0; i < N; i++)
+        {
+            //Send current location
+            fscanf(initdata, "%u", &id);
+            loc = find_link_by_idtoloc(id, id_to_loc, N);
+            if (loc > N)
+            {
+                printf("Error: link id %u in initial condition file, but not in network.\n", id);
+                return 1;
+            }
+            MPI_Bcast(&loc, 1, MPI_UNSIGNED, 0, MPI_COMM_WORLD);
+
+            //See who needs info about this link.
+            //0 means the proc doesn't need it, 1 means link is assigned to proc, 2 means the link is a ghost to the proc.
+            my_need = (assignments[loc] == my_rank) ? 1 : ((getting[loc]) ? 2 : 0);
+            MPI_Gather(&my_need, 1, MPI_SHORT, who_needs, 1, MPI_SHORT, 0, MPI_COMM_WORLD);
+            if (my_need == 1)
+            {
+                no_ini_start = system[loc]->no_ini_start;
+                diff_start = system[loc]->diff_start;
+                dim = system[loc]->dim;
+            }
+            else
+            {
+                MPI_Recv(&no_ini_start, 1, MPI_UNSIGNED, assignments[loc], 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                MPI_Recv(&diff_start, 1, MPI_UNSIGNED, assignments[loc], 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                MPI_Recv(&dim, 1, MPI_UNSIGNED, assignments[loc], 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+            }
+
+            //Read init data
+            v_resize(&y_0, dim);
+            for (j = diff_start; j < no_ini_start; j++)
+            {
+                if (0 == fscanf(initdata, "%lf", &(y_0.ve[j])))
+                {
+                    printf("Error: not enough states in .ini file.\n");
+                    return 1;
+                }
+            }
+
+            //Send data to assigned proc and getting proc
+            if (assignments[loc] == my_rank || getting[loc])
+            {
+                if (custom_model)
+                    system[loc]->state = custom_model->InitializeEqs(GlobalVars->global_params, system[loc]->params, system[loc]->qvs, system[loc]->dam, y_0, GlobalVars->type, diff_start, no_ini_start, system[loc]->user, external);
+                else
+                    system[loc]->state = ReadInitData(GlobalVars->global_params, system[loc]->params, system[loc]->qvs, system[loc]->dam, y_0, GlobalVars->type, diff_start, no_ini_start, system[loc]->user, external);
+                system[loc]->list = Create_List(y_0, GlobalVars->t_0, y_0.dim, system[loc]->num_dense, system[loc]->method->s, GlobalVars->iter_limit);
+                system[loc]->list->head->state = system[loc]->state;
+                system[loc]->last_t = GlobalVars->t_0;
+            }
+
+            if (assignments[loc] != my_rank)
+                MPI_Send(&(y_0.ve[diff_start]), no_ini_start - diff_start, MPI_DOUBLE, assignments[loc], 2, MPI_COMM_WORLD);
+            if (!(getting[loc]))
+            {
+                for (j = 0; j < np; j++)	if (who_needs[j] == 2)	break;
+                if (j < np)
+                    MPI_Send(&(y_0.ve[diff_start]), no_ini_start - diff_start, MPI_DOUBLE, (int)j, 2, MPI_COMM_WORLD);
+            }
+        }
+
+        //Clean up
+        fclose(initdata);
+        free(who_needs);
+    }
+    else
+    {
+        //Get initial time
+        MPI_Bcast(&(GlobalVars->t_0), 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+
+        who_needs = (short int*)malloc(np*sizeof(short int));
+        for (i = 0; i < N; i++)
+        {
+            //Get link location
+            MPI_Bcast(&loc, 1, MPI_UNSIGNED, 0, MPI_COMM_WORLD);
+
+            //Is data needed for this link assigned at this proc?
+            my_need = (assignments[loc] == my_rank) ? 1 : ((getting[loc]) ? 2 : 0);
+            MPI_Gather(&my_need, 1, MPI_SHORT, who_needs, 1, MPI_SHORT, 0, MPI_COMM_WORLD);
+
+            if (my_need)
+            {
+                no_ini_start = system[loc]->no_ini_start;
+                diff_start = system[loc]->diff_start;
+                dim = system[loc]->dim;
+
+                if (assignments[loc] == my_rank)
+                {
+                    MPI_Send(&no_ini_start, 1, MPI_UNSIGNED, 0, 1, MPI_COMM_WORLD);
+                    MPI_Send(&diff_start, 1, MPI_UNSIGNED, 0, 1, MPI_COMM_WORLD);
+                    MPI_Send(&dim, 1, MPI_UNSIGNED, 0, 1, MPI_COMM_WORLD);	//!!!! Actually, this might be available everywhere now !!!!
+                }
+
+                v_resize(&y_0, dim);
+                MPI_Recv(&(y_0.ve[diff_start]), no_ini_start - diff_start, MPI_DOUBLE, 0, 2, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+                if (custom_model)
+                    system[loc]->state = custom_model->InitializeEqs(GlobalVars->global_params, system[loc]->params, system[loc]->qvs, system[loc]->dam, y_0, GlobalVars->type, diff_start, no_ini_start, system[loc]->user, external);
+                else
+                    system[loc]->state = ReadInitData(GlobalVars->global_params, system[loc]->params, system[loc]->qvs, system[loc]->dam, y_0, GlobalVars->type, diff_start, no_ini_start, system[loc]->user, external);
+                system[loc]->list = Create_List(y_0, GlobalVars->t_0, y_0.dim, system[loc]->num_dense, system[loc]->method->s, GlobalVars->iter_limit);
+                system[loc]->list->head->state = system[loc]->state;
+                system[loc]->last_t = GlobalVars->t_0;
+            }
+        }
+
+        free(who_needs);
+    }
+
+    //Clean up
+    v_free(&y_0);
+
+    return 0;
+}
+
+static int Load_Initial_Conditions_Uini(Link** system, unsigned int N, int* assignments, short int* getting, unsigned int** id_to_loc, UnivVars* GlobalVars, ConnData** db_connections, model* custom_model, void* external)
+{
+    unsigned int i, j, loc, no_ini_start, diff_start = 0;
+    FILE* initdata = NULL;
+    short int *who_needs = NULL;
+    VEC y_0 = v_get(0);
+
+    //Proc 0 reads the initial conds, and send them to the other procs
+    if (my_rank == 0)
+    {
+        initdata = fopen(GlobalVars->init_filename, "r");
+        if (!initdata)
+        {
+            printf("Error: file %s not found for .uini file.\n", GlobalVars->init_filename);
+            return 1;
+        }
+        if (CheckWinFormat(initdata))
+        {
+            printf("Error: File %s appears to be in Windows format. Try converting to unix format using 'dos2unix' at the command line.\n", GlobalVars->init_filename);
+            fclose(initdata);
+            return 1;
+        }
+
+        fscanf(initdata, "%*i %lf", &(GlobalVars->t_0));	//Read model type, init time
+    }
+
+    //Broadcast the initial time
+    MPI_Bcast(&(GlobalVars->t_0), 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+
+    //Get number of values to read from disk (and error checking)
+    for (i = 0; i<N; i++)
+    {
+        if (assignments[i] == my_rank)
+        {
+            loc = i;
+            no_ini_start = system[loc]->no_ini_start;
+            diff_start = system[loc]->diff_start;
+            //y_0.dim = system[loc]->dim;
+            break;
+        }
+    }
+    for (; i<N; i++)
+    {
+        //if(assignments[i] == my_rank && y_0.dim != system[i]->dim)
+        if (assignments[i] == my_rank && (no_ini_start != system[i]->no_ini_start || diff_start != system[i]->diff_start))
+        {
+            printf("[%i]: Error: model type %u does not support .uini files (because a variable number of states must be specified for the initial conditions).\n", my_rank, GlobalVars->type);
+            return 1;
+        }
+    }
+
+    //no_ini_start = system[loc]->no_ini_start;
+    //diff_start = system[loc]->diff_start;
+    VEC y_0_backup = v_get(no_ini_start - diff_start);
+    //y_0_backup->dim = no_ini_start - diff_start;
+    //y_0_backup.ve = (double*) calloc(y_0_backup->dim,sizeof(double));
+
+    if (my_rank == 0)
+    {
+        //for(i=diff_start;i<no_ini_start;i++)
+        for (i = 0; i<y_0_backup.dim; i++)
+        {
+            if (fscanf(initdata, "%lf", &(y_0_backup.ve[i])) == 0)
+            {
+                printf("Error reading .uini file: Not enough initial states.\n");
+                return 1;
+            }
+        }
+
+        //Done with file, so close it
+        fclose(initdata);
+    }
+
+    MPI_Bcast(y_0_backup.ve, no_ini_start - diff_start, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+
+    //VEC* y_0_backup = v_get(y_0.dim);
+    //v_copy(y_0,y_0_backup);
+
+    //Store the data
+    for (i = 0; i<N; i++)
+    {
+        if (assignments[i] == my_rank || getting[i])
+        {
+            v_resize(&y_0, system[i]->dim);
+            for (j = diff_start; j<no_ini_start; j++)
+                y_0.ve[j] = y_0_backup.ve[j - diff_start];
+
+            if (custom_model)
+                system[i]->state = custom_model->InitializeEqs(GlobalVars->global_params, system[i]->params, system[i]->qvs, system[i]->dam, y_0, GlobalVars->type, diff_start, no_ini_start, system[i]->user, external);
+            else
+                system[i]->state = ReadInitData(GlobalVars->global_params, system[i]->params, system[i]->qvs, system[i]->dam, y_0, GlobalVars->type, diff_start, no_ini_start, system[i]->user, external);
+            system[i]->list = Create_List(y_0, GlobalVars->t_0, system[i]->dim, system[i]->num_dense, system[i]->method->s, GlobalVars->iter_limit);
+            system[i]->list->head->state = system[i]->state;
+            system[i]->last_t = GlobalVars->t_0;
+            //v_copy(y_0_backup,y_0);
+        }
+    }
+
+    //Clean up
+    v_free(&y_0);
+    v_free(&y_0_backup);
+
+    return 0;
+}
+
+static int Load_Initial_Conditions_Rec(Link** system, unsigned int N, int* assignments, short int* getting, unsigned int** id_to_loc, UnivVars* GlobalVars, ConnData** db_connections, model* custom_model, void* external)
+{
+    unsigned int i, j, id, loc, dim;
+    FILE* initdata = NULL;
+    short int *who_needs = NULL;
+    short int my_need;
+    VEC y_0 = v_get(0);
+
+    //Proc 0 reads the file and sends the data to the other procs
+    if (my_rank == 0)
+    {
+        initdata = fopen(GlobalVars->init_filename, "r");
+        if (!initdata)
+        {
+            printf("Error: file %s not found for .rec file.\n", GlobalVars->init_filename);
+            return 1;
+        }
+        if (CheckWinFormat(initdata))
+        {
+            printf("Error: File %s appears to be in Windows format. Try converting to unix format using 'dos2unix' at the command line.\n", GlobalVars->init_filename);
+            fclose(initdata);
+            return 1;
+        }
+
+        fscanf(initdata, "%*i %u %lf", &i, &(GlobalVars->t_0));	//Read model type, number of links, init time
+
+        if (i != N)
+        {
+            printf("Error: the number of links in %s differs from the number in the topology data. (Got %u, expected %u)\n", GlobalVars->init_filename, i, N);
+            return 1;
+        }
+
+        //Broadcast the initial time
+        MPI_Bcast(&(GlobalVars->t_0), 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+
+        //Read the .rec file
+        who_needs = (short int*)malloc(np*sizeof(short int));
+        for (i = 0; i<N; i++)
+        {
+            //Send current location
+            fscanf(initdata, "%u", &id);
+            loc = find_link_by_idtoloc(id, id_to_loc, N);
+            if (loc > N)
+            {
+                printf("Error: link id %u in initial condition file, but not in network.\n", id);
+                return 1;
+            }
+            MPI_Bcast(&loc, 1, MPI_UNSIGNED, 0, MPI_COMM_WORLD);
+
+            //See who needs info about this link.
+            //0 means the proc doesn't need it, 1 means link is assigned to proc, 2 means the link is a ghost to the proc.
+            my_need = (assignments[loc] == my_rank) ? 1 : ((getting[loc]) ? 2 : 0);
+            MPI_Gather(&my_need, 1, MPI_SHORT, who_needs, 1, MPI_SHORT, 0, MPI_COMM_WORLD);
+            if (my_need == 1)
+                dim = system[loc]->dim;
+            else
+                MPI_Recv(&dim, 1, MPI_UNSIGNED, assignments[loc], 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+            //Read init data
+            v_resize(&y_0, dim);
+            for (j = 0; j<y_0.dim; j++)
+            {
+                if (0 == fscanf(initdata, "%lf", &(y_0.ve[j])))
+                {
+                    printf("Error: not enough states in .rec file.\n");
+                    return 1;
+                }
+            }
+
+            //Send data to assigned proc and getting proc
+            if (assignments[loc] == my_rank || getting[loc])
+            {
+                if (system[loc]->state_check)
+                    system[loc]->state = system[loc]->state_check(y_0, GlobalVars->global_params, system[loc]->params, system[loc]->qvs, system[loc]->dam);
+                system[loc]->list = Create_List(y_0, GlobalVars->t_0, y_0.dim, system[loc]->num_dense, system[loc]->method->s, GlobalVars->iter_limit);
+                system[loc]->list->head->state = system[loc]->state;
+                system[loc]->last_t = GlobalVars->t_0;
+            }
+
+            if (assignments[loc] != my_rank)
+                MPI_Send(y_0.ve, y_0.dim, MPI_DOUBLE, assignments[loc], 2, MPI_COMM_WORLD);
+            if (!(getting[loc]))
+            {
+                for (j = 0; j<np; j++)	if (who_needs[j] == 2)	break;
+                if (j < np)
+                    MPI_Send(y_0.ve, y_0.dim, MPI_DOUBLE, (int)j, 2, MPI_COMM_WORLD);
+            }
+        }
+
+        //Clean up
+        fclose(initdata);
+        free(who_needs);
+    }
+    else
+    {
+        //Get the initial time
+        MPI_Bcast(&(GlobalVars->t_0), 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+
+        for (i = 0; i<N; i++)
+        {
+            //Get link location
+            MPI_Bcast(&loc, 1, MPI_UNSIGNED, 0, MPI_COMM_WORLD);
+
+            //Is data needed for this link assigned at this proc?
+            my_need = (assignments[loc] == my_rank) ? 1 : ((getting[loc]) ? 2 : 0);
+            MPI_Gather(&my_need, 1, MPI_SHORT, who_needs, 1, MPI_SHORT, 0, MPI_COMM_WORLD);
+
+            if (my_need)
+            {
+                dim = system[loc]->dim;
+
+                if (assignments[loc] == my_rank)
+                    MPI_Send(&dim, 1, MPI_UNSIGNED, 0, 1, MPI_COMM_WORLD);
+
+                v_resize(&y_0, dim);
+                MPI_Recv(y_0.ve, y_0.dim, MPI_DOUBLE, 0, 2, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+                if (system[loc]->state_check)
+                    system[loc]->state = system[loc]->state_check(y_0, GlobalVars->global_params, system[loc]->params, system[loc]->qvs, system[loc]->dam);
+                system[loc]->list = Create_List(y_0, GlobalVars->t_0, y_0.dim, system[loc]->num_dense, system[loc]->method->s, GlobalVars->iter_limit);
+                system[loc]->list->head->state = system[loc]->state;
+                system[loc]->last_t = GlobalVars->t_0;
+            }
+        }
+    }
+
+    //Clean up
+    v_free(&y_0);
+
+    return 0;
+}
+
+
+static int Load_Initial_Conditions_Dbc(Link** system, unsigned int N, int* assignments, short int* getting, unsigned int** id_to_loc, UnivVars* GlobalVars, ConnData** db_connections, model* custom_model, void* external)
+{
+    unsigned int i, j, loc;
+    short int *who_needs = NULL;
+    short int my_need;
+    VEC y_0 = v_get(0);
+    PGresult *res;
+
+    //!!!! Note: this assumes the database is like a .rec, with each state given. It also !!!!
+    //!!!! assumes the same number of states at each link. !!!!
+
+    //Set t_0 (I'm not really sure what else to do here...)
+    GlobalVars->t_0 = 0.0;
+
+    if (my_rank == 0)
+    {
+        //Download data
+        if (ConnectPGDB(db_connections[ASYNCH_DB_LOC_INIT]))
+        {
+            printf("Error connecting to database for init conditions.\n");
+            return 1;
+        }
+        sprintf(db_connections[ASYNCH_DB_LOC_INIT]->query, db_connections[ASYNCH_DB_LOC_INIT]->queries[0], GlobalVars->init_timestamp);
+        res = PQexec(db_connections[ASYNCH_DB_LOC_INIT]->conn, db_connections[ASYNCH_DB_LOC_INIT]->query);
+        if (CheckResError(res, "downloading init data"))	return 1;
+
+        if (PQntuples(res) != N)
+        {
+            printf("Error downloading init data. Got %i conditions, expected %u.\n", PQntuples(res), N);
+            return 1;
+        }
+
+        //Get dim
+        y_0.dim = PQnfields(res) - 1;
+        y_0.ve = (double*)realloc(y_0.ve, y_0.dim*sizeof(double));
+        MPI_Bcast(&(y_0.dim), 1, MPI_UNSIGNED, 0, MPI_COMM_WORLD);
+        who_needs = (short int*)malloc(np*sizeof(short int));
+
+        //Read data
+        for (i = 0; i<N; i++)
+        {
+            loc = find_link_by_idtoloc(atoi(PQgetvalue(res, i, 0)), id_to_loc, N);
+            for (j = 0; j<y_0.dim; j++)	y_0.ve[j] = atof(PQgetvalue(res, i, j + 1));
+            MPI_Bcast(&loc, 1, MPI_UNSIGNED, 0, MPI_COMM_WORLD);
+
+            //See who needs info about this link.
+            //0 means the proc doesn't need it, 1 means link is assigned to proc, 2 means the link is a ghost to the proc.
+            my_need = (assignments[loc] == my_rank) ? 1 : ((getting[loc]) ? 2 : 0);
+            MPI_Gather(&my_need, 1, MPI_SHORT, who_needs, 1, MPI_SHORT, 0, MPI_COMM_WORLD);
+
+            //Send the data
+            if (assignments[loc] == my_rank || getting[loc])
+            {
+                if (system[loc]->state_check != NULL)
+                    system[loc]->state = system[loc]->state_check(y_0, GlobalVars->global_params, system[loc]->params, system[loc]->qvs, system[loc]->dam);
+                system[loc]->list = Create_List(y_0, GlobalVars->t_0, y_0.dim, system[loc]->num_dense, system[loc]->method->s, GlobalVars->iter_limit);
+                system[loc]->list->head->state = system[loc]->state;
+                system[loc]->last_t = GlobalVars->t_0;
+            }
+
+            if (assignments[loc] != my_rank)
+                MPI_Send(y_0.ve, y_0.dim, MPI_DOUBLE, assignments[loc], 2, MPI_COMM_WORLD);
+            if (!(getting[loc]))
+            {
+                for (j = 0; j<np; j++)	if (who_needs[j] == 2)	break;
+                if (j < np)	MPI_Send(y_0.ve, y_0.dim, MPI_DOUBLE, (int)j, 2, MPI_COMM_WORLD);
+            }
+        }
+
+        //Clean up
+        PQclear(res);
+        DisconnectPGDB(db_connections[ASYNCH_DB_LOC_INIT]);
+        v_free(&y_0);
+        free(who_needs);
+    }
+    else
+    {
+        //Get dim
+        MPI_Bcast(&(y_0.dim), 1, MPI_UNSIGNED, 0, MPI_COMM_WORLD);
+        y_0.ve = (double*)realloc(y_0.ve, y_0.dim*sizeof(double));
+
+        for (i = 0; i<N; i++)
+        {
+            //Get link location
+            MPI_Bcast(&loc, 1, MPI_UNSIGNED, 0, MPI_COMM_WORLD);
+
+            //Is data needed for this link assigned at this proc?
+            my_need = (assignments[loc] == my_rank) ? 1 : ((getting[loc]) ? 2 : 0);
+            MPI_Gather(&my_need, 1, MPI_SHORT, who_needs, 1, MPI_SHORT, 0, MPI_COMM_WORLD);
+
+            if (my_need)
+            {
+                MPI_Recv(y_0.ve, y_0.dim, MPI_DOUBLE, 0, 2, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+                if (system[loc]->state_check != NULL)
+                    system[loc]->state = system[loc]->state_check(y_0, GlobalVars->global_params, system[loc]->params, system[loc]->qvs, system[loc]->dam);
+                system[loc]->list = Create_List(y_0, GlobalVars->t_0, y_0.dim, system[loc]->num_dense, system[loc]->method->s, GlobalVars->iter_limit);
+                system[loc]->list->head->state = system[loc]->state;
+                system[loc]->last_t = GlobalVars->t_0;
+            }
+        }
+
+        //Clean up
+        v_free(&y_0);
+    }
+
+    return 0;
+}
+
+
+static int Load_Initial_Conditions_H5(Link** system, unsigned int N, int* assignments, short int* getting, unsigned int** id_to_loc, UnivVars* GlobalVars, ConnData** db_connections, model* custom_model, void* external)
+{
+    unsigned char who_needs[256];
+    unsigned char my_need;
+
+    //Proc 0 reads the file and sends the data to the other procs
+    if (my_rank == 0)
+    {
+        hid_t file_id = H5Fopen(GlobalVars->init_filename, H5F_ACC_RDONLY, H5P_DEFAULT);
+        if (!file_id)
+        {
+            printf("Error: file %s not found for .h5 file.\n", GlobalVars->init_filename);
+            return 1;
+        }
+
+        hsize_t dims[2];
+        H5LTget_dataset_info(file_id, "/state", dims, NULL, NULL);
+
+        if (dims[0] != N)
+        {
+            printf("Error: the number of links in %s differs from the number in the topology data. (Got %llu, expected %u)\n", GlobalVars->init_filename, dims[1], N);
+            return 1;
+        }
+
+        //Assume that every links have the same dimension
+        unsigned int dim = system[0]->dim;
+
+        //Read model type, init time
+        unsigned short type;
+        H5LTget_attribute_ushort(file_id, "/", "model", &type);
+
+        if (type != GlobalVars->type)
+        {
+            printf("Error: model type do no match. (Got %hu, expected %hu)\n", GlobalVars->type, type);
+            return 1;
+        }
+
+        //Broadcast the initial time
+        MPI_Bcast(&(GlobalVars->t_0), 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+
+        int *index = malloc(N * sizeof(unsigned int));
+        double *data = malloc(N * dims[0] * sizeof(double));
+
+        H5LTread_dataset_int(file_id, "/index", index);
+        H5LTread_dataset_double(file_id, "/state", data);
+
+        //Read the .h5 file
+        for (unsigned int i = 0; i<N; i++)
+        {
+            //Send current location
+            unsigned int id = index[i];
+            unsigned int loc = find_link_by_idtoloc(id, id_to_loc, N);
+            if (loc > N)
+            {
+                printf("Error: link id %u in initial condition file, but not in network.\n", id);
+                return 1;
+            }
+            MPI_Bcast(&loc, 1, MPI_UNSIGNED, 0, MPI_COMM_WORLD);
+
+            //See who needs info about this link.
+            //0 means the proc doesn't need it, 1 means link is assigned to proc, 2 means the link is a ghost to the proc.
+            my_need = (assignments[loc] == my_rank) ? 1 : ((getting[loc]) ? 2 : 0);
+            MPI_Gather(&my_need, 1, MPI_SHORT, who_needs, 1, MPI_SHORT, 0, MPI_COMM_WORLD);
+
+            unsigned int dim;
+            if (my_need == 1)
+                dim = system[loc]->dim;
+            else
+                MPI_Recv(&dim, 1, MPI_UNSIGNED, assignments[loc], 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+            //Read init data
+            VEC y_0 = v_get(dim);
+            memcpy(y_0.ve, &data[i * dim], dim * sizeof(double));
+
+
+            //for (unsigned int j = 0; j<y_0.dim; j++)
+            //{
+            //    if (0 == fscanf(initdata, "%lf", &(y_0.ve[j])))
+            //    {
+            //        printf("Error: not enough states in .rec file.\n");
+            //        return 1;
+            //    }
+            //}
+
+            //Send data to assigned proc and getting proc
+            if (assignments[loc] == my_rank || getting[loc])
+            {
+                if (system[loc]->state_check)
+                    system[loc]->state = system[loc]->state_check(y_0, GlobalVars->global_params, system[loc]->params, system[loc]->qvs, system[loc]->dam);
+                system[loc]->list = Create_List(y_0, GlobalVars->t_0, y_0.dim, system[loc]->num_dense, system[loc]->method->s, GlobalVars->iter_limit);
+                system[loc]->list->head->state = system[loc]->state;
+                system[loc]->last_t = GlobalVars->t_0;
+            }
+
+            if (assignments[loc] != my_rank)
+                MPI_Send(y_0.ve, y_0.dim, MPI_DOUBLE, assignments[loc], 2, MPI_COMM_WORLD);
+            if (!(getting[loc]))
+            {
+                unsigned int j;
+                for (j = 0; j<np; j++)	if (who_needs[j] == 2)	break;
+                if (j < np)
+                    MPI_Send(y_0.ve, y_0.dim, MPI_DOUBLE, (int)j, 2, MPI_COMM_WORLD);
+            }
+
+            //Clean up
+            v_free(&y_0);
+        }
+
+        //Clean up
+        H5Fclose(file_id);
+    }
+    else
+    {
+        //Get the initial time
+        MPI_Bcast(&(GlobalVars->t_0), 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+
+        for (unsigned int i = 0; i<N; i++)
+        {
+            //Get link location
+            unsigned int loc;
+            MPI_Bcast(&loc, 1, MPI_UNSIGNED, 0, MPI_COMM_WORLD);
+
+            //Is data needed for this link assigned at this proc?
+            my_need = (assignments[loc] == my_rank) ? 1 : ((getting[loc]) ? 2 : 0);
+            MPI_Gather(&my_need, 1, MPI_SHORT, who_needs, 1, MPI_SHORT, 0, MPI_COMM_WORLD);
+
+            if (my_need)
+            {
+                unsigned int dim = system[loc]->dim;
+
+                if (assignments[loc] == my_rank)
+                    MPI_Send(&dim, 1, MPI_UNSIGNED, 0, 1, MPI_COMM_WORLD);
+
+                VEC y_0 = v_get(dim);
+                MPI_Recv(y_0.ve, y_0.dim, MPI_DOUBLE, 0, 2, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+                if (system[loc]->state_check)
+                    system[loc]->state = system[loc]->state_check(y_0, GlobalVars->global_params, system[loc]->params, system[loc]->qvs, system[loc]->dam);
+                system[loc]->list = Create_List(y_0, GlobalVars->t_0, y_0.dim, system[loc]->num_dense, system[loc]->method->s, GlobalVars->iter_limit);
+                system[loc]->list->head->state = system[loc]->state;
+                system[loc]->last_t = GlobalVars->t_0;
+
+                //Clean up
+                v_free(&y_0);
+            }
+        }
+    }
+
+    return 0;
+}
+
+
 //Loads the initial conditions.
-//!!!! This assumes what about the dimension??? Wow, I don't think it has to assume anything... !!!!
 //Initial state (0 = .ini, 1 = .uini, 2 = .rec, 3 = .dbc)
 int Load_Initial_Conditions(Link** system,unsigned int N,int* assignments,short int* getting,unsigned int** id_to_loc,UnivVars* GlobalVars,ConnData** db_connections,model* custom_model,void* external)
 {
-	unsigned int i,j,id,loc,no_ini_start,diff_start = 0,dim;
-	FILE* initdata = NULL;
-	short int *who_needs = NULL;
-	short int my_need;
-	VEC y_0 = v_get(0);
-	PGresult *res;
+    int res = 0;
 
-	if(GlobalVars->init_flag == 0)	//.ini   ******************************************************************************************
-	{
-		//Proc 0 reads the file and sends the data to the other procs
-		if(my_rank == 0)
-		{
-			initdata = fopen(GlobalVars->init_filename,"r");
-			if(!initdata)
-			{
-				printf("Error: file %s not found for .ini file.\n",GlobalVars->init_filename);
-				return 1;
-			}
-			if(CheckWinFormat(initdata))
-			{
-				printf("Error: File %s appears to be in Windows format. Try converting to unix format using 'dos2unix' at the command line.\n",GlobalVars->init_filename);
-				fclose(initdata);
-				return 1;
-			}
+    switch (GlobalVars->init_flag)
+    {
+    //.ini
+    case 0: 
+        res = Load_Initial_Conditions_Ini(system, N, assignments, getting, id_to_loc, GlobalVars, db_connections, custom_model, external);
+        break;
+        
+    //.uini
+    case 1:
+        res = Load_Initial_Conditions_Uini(system, N, assignments, getting, id_to_loc, GlobalVars, db_connections, custom_model, external);
+        break;
+    
+    //.rec
+    case 2:
+        res = Load_Initial_Conditions_Rec(system, N, assignments, getting, id_to_loc, GlobalVars, db_connections, custom_model, external);
+        break;
+    
+    //.dbc
+    case 3:
+        res = Load_Initial_Conditions_Dbc(system, N, assignments, getting, id_to_loc, GlobalVars, db_connections, custom_model, external);
+        break;
 
-			fscanf(initdata,"%*i %u %lf",&i,&(GlobalVars->t_0));	//Read model type, number of links, init time
+    //.h5
+    case 4:
+        res = Load_Initial_Conditions_H5(system, N, assignments, getting, id_to_loc, GlobalVars, db_connections, custom_model, external);
+        break;
 
-			if(i != N)
-			{
-				printf("Error: the number of links in %s differs from the number in the topology data. (Got %u, expected %u)\n",GlobalVars->init_filename,i,N);
-				return 1;
-			}
+    default:
+        printf("Error: invalid intial condition file type.\n");
+        res = -1;
+    }
 
-			//Broadcast initial time
-			MPI_Bcast(&(GlobalVars->t_0),1,MPI_DOUBLE,0,MPI_COMM_WORLD);
-
-			//Read the .ini file
-			who_needs = (short int*) malloc(np*sizeof(short int));
-			for(i=0;i<N;i++)
-			{
-				//Send current location
-				fscanf(initdata,"%u",&id);
-				loc = find_link_by_idtoloc(id,id_to_loc,N);
-				if(loc > N)
-				{
-					printf("Error: link id %u in initial condition file, but not in network.\n",id);
-					return 1;
-				}
-				MPI_Bcast(&loc,1,MPI_UNSIGNED,0,MPI_COMM_WORLD);
-				
-				//See who needs info about this link.
-				//0 means the proc doesn't need it, 1 means link is assigned to proc, 2 means the link is a ghost to the proc.
-				my_need = (assignments[loc] == my_rank) ? 1 : ((getting[loc]) ? 2 : 0);
-				MPI_Gather(&my_need,1,MPI_SHORT,who_needs,1,MPI_SHORT,0,MPI_COMM_WORLD);
-				if(my_need == 1)
-				{
-					no_ini_start = system[loc]->no_ini_start;
-					diff_start = system[loc]->diff_start;
-					dim = system[loc]->dim;
-				}
-				else
-				{
-					MPI_Recv(&no_ini_start,1,MPI_UNSIGNED,assignments[loc],1,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
-					MPI_Recv(&diff_start,1,MPI_UNSIGNED,assignments[loc],1,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
-					MPI_Recv(&dim,1,MPI_UNSIGNED,assignments[loc],1,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
-				}
-
-				//Read init data
-                v_resize(&y_0, dim);
-				for(j=diff_start;j<no_ini_start;j++)
-				{
-					if( 0 == fscanf(initdata,"%lf",&(y_0.ve[j])) )
-					{
-						printf("Error: not enough states in .ini file.\n");
-						return 1;
-					}
-				}
-
-				//Send data to assigned proc and getting proc
-				if(assignments[loc] == my_rank || getting[loc])
-				{
-					if(custom_model)
-						system[loc]->state = custom_model->InitializeEqs(GlobalVars->global_params,system[loc]->params,system[loc]->qvs,system[loc]->dam,y_0,GlobalVars->type,diff_start,no_ini_start,system[loc]->user,external);
-					else
-						system[loc]->state = ReadInitData(GlobalVars->global_params,system[loc]->params,system[loc]->qvs,system[loc]->dam,y_0,GlobalVars->type,diff_start,no_ini_start,system[loc]->user,external);
-					system[loc]->list = Create_List(y_0,GlobalVars->t_0,y_0.dim,system[loc]->num_dense,system[loc]->method->s,GlobalVars->iter_limit);
-					system[loc]->list->head->state = system[loc]->state;
-					system[loc]->last_t = GlobalVars->t_0;
-				}
-
-				if(assignments[loc] != my_rank)
-					MPI_Send(&(y_0.ve[diff_start]),no_ini_start-diff_start,MPI_DOUBLE,assignments[loc],2,MPI_COMM_WORLD);
-				if(!(getting[loc]))
-				{
-					for(j=0;j<np;j++)	if(who_needs[j] == 2)	break;
-					if(j < np)
-						MPI_Send(&(y_0.ve[diff_start]),no_ini_start-diff_start,MPI_DOUBLE,(int) j,2,MPI_COMM_WORLD);
-				}
-			}
-
-			//Clean up
-			fclose(initdata);
-			free(who_needs);
-		}
-		else
-		{
-			//Get initial time
-			MPI_Bcast(&(GlobalVars->t_0),1,MPI_DOUBLE,0,MPI_COMM_WORLD);
-
-			who_needs = (short int*) malloc(np*sizeof(short int));
-			for(i=0;i<N;i++)
-			{
-				//Get link location
-				MPI_Bcast(&loc,1,MPI_UNSIGNED,0,MPI_COMM_WORLD);
-
-				//Is data needed for this link assigned at this proc?
-				my_need = (assignments[loc] == my_rank) ? 1 : ((getting[loc]) ? 2 : 0);
-				MPI_Gather(&my_need,1,MPI_SHORT,who_needs,1,MPI_SHORT,0,MPI_COMM_WORLD);
-
-				if(my_need)
-				{
-					no_ini_start = system[loc]->no_ini_start;
-					diff_start = system[loc]->diff_start;
-					dim = system[loc]->dim;
-
-					if(assignments[loc] == my_rank)
-					{
-						MPI_Send(&no_ini_start,1,MPI_UNSIGNED,0,1,MPI_COMM_WORLD);
-						MPI_Send(&diff_start,1,MPI_UNSIGNED,0,1,MPI_COMM_WORLD);
-						MPI_Send(&dim,1,MPI_UNSIGNED,0,1,MPI_COMM_WORLD);	//!!!! Actually, this might be available everywhere now !!!!
-					}
-
-                    v_resize(&y_0, dim);
-					MPI_Recv(&(y_0.ve[diff_start]),no_ini_start-diff_start,MPI_DOUBLE,0,2,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
-
-					if(custom_model)
-						system[loc]->state = custom_model->InitializeEqs(GlobalVars->global_params,system[loc]->params,system[loc]->qvs,system[loc]->dam,y_0,GlobalVars->type,diff_start,no_ini_start,system[loc]->user,external);
-					else
-						system[loc]->state = ReadInitData(GlobalVars->global_params,system[loc]->params,system[loc]->qvs,system[loc]->dam,y_0,GlobalVars->type,diff_start,no_ini_start,system[loc]->user,external);
-					system[loc]->list = Create_List(y_0,GlobalVars->t_0,y_0.dim,system[loc]->num_dense,system[loc]->method->s,GlobalVars->iter_limit);
-					system[loc]->list->head->state = system[loc]->state;
-					system[loc]->last_t = GlobalVars->t_0;
-				}
-			}
-
-			free(who_needs);
-		}
-
-		//Clean up
-		v_free(&y_0);
-	}
-	else if(GlobalVars->init_flag == 1)	//.uini   ******************************************************************************************
-	{
-		//Proc 0 reads the initial conds, and send them to the other procs
-		if(my_rank == 0)
-		{
-			initdata = fopen(GlobalVars->init_filename,"r");
-			if(!initdata)
-			{
-				printf("Error: file %s not found for .uini file.\n",GlobalVars->init_filename);
-				return 1;
-			}
-			if(CheckWinFormat(initdata))
-			{
-				printf("Error: File %s appears to be in Windows format. Try converting to unix format using 'dos2unix' at the command line.\n",GlobalVars->init_filename);
-				fclose(initdata);
-				return 1;
-			}
-
-			fscanf(initdata,"%*i %lf",&(GlobalVars->t_0));	//Read model type, init time
-		}
-
-		//Broadcast the initial time
-		MPI_Bcast(&(GlobalVars->t_0),1,MPI_DOUBLE,0,MPI_COMM_WORLD);
-
-		//Get number of values to read from disk (and error checking)
-		for(i=0;i<N;i++)
-		{
-			if(assignments[i] == my_rank)
-			{
-				loc = i;
-				no_ini_start = system[loc]->no_ini_start;
-				diff_start = system[loc]->diff_start;
-				//y_0.dim = system[loc]->dim;
-				break;
-			}
-		}
-		for(;i<N;i++)
-		{
-			//if(assignments[i] == my_rank && y_0.dim != system[i]->dim)
-			if(assignments[i] == my_rank && (no_ini_start != system[i]->no_ini_start || diff_start != system[i]->diff_start))
-			{
-				printf("[%i]: Error: model type %u does not support .uini files (because a variable number of states must be specified for the initial conditions).\n",my_rank,GlobalVars->type);
-				return 1;
-			}
-		}
-
-		//no_ini_start = system[loc]->no_ini_start;
-		//diff_start = system[loc]->diff_start;
-		VEC y_0_backup = v_get(no_ini_start-diff_start);
-		//y_0_backup->dim = no_ini_start - diff_start;
-		//y_0_backup.ve = (double*) calloc(y_0_backup->dim,sizeof(double));
-
-		if(my_rank == 0)
-		{
-			//for(i=diff_start;i<no_ini_start;i++)
-			for(i=0;i<y_0_backup.dim;i++)
-			{
-				if( fscanf(initdata,"%lf",&(y_0_backup.ve[i])) == 0 )
-				{
-					printf("Error reading .uini file: Not enough initial states.\n");
-					return 1;
-				}
-			}
-
-			//Done with file, so close it
-			fclose(initdata);
-		}
-
-		MPI_Bcast(y_0_backup.ve,no_ini_start-diff_start,MPI_DOUBLE,0,MPI_COMM_WORLD);
-
-		//VEC* y_0_backup = v_get(y_0.dim);
-		//v_copy(y_0,y_0_backup);
-
-		//Store the data
-		for(i=0;i<N;i++)
-		{
-			if(assignments[i] == my_rank || getting[i])
-			{
-                v_resize(&y_0, system[i]->dim);
-				for(j=diff_start;j<no_ini_start;j++)
-                    y_0.ve[j] = y_0_backup.ve[j-diff_start];
-
-				if(custom_model)
-                    system[i]->state = custom_model->InitializeEqs(GlobalVars->global_params,system[i]->params,system[i]->qvs,system[i]->dam,y_0,GlobalVars->type,diff_start,no_ini_start,system[i]->user,external);
-				else
-                    system[i]->state = ReadInitData(GlobalVars->global_params,system[i]->params,system[i]->qvs,system[i]->dam,y_0,GlobalVars->type,diff_start,no_ini_start,system[i]->user,external);
-				system[i]->list = Create_List(y_0,GlobalVars->t_0,system[i]->dim,system[i]->num_dense,system[i]->method->s,GlobalVars->iter_limit);
-				system[i]->list->head->state = system[i]->state;
-				system[i]->last_t = GlobalVars->t_0;
-				//v_copy(y_0_backup,y_0);
-			}
-		}
-
-		//Clean up
-		v_free(&y_0);
-		v_free(&y_0_backup);
-	}
-	if(GlobalVars->init_flag == 2)	//.rec   ******************************************************************************************
-	{
-		//Proc 0 reads the file and sends the data to the other procs
-		if(my_rank == 0)
-		{
-			initdata = fopen(GlobalVars->init_filename,"r");
-			if(!initdata)
-			{
-				printf("Error: file %s not found for .rec file.\n",GlobalVars->init_filename);
-				return 1;
-			}
-			if(CheckWinFormat(initdata))
-			{
-				printf("Error: File %s appears to be in Windows format. Try converting to unix format using 'dos2unix' at the command line.\n",GlobalVars->init_filename);
-				fclose(initdata);
-				return 1;
-			}
-
-			fscanf(initdata,"%*i %u %lf",&i,&(GlobalVars->t_0));	//Read model type, number of links, init time
-
-			if(i != N)
-			{
-				printf("Error: the number of links in %s differs from the number in the topology data. (Got %u, expected %u)\n",GlobalVars->init_filename,i,N);
-				return 1;
-			}
-
-			//Broadcast the initial time
-			MPI_Bcast(&(GlobalVars->t_0),1,MPI_DOUBLE,0,MPI_COMM_WORLD);
-
-			//Read the .rec file
-			who_needs = (short int*) malloc(np*sizeof(short int));
-			for(i=0;i<N;i++)
-			{
-				//Send current location
-				fscanf(initdata,"%u",&id);
-				loc = find_link_by_idtoloc(id,id_to_loc,N);
-				if(loc > N)
-				{
-					printf("Error: link id %u in initial condition file, but not in network.\n",id);
-					return 1;
-				}
-				MPI_Bcast(&loc,1,MPI_UNSIGNED,0,MPI_COMM_WORLD);
-				
-				//See who needs info about this link.
-				//0 means the proc doesn't need it, 1 means link is assigned to proc, 2 means the link is a ghost to the proc.
-				my_need = (assignments[loc] == my_rank) ? 1 : ((getting[loc]) ? 2 : 0);
-				MPI_Gather(&my_need,1,MPI_SHORT,who_needs,1,MPI_SHORT,0,MPI_COMM_WORLD);
-				if(my_need == 1)
-					dim = system[loc]->dim;
-				else
-					MPI_Recv(&dim,1,MPI_UNSIGNED,assignments[loc],1,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
-
-				//Read init data
-                v_resize(&y_0, dim);
-				for(j=0;j<y_0.dim;j++)
-				{
-					if( 0 == fscanf(initdata,"%lf",&(y_0.ve[j])) )
-					{
-						printf("Error: not enough states in .rec file.\n");
-						return 1;
-					}
-				}
-
-				//Send data to assigned proc and getting proc
-				if(assignments[loc] == my_rank || getting[loc])
-				{
-					if(system[loc]->state_check)
-						system[loc]->state = system[loc]->state_check(y_0,GlobalVars->global_params,system[loc]->params,system[loc]->qvs,system[loc]->dam);
-					system[loc]->list = Create_List(y_0,GlobalVars->t_0,y_0.dim,system[loc]->num_dense,system[loc]->method->s,GlobalVars->iter_limit);
-					system[loc]->list->head->state = system[loc]->state;
-					system[loc]->last_t = GlobalVars->t_0;
-				}
-
-				if(assignments[loc] != my_rank)
-					MPI_Send(y_0.ve,y_0.dim,MPI_DOUBLE,assignments[loc],2,MPI_COMM_WORLD);
-				if(!(getting[loc]))
-				{
-					for(j=0;j<np;j++)	if(who_needs[j] == 2)	break;
-					if(j < np)
-						MPI_Send(y_0.ve,y_0.dim,MPI_DOUBLE,(int) j,2,MPI_COMM_WORLD);
-				}
-			}
-
-			//Clean up
-			fclose(initdata);
-			free(who_needs);
-		}
-		else
-		{
-			//Get the initial time
-			MPI_Bcast(&(GlobalVars->t_0),1,MPI_DOUBLE,0,MPI_COMM_WORLD);
-
-			for(i=0;i<N;i++)
-			{
-				//Get link location
-				MPI_Bcast(&loc,1,MPI_UNSIGNED,0,MPI_COMM_WORLD);
-
-				//Is data needed for this link assigned at this proc?
-				my_need = (assignments[loc] == my_rank) ? 1 : ((getting[loc]) ? 2 : 0);
-				MPI_Gather(&my_need,1,MPI_SHORT,who_needs,1,MPI_SHORT,0,MPI_COMM_WORLD);
-
-				if(my_need)
-				{
-					dim = system[loc]->dim;
-
-					if(assignments[loc] == my_rank)
-						MPI_Send(&dim,1,MPI_UNSIGNED,0,1,MPI_COMM_WORLD);
-
-                    v_resize(&y_0, dim);
-					MPI_Recv(y_0.ve,y_0.dim,MPI_DOUBLE,0,2,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
-
-					if(system[loc]->state_check)
-						system[loc]->state = system[loc]->state_check(y_0,GlobalVars->global_params,system[loc]->params,system[loc]->qvs,system[loc]->dam);
-					system[loc]->list = Create_List(y_0,GlobalVars->t_0,y_0.dim,system[loc]->num_dense,system[loc]->method->s,GlobalVars->iter_limit);
-					system[loc]->list->head->state = system[loc]->state;
-					system[loc]->last_t = GlobalVars->t_0;
-				}
-			}
-		}
-
-		//Clean up
-		v_free(&y_0);
-	}
-	if(GlobalVars->init_flag == 3)	//.dbc   ******************************************************************************************
-	{
-		//!!!! Note: this assumes the database is like a .rec, with each state given. It also !!!!
-		//!!!! assumes the same number of states at each link. !!!!
-
-		//Set t_0 (I'm not really sure what else to do here...)
-		GlobalVars->t_0 = 0.0;
-
-		if(my_rank == 0)
-		{
-			//Download data
-			if(ConnectPGDB(db_connections[ASYNCH_DB_LOC_INIT]))
-			{
-				printf("Error connecting to database for init conditions.\n");
-				return 1;
-			}
-			sprintf(db_connections[ASYNCH_DB_LOC_INIT]->query,db_connections[ASYNCH_DB_LOC_INIT]->queries[0],GlobalVars->init_timestamp);
-			res = PQexec(db_connections[ASYNCH_DB_LOC_INIT]->conn,db_connections[ASYNCH_DB_LOC_INIT]->query);
-			if(CheckResError(res,"downloading init data"))	return 1;
-
-			if(PQntuples(res) != N)
-			{
-				printf("Error downloading init data. Got %i conditions, expected %u.\n",PQntuples(res),N);
-				return 1;
-			}
-
-			//Get dim
-			y_0.dim = PQnfields(res) - 1;
-			y_0.ve = (double*) realloc(y_0.ve,y_0.dim*sizeof(double));
-			MPI_Bcast(&(y_0.dim),1,MPI_UNSIGNED,0,MPI_COMM_WORLD);
-			who_needs = (short int*) malloc(np*sizeof(short int));
-
-			//Read data
-			for(i=0;i<N;i++)
-			{
-				loc = find_link_by_idtoloc(atoi(PQgetvalue(res,i,0)),id_to_loc,N);
-				for(j=0;j<y_0.dim;j++)	y_0.ve[j] = atof(PQgetvalue(res,i,j+1));
-				MPI_Bcast(&loc,1,MPI_UNSIGNED,0,MPI_COMM_WORLD);
-
-				//See who needs info about this link.
-				//0 means the proc doesn't need it, 1 means link is assigned to proc, 2 means the link is a ghost to the proc.
-				my_need = (assignments[loc] == my_rank) ? 1 : ((getting[loc]) ? 2 : 0);
-				MPI_Gather(&my_need,1,MPI_SHORT,who_needs,1,MPI_SHORT,0,MPI_COMM_WORLD);
-
-				//Send the data
-				if(assignments[loc] == my_rank || getting[loc])
-				{
-					if(system[loc]->state_check != NULL)
-						system[loc]->state = system[loc]->state_check(y_0,GlobalVars->global_params,system[loc]->params,system[loc]->qvs,system[loc]->dam);
-					system[loc]->list = Create_List(y_0,GlobalVars->t_0,y_0.dim,system[loc]->num_dense,system[loc]->method->s,GlobalVars->iter_limit);
-					system[loc]->list->head->state = system[loc]->state;
-					system[loc]->last_t = GlobalVars->t_0;
-				}
-
-				if(assignments[loc] != my_rank)
-					MPI_Send(y_0.ve,y_0.dim,MPI_DOUBLE,assignments[loc],2,MPI_COMM_WORLD);
-				if(!(getting[loc]))
-				{
-					for(j=0;j<np;j++)	if(who_needs[j] == 2)	break;
-					if(j < np)	MPI_Send(y_0.ve,y_0.dim,MPI_DOUBLE,(int) j,2,MPI_COMM_WORLD);
-				}
-			}
-
-			//Clean up
-			PQclear(res);
-			DisconnectPGDB(db_connections[ASYNCH_DB_LOC_INIT]);
-			v_free(&y_0);
-			free(who_needs);
-		}
-		else
-		{
-			//Get dim
-			MPI_Bcast(&(y_0.dim),1,MPI_UNSIGNED,0,MPI_COMM_WORLD);
-			y_0.ve = (double*) realloc(y_0.ve,y_0.dim*sizeof(double));
-
-			for(i=0;i<N;i++)
-			{
-				//Get link location
-				MPI_Bcast(&loc,1,MPI_UNSIGNED,0,MPI_COMM_WORLD);
-
-				//Is data needed for this link assigned at this proc?
-				my_need = (assignments[loc] == my_rank) ? 1 : ((getting[loc]) ? 2 : 0);
-				MPI_Gather(&my_need,1,MPI_SHORT,who_needs,1,MPI_SHORT,0,MPI_COMM_WORLD);
-
-				if(my_need)
-				{
-					MPI_Recv(y_0.ve,y_0.dim,MPI_DOUBLE,0,2,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
-
-					if(system[loc]->state_check != NULL)
-						system[loc]->state = system[loc]->state_check(y_0,GlobalVars->global_params,system[loc]->params,system[loc]->qvs,system[loc]->dam);
-					system[loc]->list = Create_List(y_0,GlobalVars->t_0,y_0.dim,system[loc]->num_dense,system[loc]->method->s,GlobalVars->iter_limit);
-					system[loc]->list->head->state = system[loc]->state;
-					system[loc]->last_t = GlobalVars->t_0;
-				}
-			}
-
-			//Clean up
-			v_free(&y_0);
-		}
-	}
-
-	return 0;
+    return res;
 }
 
 
@@ -2751,16 +2971,17 @@ UnivVars* Read_Global_Data(char globalfilename[],ErrorData** GlobalErrors,Forcin
 	ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size);
 	valsread = sscanf(linebuffer,"%hu",&(GlobalVars->init_flag));
 	if(ReadLineError(valsread,1,"initial data flag"))	return NULL;
-	if(GlobalVars->init_flag == 0 || GlobalVars->init_flag == 1 || GlobalVars->init_flag == 2)
+	if(GlobalVars->init_flag == 0 || GlobalVars->init_flag == 1 || GlobalVars->init_flag == 2 || GlobalVars->init_flag == 4)
 	{
 		GlobalVars->init_filename = (char*) malloc(string_size*sizeof(char));
 		valsread = sscanf(linebuffer,"%*u %s",GlobalVars->init_filename);
-		if(ReadLineError(valsread,1,"initial data flag"))	return NULL;
-		if(GlobalVars->init_flag == 0 && !CheckFilenameExtension(GlobalVars->init_filename,".ini"))	return NULL;
-		if(GlobalVars->init_flag == 1 && !CheckFilenameExtension(GlobalVars->init_filename,".uini"))	return NULL;
-		if(GlobalVars->init_flag == 2 && !CheckFilenameExtension(GlobalVars->init_filename,".rec"))	return NULL;
+		if (ReadLineError(valsread,1,"initial data flag"))	return NULL;
+		if (GlobalVars->init_flag == 0 && !CheckFilenameExtension(GlobalVars->init_filename,".ini")) return NULL;
+		if (GlobalVars->init_flag == 1 && !CheckFilenameExtension(GlobalVars->init_filename,".uini")) return NULL;
+		if (GlobalVars->init_flag == 2 && !CheckFilenameExtension(GlobalVars->init_filename,".rec")) return NULL;
+        if (GlobalVars->init_flag == 4 && !CheckFilenameExtension(GlobalVars->init_filename, ".h5")) return NULL;
 	}
-	else if(GlobalVars->init_flag == 3)
+	else if (GlobalVars->init_flag == 3)
 	{
 		valsread = sscanf(linebuffer,"%*u %s %u",db_filename,&(GlobalVars->init_timestamp));
 		if(ReadLineError(valsread,1,".dbc for parameters"))	return NULL;
@@ -3037,12 +3258,15 @@ UnivVars* Read_Global_Data(char globalfilename[],ErrorData** GlobalErrors,Forcin
 	GlobalVars->dump_loc_filename = NULL;
 	GlobalVars->dump_table = NULL;
 
-	if(GlobalVars->dump_loc_flag == 1)
+	if(GlobalVars->dump_loc_flag == 1 || GlobalVars->dump_loc_flag == 3)
 	{
 		GlobalVars->dump_loc_filename = (char*) malloc(string_size*sizeof(char));
 		valsread = sscanf(linebuffer,"%*u %s",GlobalVars->dump_loc_filename);
 		if(ReadLineError(valsread,1,"snapshot filename"))	return NULL;
-		if(!CheckFilenameExtension(GlobalVars->dump_loc_filename,".rec"))	return NULL;
+        if ((GlobalVars->dump_loc_flag == 1) && !CheckFilenameExtension(GlobalVars->dump_loc_filename, ".rec"))
+		    return NULL;
+        if ((GlobalVars->dump_loc_flag == 3) && !CheckFilenameExtension(GlobalVars->dump_loc_filename, ".h5"))
+            return NULL;
 	}
 	else if(GlobalVars->dump_loc_flag == 2)
 	{

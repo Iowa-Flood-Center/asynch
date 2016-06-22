@@ -35,6 +35,7 @@ int Process_Data(Link** sys,UnivVars* GlobalVars,unsigned int N,unsigned int* sa
 int UploadHydrosDB(Link** sys,UnivVars* GlobalVars,unsigned int N,unsigned int* save_list,unsigned int save_size,unsigned int my_save_size,unsigned int** id_to_loc,int* assignments,char* additional_temp,char* additional_out,ConnData* conninfo,FILE** my_tempfile);
 //void DataDump(Link** sys,unsigned int N,int* assignments,UnivVars* GlobalVars,unsigned int last_file);
 int DataDump2(Link** sys,unsigned int N,int* assignments,UnivVars* GlobalVars,char* preface,ConnData* conninfo);
+int DataDumpH5(Link** sys, unsigned int N, int* assignments, UnivVars* GlobalVars, char* preface, ConnData* conninfo);
 int UploadDBDataDump(Link** sys,unsigned int N,int* assignments,UnivVars* GlobalVars,char* preface,ConnData* conninfo);
 void PrepareDatabaseTable(UnivVars* GlobalVars,ConnData* conninfo);
 int PreparePeakFlowFiles(UnivVars* GlobalVars,unsigned int peaksave_size);
