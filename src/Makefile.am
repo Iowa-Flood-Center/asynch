@@ -3,7 +3,7 @@ libasynch_a_SOURCES = rkmethods.c problems.c mathmethods.c riversys.c sort.c com
 
 bin_PROGRAMS = asynch
 asynch_SOURCES = optparse.c asynchdist.c
-asynch_LDADD = libasynch.a $(POSTGRESQL_LIBS)
-asynch_LDFLAGS = $(POSTGRESQL_LDFLAGS)
+asynch_LDADD = libasynch.a $(POSTGRESQL_LIBS) $(HDF5_LIBS)
+asynch_LDFLAGS = $(POSTGRESQL_LDFLAGS) $(HDF5_LDFLAGS)
 
-AM_CFLAGS = $(POSTGRESQL_CPPFLAGS)
+AM_CFLAGS = $(POSTGRESQL_CPPFLAGS) $(HDF5_CFLAGS)

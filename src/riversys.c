@@ -1,8 +1,10 @@
+#include <config.h>
+
 #if defined(_MSC_VER)
 #include <process.h>
 #endif
 
-#if defined(ASYNCH_WITH_HDF5)
+#if defined(HAVE_HDF5)
 #include <hdf5.h>
 #include <hdf5_hl.h>
 #endif

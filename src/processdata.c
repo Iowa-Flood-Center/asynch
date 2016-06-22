@@ -1,6 +1,8 @@
+#include <config.h>
+
 #include <errno.h>
 
-#if defined(ASYNCH_WITH_HDF5)
+#if defined(HAVE_HDF5)
 #include <hdf5.h>
 #include <hdf5_hl.h>
 #endif

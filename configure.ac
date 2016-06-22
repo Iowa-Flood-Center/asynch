@@ -11,6 +11,7 @@ AC_PROG_RANLIB
 # Checks for libraries
 AX_CHECK_ZLIB
 AX_LIB_POSTGRESQL
+AX_LIB_HDF5([serial])
 
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_FILES([Makefile src/Makefile forecasters/Makefile tests/Makefile])
