@@ -103,6 +103,7 @@ sge.qstat('IFC_QPF')
   return query.fetchUniqueValue();
 }).then(function (result) {
   var currentTime = getLatestState(),
+    endTime = currentTime + 14400 * 60,
     forcingTime = getLatestForcing() || currentTime,
     latestTime = result.value,
     user = username.sync();
@@ -120,10 +121,10 @@ sge.qstat('IFC_QPF')
   var context = {
     user: user,
     begin: currentTime,
-    end: currentTime + 14400 * 60,
+    end: endTime,
     duration: 14400,
     iniStateFile: 'state_' + currentTime + '.rec',
-    endStateFile: 'forecast_qpf_' + latestTime + '.rec',
+    endStateFile: 'forecast_qpf_' + endTime + '.rec',
     rainFileType: 1,
     rainFile: 'forcing_rain_qpf_' + latestTime + '.str',
     outHydrographsDb: {

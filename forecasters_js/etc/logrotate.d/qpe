@@ -1,0 +1,8 @@
+/Users/sdebionne/asynch/forecasters_js/log/qpe.log {
+  daily
+  rotate 7
+  copytruncate
+  compress
+  notifempty
+  missingok
+}

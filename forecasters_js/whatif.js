@@ -89,6 +89,7 @@ sge.qstat('IFC_WHATIF_2IN24H')
 })
 .then(function () {
   var currentTime = getLatestState(),
+    endTime = currentTime + 14400 * 60,
     user = username.sync();
 
   debug('current timestamp ' + currentTime);
@@ -96,12 +97,12 @@ sge.qstat('IFC_WHATIF_2IN24H')
   var context = {
     user: user,
     begin: currentTime,
-    end: currentTime + 14400 * 60,
+    end: endTime,
     duration: 14400,
     rainFileType: 4,
     rainFile: 'forcing_rain_2inches24hour.ustr',
     iniStateFile: 'state_' + currentTime + '.rec',
-    endStateFile: 'forecast_2in24h_.rec',
+    endStateFile: 'forecast_2in24h_' + endTime + '.rec',
     outHydrographsDb: {
       file: 'save_hydrograph.dbc',
       table: 'whatif_2in24h.hydrographs'

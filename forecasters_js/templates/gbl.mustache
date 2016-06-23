@@ -41,21 +41,18 @@ Classic
 %1            {{rainFileTimeRes}} {{rainFileBeginIdx}} {{rainFileEndIdx}}
 
 %Evaporation
-7 evap.mon
+7 forcing_evap.mon
 {{begin}} {{end}}
 
 %Reservoirs feed
-%3 forcing_reservoir.dbc
-%20 60.0 {{begin}} {{end}}
-0
+3 forcing_reservoir.dbc
+20 60.0 {{begin}} {{end}}
 
 %Dam (0 = no dam, 1 = .dam, 2 = .qvs)
-%3 qvs.dbc
-0
+3 qvs.dbc
 
 %Reservoir ids (0 = no reservoirs, 1 = .rsv, 2 = .dbc file)
-%1 reservoirs.rsv 2
-0
+1 reservoirs.rsv 2
 
 %Where to put write hydrographs
 %(0 = no output, 1 = .dat file, 2 = .csv file, 3 = database)

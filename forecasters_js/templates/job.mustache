@@ -3,6 +3,8 @@
 #$ -pe smp 4
 #$ -N {{name}}
 #$ -l h_rt=00:15:00
+#$ -e {{workingDir}}
+#$ -o {{workingDir}}
 
 echo Running on host: `hostname`.
 echo In directory: `pwd`
