@@ -8,6 +8,7 @@ addons:
      - libpq-dev
      - libssh2-1-dev
      - libhdf5-serial-dev
+     - hdf5-tools
 before_script:
   - test -n $CC && unset CC
 script:
