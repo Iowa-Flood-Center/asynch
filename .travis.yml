@@ -7,7 +7,7 @@ addons:
      - openmpi-bin
      - libpq-dev
      - libssh2-1-dev
-     - libhdf5-dev
+     - libhdf5-serial-dev
 before_script:
   - test -n $CC && unset CC
 script:
