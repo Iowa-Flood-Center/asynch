@@ -28,8 +28,8 @@ Classic
 %DEM Parameters (0 = .prm, 1 = database)
 0 params.prm
 
-%Initial state (0 = .ini, 1 = .uini, 2 = .rec, 3 = .dbc)
-2 {{iniStateFile}}
+%Initial state (0 = .ini, 1 = .uini, 2 = .rec, 3 = .dbc, 4 = .h5)
+{{iniStateMode}} {{iniStateFile}}
 
 %Forcings (0 = none, 1 = .str, 2 = binary, 3 = database, 4 = .ustr, 5 = forecasting, 6 = .gz binary, 7 = recurring)
 3
@@ -77,9 +77,9 @@ Classic
 1 hydrographs.sav
 3
 
-%Snapshot information (0 = none, 1 = to file, 2 = to database)
+%Snapshot information (0 = none, 1 = .rec, 2 = .dbc, 3 = .h5)
 {{#endStateFile}}
-1 {{endStateFile}}
+3 {{endStateFile}}
 {{/endStateFile}}
 
 %Filename for scratch work

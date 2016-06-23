@@ -34,7 +34,7 @@ var outputDir = argv.output;
 
 // Get latest file matching a given pattern
 function getLatest(re) {
-  var dates = fs.readdirSync(outputDir)
+  return fs.readdirSync(outputDir)
     .filter(function (filename) {
       var stat = fs.statSync(path.join(outputDir, filename));
       return (stat.isFile() && re.test(filename));
@@ -42,17 +42,21 @@ function getLatest(re) {
     .map(function (basename) {
       var m = re.exec(basename);
       if (m !== null) {
-        return parseInt(m[1]);
+        return {
+          filename: m[0],
+          time: parseInt(m[1])
+        };
       }
       return null;
+    })
+    .reduce(function(max, x) {
+      return x.time > max.time ? x : max;
     });
-
-  return Math.max.apply(Math, dates);
 }
 
 // Get the latest available state
 function getLatestState() {
-  return getLatest(/^state_(\d+).rec$/);
+  return getLatest(/^state_(\d+).(rec|h5)$/);
 }
 
 // Get the latest forcing
@@ -102,11 +106,27 @@ sge.qstat('IFC_QPF')
 .then(function (query){
   return query.fetchUniqueValue();
 }).then(function (result) {
-  var currentTime = getLatestState(),
+  var latestState = getLatestState(),
+    latestForcing = getLatestForcing();
+
+  var currentTime = latestState.time,
     endTime = currentTime + 14400 * 60,
-    forcingTime = getLatestForcing() || currentTime,
+    forcingTime = latestForcing.time || currentTime,
     latestTime = result.value,
     user = username.sync();
+  
+  var iniStateMode;
+  switch(path.extname(latestState.filename)) {
+    case '.rec':
+      iniStateMode = 2;
+      break;
+    case '.h5':
+      iniStateMode = 4;
+      break;
+    default:
+      console.error('Unkown initial state file extension');
+      process.exit(1);
+  }
 
   debug('current timestamp ' + currentTime);
   debug('last rainfall QPF timestamp ' + forcingTime);
@@ -123,10 +143,11 @@ sge.qstat('IFC_QPF')
     begin: currentTime,
     end: endTime,
     duration: 14400,
-    iniStateFile: 'state_' + currentTime + '.rec',
+    iniStateMode: iniStateMode,
+    iniStateFile: latestState.filename,
     endStateFile: 'forecast_qpf_' + endTime + '.rec',
     rainFileType: 1,
-    rainFile: 'forcing_rain_qpf_' + latestTime + '.str',
+    rainFile: latestForcing.filename,
     outHydrographsDb: {
       file: 'save_hydrograph.dbc',
       table: 'qpf.hydrographs'
