@@ -3,6 +3,8 @@ libforecaster_a_SOURCES = forecaster_methods.c
 
 bin_PROGRAMS = forecaster_maps forecaster_maps_end asynchpersis asynchpersis_end
 
+include_HEADERS = forecaster_methods.h
+
 forecaster_maps_SOURCES = forecaster_maps.c
 forecaster_maps_LDADD = libforecaster.a $(top_builddir)/src/libasynch.a -lm $(POSTGRESQL_LIBS) $(HDF5_LIBS) $(SSH2_LIBS)
 

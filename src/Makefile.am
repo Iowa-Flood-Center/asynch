@@ -3,7 +3,9 @@ libasynch_a_SOURCES = rkmethods.c problems.c mathmethods.c riversys.c sort.c com
 
 bin_PROGRAMS = asynch
 asynch_SOURCES = optparse.c asynchdist.c
-asynch_LDADD = libasynch.a $(POSTGRESQL_LIBS) $(HDF5_LIBS)
-asynch_LDFLAGS = $(POSTGRESQL_LDFLAGS) $(HDF5_LDFLAGS)
+asynch_LDADD = libasynch.a $(HDF5_LIBS) $(POSTGRESQL_LIBS)
+asynch_LDFLAGS = $(HDF5_LDFLAGS) $(POSTGRESQL_LDFLAGS)
 
-AM_CFLAGS = $(POSTGRESQL_CPPFLAGS) $(HDF5_CFLAGS)
+include_HEADERS = rkmethods.h problems.h mathmethods.h riversys.h sort.h comm.h system.h processdata.h partition.h definetype.h misc.h rainfall.h solvers.h io.h forcings.h compression.h date_manip.h asynch_interface.h modeloutputs.h data_types.h structs.h optparse.h
+
+AM_CFLAGS = $(HDF5_CFLAGS) $(POSTGRESQL_CPPFLAGS)
