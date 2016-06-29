@@ -1445,8 +1445,6 @@ int DataDump2(Link** sys,unsigned int N,int* assignments,UnivVars* GlobalVars,ch
 int DataDumpH5(Link** sys, unsigned int N, int* assignments, UnivVars* GlobalVars, char* preface, ConnData* conninfo)
 {
     unsigned int i;
-    FILE* output;
-    //double buffer[ASYNCH_MAX_DIM];
     unsigned int res = 0;
 
     if (my_rank == 0)	//Creating the file
@@ -1477,10 +1475,11 @@ int DataDumpH5(Link** sys, unsigned int N, int* assignments, UnivVars* GlobalVar
         {
             assert(sys[i]->dim == dim);
             if (assignments[i] != 0)
-                MPI_Recv(sys[i]->list->tail->y_approx.ve, sys[i]->dim, MPI_DOUBLE, assignments[i], i, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                MPI_Recv(&data[i * dim], sys[i]->dim, MPI_DOUBLE, assignments[i], i, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+            else
+                memcpy(&data[i * dim], sys[i]->list->tail->y_approx.ve, sys[i]->dim * sizeof(double));
 
             index[i] = sys[i]->ID;
-            memcpy(&data[i * dim], sys[i]->list->tail->y_approx.ve, sys[i]->dim * sizeof(double));
         }
         hsize_t index_dims[1];
         index_dims[0] = N;
