@@ -3536,7 +3536,7 @@ int ReadLineError(int valsread,int valswant,char message[])
 //Removes a suffix from filename, if present.
 //Returns 1 if suffix removed
 //0 if not (not present)
-int RemoveSuffix(char* filename,char suffix[])
+int RemoveSuffix(char* filename, const char* suffix)
 {
     size_t filename_length = strlen(filename);
     size_t suffix_length = strlen(suffix);
@@ -3544,11 +3544,11 @@ int RemoveSuffix(char* filename,char suffix[])
 
 	if(suffix_length > filename_length)	return 0;
 
-	i = filename_length-1;
-	for(j=suffix_length-1;j>-1;j--)
-		if(suffix[j] != filename[i--])	return 0;
+    char *dot = strrchr(filename, '.');
+    if (!dot || dot == filename || strcmp(dot, suffix) != 0)
+        return 0;
 
-	filename[i+1] = '\0';
+    *dot = '\0';
 	return 1;
 }
 
