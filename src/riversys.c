@@ -1332,7 +1332,7 @@ static int Load_Initial_Conditions_Dbc(Link** system, unsigned int N, int* assig
 
 static int Load_Initial_Conditions_H5(Link** system, unsigned int N, int* assignments, short int* getting, unsigned int** id_to_loc, UnivVars* GlobalVars, ConnData** db_connections, model* custom_model, void* external)
 {
-    unsigned char who_needs[256];
+    unsigned char who_needs[ASYNCH_MAX_NUMBER_OF_PROCESS];
     unsigned char my_need;
 
     //Proc 0 reads the file and sends the data to the other procs
@@ -1370,8 +1370,8 @@ static int Load_Initial_Conditions_H5(Link** system, unsigned int N, int* assign
         //Broadcast the initial time
         MPI_Bcast(&(GlobalVars->t_0), 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
-        int *index = malloc(N * sizeof(unsigned int));
-        double *data = malloc(N * dims[0] * sizeof(double));
+        int *index = malloc(dims[0] * sizeof(unsigned int));
+        double *data = malloc(dims[0] * dims[1] * sizeof(double));
 
         H5LTread_dataset_int(file_id, "/index", index);
         H5LTread_dataset_double(file_id, "/state", data);
@@ -1392,7 +1392,7 @@ static int Load_Initial_Conditions_H5(Link** system, unsigned int N, int* assign
             //See who needs info about this link.
             //0 means the proc doesn't need it, 1 means link is assigned to proc, 2 means the link is a ghost to the proc.
             my_need = (assignments[loc] == my_rank) ? 1 : ((getting[loc]) ? 2 : 0);
-            MPI_Gather(&my_need, 1, MPI_SHORT, who_needs, 1, MPI_SHORT, 0, MPI_COMM_WORLD);
+            MPI_Gather(&my_need, 1, MPI_UNSIGNED_CHAR, who_needs, 1, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
 
             unsigned int dim;
             if (my_need == 1)
@@ -1403,16 +1403,6 @@ static int Load_Initial_Conditions_H5(Link** system, unsigned int N, int* assign
             //Read init data
             VEC y_0 = v_get(dim);
             memcpy(y_0.ve, &data[i * dim], dim * sizeof(double));
-
-
-            //for (unsigned int j = 0; j<y_0.dim; j++)
-            //{
-            //    if (0 == fscanf(initdata, "%lf", &(y_0.ve[j])))
-            //    {
-            //        printf("Error: not enough states in .rec file.\n");
-            //        return 1;
-            //    }
-            //}
 
             //Send data to assigned proc and getting proc
             if (assignments[loc] == my_rank || getting[loc])
@@ -1454,7 +1444,7 @@ static int Load_Initial_Conditions_H5(Link** system, unsigned int N, int* assign
 
             //Is data needed for this link assigned at this proc?
             my_need = (assignments[loc] == my_rank) ? 1 : ((getting[loc]) ? 2 : 0);
-            MPI_Gather(&my_need, 1, MPI_SHORT, who_needs, 1, MPI_SHORT, 0, MPI_COMM_WORLD);
+            MPI_Gather(&my_need, 1, MPI_UNSIGNED_CHAR, who_needs, 1, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
 
             if (my_need)
             {

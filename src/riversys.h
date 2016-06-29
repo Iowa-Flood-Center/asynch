@@ -46,7 +46,7 @@ void ReadLineFromTextFile(FILE* globalfile,char* linebuffer,unsigned int size,un
 
 int ReadLineError(int valsread,int valswant,char message[]);
 
-int RemoveSuffix(char* filename,char suffix[]);
+int RemoveSuffix(char* filename,const char* suffix);
 
 int AttachParameters(char* filename,unsigned int max_size,VEC v,unsigned int string_size);
 
