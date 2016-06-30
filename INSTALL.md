@@ -104,7 +104,7 @@ make dist
 
 ## Installing the package
 
-For an out of source build (prefered method):
+These are the generic instruction for an out of source build (prefered method):
 
 ```
 mkdir build && cd build
@@ -116,14 +116,29 @@ make install
 
 ### Installing the package on NEON
 
-First, `git clone` the repository or `tar xzf` a released packages. To install the software for the IFC group:
+First, `git clone` the repository or `tar xzf` a released packages. To install the software for the IFC group, load the following modules:
+
+```
+module load openmpi/intel-composer_xe_2015.3.187-1.8.8
+module load hdf5/1.8.17
+```
+
+Then run the class GNU tool chain:
 
 ```
 mkdir build && cd build
-../configure --prefix=/Groups/IFC/.local CFLAGS=-DNDEBUG
+../configure --prefix=/Groups/IFC/.neon CFLAGS="-O2 -DNDEBUG" CHECK_CFLAGS=-I/Groups/IFC/.local/include CHECK_LIBS=/Groups/IFC/.local/lib/libcheck.a
 make
 make check
 make install
+```
+
+## Updating the package
+
+```
+autoreconf --install
+mkdir build && cd build
+make dist
 ```
 
 ## Standard Makefile Targets
