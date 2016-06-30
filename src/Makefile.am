@@ -6,6 +6,6 @@ asynch_SOURCES = optparse.c asynchdist.c
 asynch_LDADD = libasynch.a $(HDF5_LIBS) $(POSTGRESQL_LIBS)
 asynch_LDFLAGS = $(HDF5_LDFLAGS) $(POSTGRESQL_LDFLAGS)
 
-include_HEADERS = rkmethods.h problems.h mathmethods.h riversys.h sort.h comm.h system.h processdata.h partition.h definetype.h misc.h rainfall.h solvers.h io.h forcings.h compression.h date_manip.h asynch_interface.h modeloutputs.h data_types.h structs.h optparse.h
+include_HEADERS = rkmethods.h problems.h mathmethods.h riversys.h sort.h comm.h system.h processdata.h partition.h definetype.h misc.h rainfall.h solvers.h io.h forcings.h compression.h date_manip.h asynch_interface.h modeloutputs.h data_types.h structs.h optparse.h libpq-fwd.h
 
 AM_CFLAGS = $(HDF5_CFLAGS) $(POSTGRESQL_CPPFLAGS)

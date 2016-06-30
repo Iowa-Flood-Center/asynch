@@ -10,6 +10,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#if defined(HAVE_UNISTD_H)
+#include <unistd.h>
+#endif
 
 #if defined(_MSC_VER)
 #include <process.h>
