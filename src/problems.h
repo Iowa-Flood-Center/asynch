@@ -8,9 +8,6 @@
 #include "structs.h"
 #include "rkmethods.h"
 #include "mathmethods.h"
-#include <time.h>
-#include <stdlib.h>
-#include <stdio.h>
 //#include "muParserDLL.h"
 
 //RHS

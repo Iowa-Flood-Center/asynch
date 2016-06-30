@@ -1,3 +1,16 @@
+#if !defined(_MSC_VER)
+#include <config.h>
+#else 
+#include <config_msvc.h>
+#endif
+
+#include <string.h>
+#include <math.h>
+
+#if defined(HAVE_MPI)
+#include <mpi.h>
+#endif
+
 #include "modeloutputs.h"
 
 void SetOutputFunctions(char* outputname,char* specifier,unsigned int* states_used,unsigned int* num_states_used,short int* output_size,short int* output_type,int (**output_i)(double,VEC,VEC,VEC,int,void*),double (**output_d)(double,VEC,VEC,VEC,int,void*))

@@ -1,7 +1,22 @@
+#if !defined(_MSC_VER)
 #include <config.h>
+#else 
+#include <config_msvc.h>
+#endif
+
+#include <math.h>
+#include <memory.h>
+#include <time.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 #if defined(_MSC_VER)
 #include <process.h>
+#endif
+
+#if defined(HAVE_POSTGRESQL)
+#include <libpq-fe.h>
 #endif
 
 #if defined(HAVE_HDF5)
@@ -3540,7 +3555,6 @@ int RemoveSuffix(char* filename, const char* suffix)
 {
     size_t filename_length = strlen(filename);
     size_t suffix_length = strlen(suffix);
-    size_t i,j;
 
 	if(suffix_length > filename_length)	return 0;
 

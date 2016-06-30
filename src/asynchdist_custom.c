@@ -1,5 +1,11 @@
-#include <stdio.h>
 #if !defined(_MSC_VER)
+#include <config.h>
+#else 
+#include <config_msvc.h>
+#endif
+
+#include <stdio.h>
+#if defined(HAVE_UNISTD_H)
 #  include <unistd.h>
 #endif
 

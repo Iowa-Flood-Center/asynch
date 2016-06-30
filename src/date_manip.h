@@ -5,7 +5,6 @@
 #pragma once
 #endif // _MSC_VER > 1000
 
-#include <stdio.h>
 #include <time.h>
 
 void copy_tm(struct tm *source,struct tm *dest);

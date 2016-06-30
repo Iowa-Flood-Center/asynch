@@ -1,3 +1,14 @@
+#if !defined(_MSC_VER)
+#include <config.h>
+#else 
+#include <config_msvc.h>
+#endif
+
+#include <stdio.h>
+#include <stdlib.h>
+
+#include <mpi.h>
+
 #include "partition.h"
 
 //Partitions a river system by first partitioning the leaves.

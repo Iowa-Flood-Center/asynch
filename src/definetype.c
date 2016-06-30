@@ -1,3 +1,15 @@
+#if !defined(_MSC_VER)
+#include <config.h>
+#else 
+#include <config_msvc.h>
+#endif
+
+#include <stdio.h>
+#include <stdlib.h>
+#if defined(HAVE_UNISTD_H)
+#include <unistd.h>
+#endif
+
 #include "definetype.h"
 
 //Sets the various sizes and flags for the model. This method should set the following fields:

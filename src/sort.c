@@ -1,3 +1,11 @@
+#if !defined(_MSC_VER)
+#include <config.h>
+#else 
+#include <config_msvc.h>
+#endif
+
+#include <stdlib.h>
+
 #include "sort.h"
 
 //Sorts a list of links by upstream area. Uses merge sort.

@@ -146,6 +146,9 @@
     <ClInclude Include="$(RootDir)\src\system.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\src\libpq-fwd.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="$(RootDir)\LICENSE" />

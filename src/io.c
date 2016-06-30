@@ -1,3 +1,12 @@
+#if !defined(_MSC_VER)
+#include <config.h>
+#else 
+#include <config_msvc.h>
+#endif
+
+#include <stdio.h>
+#include <string.h>
+
 #include "io.h"
 
 //Creates an io object

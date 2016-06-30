@@ -5,9 +5,6 @@
 #pragma once
 #endif // _MSC_VER > 1000
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <libpq-fe.h>
 #include "structs.h"
 #include "compression.h"
 #include "comm.h"

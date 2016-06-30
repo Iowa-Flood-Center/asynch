@@ -1,3 +1,20 @@
+#if !defined(_MSC_VER)
+#include <config.h>
+#else 
+#include <config_msvc.h>
+#endif
+
+#if !defined(_MSC_VER)
+#define ASYNCH_SLEEP sleep
+#else
+#include <windows.h>
+#define ASYNCH_SLEEP Sleep
+#endif
+
+#if defined(HAVE_POSTGRESQL)
+#include <libpq-fe.h>
+#endif
+
 #include "forecaster_methods.h"
 
 
@@ -510,7 +527,7 @@ int SendFilesTo51(char* loclfile,char* serverlocation)
 {
     int error_code = 0;
 
-#if defined(_MSV_VER) && defined(WITH_LIBSSH2)
+#if defined(HAVE_LIBSSH2)
 	char filename[1024];	
 	if(FindFilename(loclfile,filename))
 	{

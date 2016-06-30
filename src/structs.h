@@ -5,10 +5,20 @@
 #pragma once
 #endif // _MSC_VER > 1000
 
+#if !defined(_MSC_VER)
+#include <config.h>
+#else 
+#include <config_msvc.h>
+#endif
+
+#include <stdio.h>
+
+#if defined(HAVE_MPI)
+#include <mpi.h>
+#endif
+
+#include "libpq-fwd.h"
 #include "mathmethods.h"
-#include "mpi.h"
-#include <libpq-fe.h>
-//#include "muParserDLL.h"
 
 //Note: For parser, uncomment out formula and equation data here.
 //Also go through riversys.c for equation (3 instances).
@@ -404,6 +414,7 @@ typedef struct Forcing
     unsigned int lastused_last_file;    //!< The value of last_file when the GetPasses routine was last called. 0 if never set.
     unsigned int number_timesteps;      //!< The number of times which feature a forcing at some link.
 } Forcing;
+
 
 //Structure to hold information about how data is to be transfered between processes.
 typedef struct TransData

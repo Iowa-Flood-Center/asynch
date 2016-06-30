@@ -1,3 +1,12 @@
+#if !defined(_MSC_VER)
+#include <config.h>
+#else 
+#include <config_msvc.h>
+#endif
+
+#include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <assert.h>
 #include <memory.h>
 

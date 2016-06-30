@@ -5,15 +5,14 @@
 #pragma once
 #endif // _MSC_VER > 1000
 
+#include <time.h>
+#include <mpi.h>
+
 #include "comm.h"
 #include "riversys.h"
 #include "processdata.h"
-#include <time.h>
 #include "structs.h"
-#include <mpi.h>
 #include "solvers.h"
-#include <stdio.h>
-#include <stdlib.h>
 #include "io.h"
 #include "data_types.h"
 

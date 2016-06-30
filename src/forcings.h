@@ -5,8 +5,6 @@
 #pragma once
 #endif // _MSC_VER > 1000
 
-#include <stdio.h>
-#include <stdlib.h>
 #include "structs.h"
 #include "rainfall.h"
 #include "io.h"

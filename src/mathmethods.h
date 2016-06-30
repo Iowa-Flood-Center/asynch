@@ -5,10 +5,6 @@
 #pragma once
 #endif // _MSC_VER > 1000
 
-#include <math.h>
-#include <stdio.h>
-#include <stdlib.h>
-
 typedef struct 
 {
 	double* ve;

@@ -1,3 +1,18 @@
+#if !defined(_MSC_VER)
+#include <config.h>
+#else 
+#include <config_msvc.h>
+#endif
+
+#if !defined(_MSC_VER)
+#define ASYNCH_SLEEP sleep
+#else
+#include <windows.h>
+#define ASYNCH_SLEEP Sleep
+#endif
+
+#include <stdio.h>
+
 #include "asynch_interface.h"
 
 

@@ -5,11 +5,6 @@
 #pragma once
 #endif // _MSC_VER > 1000
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <math.h>
-#include <time.h>
-#include <libpq-fe.h>
 #include "structs.h"
 #include "rkmethods.h"
 #include "partition.h"

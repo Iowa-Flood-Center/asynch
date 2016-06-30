@@ -1,6 +1,31 @@
+#if !defined(_MSC_VER)
 #include <config.h>
+#else 
+#include <config_msvc.h>
+#endif
 
+#include <assert.h>
 #include <errno.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+#include <string.h>
+#if defined(HAVE_UNISTD_H)
+#include <unistd.h>
+#endif
+
+#if !defined(_MSC_VER)
+#define ASYNCH_SLEEP sleep
+#else
+#include <windows.h>
+#define ASYNCH_SLEEP Sleep
+#endif
+
+#include <mpi.h>
+
+#if defined(HAVE_POSTGRESQL)
+#include <libpq-fe.h>
+#endif
 
 #if defined(HAVE_HDF5)
 #include <hdf5.h>

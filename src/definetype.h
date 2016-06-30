@@ -5,11 +5,6 @@
 #pragma once
 #endif // _MSC_VER > 1000
 
-#include <stdio.h>
-#include <stdlib.h>
-#if !defined(_MSC_VER)
-#include <unistd.h>
-#endif
 #include "structs.h"
 #include "system.h"
 #include "rkmethods.h"

@@ -5,7 +5,6 @@
 #pragma once
 #endif // _MSC_VER > 1000
 
-#include <stdio.h>
 #include "structs.h"
 #include "comm.h"
 #include "modeloutputs.h"

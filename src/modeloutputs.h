@@ -6,7 +6,6 @@
 #endif // _MSC_VER > 1000
 
 #include "structs.h"
-#include <string.h>
 #include "data_types.h"
 
 extern int np;

@@ -5,10 +5,6 @@
 #pragma once
 #endif // _MSC_VER > 1000
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <math.h>
-#include <string.h>
 #include "mathmethods.h"
 #include "structs.h"
 #include "problems.h"

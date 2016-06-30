@@ -1,20 +1,27 @@
-#include <stdio.h>
-#include <stdbool.h>
-#include <stdarg.h>
-
-#if !defined(_MSC_VER)
-#include <unistd.h>
-#endif
-
-#include "mpi.h"
-#include "asynch_interface.h"
-#include "optparse.h"
-
 #if !defined(_MSC_VER)
 #include <config.h>
 #else 
 #include <config_msvc.h>
 #endif
+
+#include <stdio.h>
+#include <stdbool.h>
+#include <stdarg.h>
+
+#if defined(HAVE_UNISTD_H)
+#include <unistd.h>
+#endif
+
+#if !defined(_MSC_VER)
+#define ASYNCH_SLEEP sleep
+#else
+#include <windows.h>
+#define ASYNCH_SLEEP Sleep
+#endif
+
+#include "mpi.h"
+#include "asynch_interface.h"
+#include "optparse.h"
 
 // Global variables
 int my_rank = 0;

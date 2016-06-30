@@ -5,13 +5,14 @@
 #pragma once
 #endif // _MSC_VER > 1000
 
+#if defined(HAVE_MPI)
 #include <mpi.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#endif
+
 #include "structs.h"
 #include "system.h"
 #include "sort.h"
+#include "libpq-fwd.h"
 
 extern int my_rank;
 extern int np;

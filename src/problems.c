@@ -1,3 +1,13 @@
+#if !defined(_MSC_VER)
+#include <config.h>
+#else 
+#include <config_msvc.h>
+#endif
+
+#include <time.h>
+#include <stdlib.h>
+#include <stdio.h>
+
 #include "problems.h"
 
 extern VEC dump;

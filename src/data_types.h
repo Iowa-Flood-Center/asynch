@@ -5,10 +5,6 @@
 #pragma once
 #endif // _MSC_VER > 1000
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <math.h>
-
 #define ASYNCH_BAD_TYPE -1
 #define ASYNCH_CHAR 0
 #define ASYNCH_SHORT 1

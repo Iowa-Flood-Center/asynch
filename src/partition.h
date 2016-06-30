@@ -5,9 +5,6 @@
 #pragma once
 #endif // _MSC_VER > 1000
 
-#include "mpi.h"
-#include <stdio.h>
-#include <stdlib.h>
 #include "structs.h"
 #include "system.h"
 #include "sort.h"

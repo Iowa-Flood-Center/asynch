@@ -1,5 +1,22 @@
-#include "rainfall.h"
+#if !defined(_MSC_VER)
+#include <config.h>
+#else 
+#include <config_msvc.h>
+#endif
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
+
+#if defined(HAVE_POSTGRESQL)
+#include <libpq-fe.h>
+#endif
+
+#if defined(HAVE_LIBZ)
+#include <zlib.h>
+#endif
+
+#include "rainfall.h"
 
 
 //This reads in a set of binary files for the rainfall at each link.

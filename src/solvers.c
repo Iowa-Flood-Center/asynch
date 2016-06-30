@@ -1,3 +1,9 @@
+#if !defined(_MSC_VER)
+#include <config.h>
+#else 
+#include <config_msvc.h>
+#endif
+
 #include "solvers.h"
 
 void AsynchSolver(Link** sys,unsigned int N,unsigned int* my_sys,unsigned int my_N,UnivVars* GlobalVars,int* assignments,short int* getting,unsigned int* res_list,unsigned int res_size,unsigned int** id_to_loc,TempStorage* workspace,Forcing** forcings,ConnData** db_connections,TransData* my_data,short int print_flag,FILE* outputfile)

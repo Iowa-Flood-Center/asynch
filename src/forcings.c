@@ -1,3 +1,16 @@
+#if !defined(_MSC_VER)
+#include <config.h>
+#else 
+#include <config_msvc.h>
+#endif
+
+#include <stdio.h>
+#include <stdlib.h>
+
+#if defined(HAVE_POSTGRESQL)
+#include <libpq-fe.h>
+#endif
+
 #include "forcings.h"
 
 

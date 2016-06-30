@@ -49,11 +49,11 @@
     <ClCompile>
       <PrecompiledHeader>
       </PrecompiledHeader>
-      <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_WARNINGS;ASYNCH_WITH_HDF5;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>$(MSMPI_INC);c:\python27\include;$(RootDir)\third_party\zlib-1.2.8;$(RootDir)\third_party\postgresql-8.4.22-1\include;$(MSMPI_INC)\x64;$(RootDir)\third_party\hdf5-1.8.16-win64\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(MSMPI_INC);$(MSMPI_INC)\x64;$(RootDir);$(RootDir)\third_party\zlib-1.2.8;$(RootDir)\third_party\postgresql-8.4.22-1\include;$(RootDir)\third_party\hdf5-1.8.16-win64\include</AdditionalIncludeDirectories>
+      <WarningLevel>Level3</WarningLevel>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -73,7 +73,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_WARNINGS;ASYNCH_WITH_HDF5;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>$(MSMPI_INC);c:\python27\include;$(RootDir)\third_party\zlib-1.2.8;$(RootDir)\third_party\postgresql-8.4.22-1\include;$(MSMPI_INC)\x64;$(RootDir)\third_party\hdf5-1.8.16-win64\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(MSMPI_INC);$(MSMPI_INC)\x64;$(RootDir);$(RootDir)\third_party\zlib-1.2.8;$(RootDir)\third_party\postgresql-8.4.22-1\include;$(RootDir)\third_party\hdf5-1.8.16-win64\include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -108,6 +108,7 @@
     <ClInclude Include="$(RootDir)\src\sort.h" />
     <ClInclude Include="$(RootDir)\src\structs.h" />
     <ClInclude Include="$(RootDir)\src\system.h" />
+    <ClInclude Include="..\..\..\src\libpq-fwd.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="$(RootDir)\src\asynch_interface.c" />

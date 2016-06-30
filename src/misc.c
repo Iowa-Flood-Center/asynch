@@ -1,3 +1,13 @@
+#if !defined(_MSC_VER)
+#include <config.h>
+#else 
+#include <config_msvc.h>
+#endif
+
+#include <math.h>
+#include <stdio.h>
+#include <string.h>
+
 #include "misc.h"
 
 //Calculates the order of each link in sys

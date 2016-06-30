@@ -11,7 +11,6 @@
 #include "rkmethods.h"
 #include "system.h"
 #include "forcings.h"
-#include <stdio.h>
 
 extern int np;
 extern int my_rank;

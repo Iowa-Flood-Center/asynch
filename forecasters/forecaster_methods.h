@@ -1,21 +1,27 @@
 #ifndef FORECASTER_METHODS_H
 #define FORECASTER_METHODS_H
 
-#include "structs.h"
-#include "comm.h"
-#include "riversys.h"
 #include <time.h>
-#include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
-#if !defined(_MSC_VER)
+
+#if defined(HAVE_SSH2)
+#include <mpi.h>
+#endif
+#if defined(HAVE_UNISTD_H)
 #include <unistd.h>
+#endif
+#if defined(HAVE_SSH2)
 #include <libssh2.h>
 #include <arpa/inet.h>
-#else
+#endif
+#if defined(HAVE_SYS_STAT_H)
 #include <sys/stat.h>
 #endif
 
+#include "structs.h"
+#include "comm.h"
+#include "riversys.h"
 
 typedef struct ForecastData
 {
