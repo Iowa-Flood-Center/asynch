@@ -10,9 +10,9 @@
 #include "io.h"
 
 //Creates an io object
-io* BuildIO(UnivVars* GlobalVars)
+InOut* BuildIO(UnivVars* GlobalVars)
 {
-	io* output_data = (io*) malloc(sizeof(io));
+    InOut* output_data = (InOut*) malloc(sizeof(InOut));
 
 	//Temporary Calculations
 	output_data->PrepareTempOutput = &PrepareTempFiles;
@@ -46,7 +46,7 @@ io* BuildIO(UnivVars* GlobalVars)
         output_data->CreateSnapShot = &DataDump2;
     else if (GlobalVars->dump_loc_flag == 2)
         output_data->CreateSnapShot = &UploadDBDataDump;
-    else if (GlobalVars->dump_loc_flag == 3)
+    else if ((GlobalVars->dump_loc_flag == 3) || (GlobalVars->dump_loc_flag == 4))
         output_data->CreateSnapShot = &DataDumpH5;
 	else
 		output_data->CreateSnapShot = NULL;

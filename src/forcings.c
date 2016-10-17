@@ -17,14 +17,7 @@
 Forcing* InitializeForcings()
 {
 	Forcing* forcing = (Forcing*) malloc(sizeof(Forcing));
-	forcing->filename = NULL;
-	forcing->GlobalForcing = NULL;
-	forcing->lookup_filename = NULL;
-	forcing->grid_to_linkid = NULL;
-	forcing->num_links_in_grid = NULL;
-	forcing->received = NULL;
-	forcing->intensities = NULL;
-	forcing->fileident = NULL;
+    memset(forcing, 0, sizeof(Forcing));
 	return forcing;
 }
 

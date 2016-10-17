@@ -27,7 +27,7 @@
 extern int np;
 extern int my_rank;
 
-io* BuildIO(UnivVars* GlobalVars);
+InOut* BuildIO(UnivVars* GlobalVars);
 
 ConnData* ReadDBC(char* filename,unsigned int string_size);
 void WriteValue(FILE* outputfile,char* specifier,char* data_storage,short int data_type,char* delim);

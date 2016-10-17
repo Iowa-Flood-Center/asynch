@@ -143,7 +143,7 @@ typedef struct ConnData
     unsigned int num_queries;
 } ConnData;
 
-typedef struct io
+typedef struct
 {
     //Temporary Calculations
     FILE* (*PrepareTempOutput)(struct Link**,unsigned int,int*,struct UnivVars*,unsigned int*,unsigned int,unsigned int,char*,unsigned int**);
@@ -158,10 +158,11 @@ typedef struct io
 
     //Create Snapshot
     int (*CreateSnapShot)(struct Link**,unsigned int,int*,struct UnivVars*,char*,struct ConnData*);
-} io;
+} InOut;
 
 
 #define ASYNCH_MAX_NUM_FORCINGS 12
+#define ASYNCH_MAX_TIMESTAMP_LENGTH 12
 #define ASYNCH_MAX_PATH_LENGTH 1024
 #define ASYNCH_MAX_QUERY_LENGTH 2048
 #define ASYNCH_MAX_DIM 256
@@ -242,6 +243,7 @@ typedef struct UnivVars
     short unsigned int hydros_loc_flag;
     short unsigned int peaks_loc_flag;
     short unsigned int dump_loc_flag;
+    double dump_time;                   //!< Each link states will dump every dump_time minutes.
     short unsigned int res_flag;
     char* hydros_loc_filename;
     char* peaks_loc_filename;
@@ -262,7 +264,7 @@ typedef struct UnivVars
     short int* output_types;
     short int* output_sizes;
 
-    io* output_data;
+    InOut* output_data;
 
     //Peakflow stuff
     char* peakflow_function_name;

@@ -4,6 +4,9 @@
 #include <config_msvc.h>
 #endif
 
+
+#include <memory.h>
+
 #include "solvers.h"
 
 void AsynchSolver(Link** sys,unsigned int N,unsigned int* my_sys,unsigned int my_N,UnivVars* GlobalVars,int* assignments,short int* getting,unsigned int* res_list,unsigned int res_size,unsigned int** id_to_loc,TempStorage* workspace,Forcing** forcings,ConnData** db_connections,TransData* my_data,short int print_flag,FILE* outputfile)
@@ -22,7 +25,6 @@ void AsynchSolver(Link** sys,unsigned int N,unsigned int* my_sys,unsigned int my
 
 	//Initialize values for forcing data
 	unsigned int passes = 1;
-	double maxtime;
 	for(i=0;i<GlobalVars->num_forcings;i++)
 	{
 		if(forcings[i]->active)
@@ -33,6 +35,10 @@ void AsynchSolver(Link** sys,unsigned int N,unsigned int* my_sys,unsigned int my
 		}
 	}
 
+    //Snapshot passes
+    if (GlobalVars->dump_loc_flag == 4)
+        passes = max(passes, (unsigned int) ceil(GlobalVars->maxtime / GlobalVars->dump_time));
+
 	//Start the main loop
 	for(k=0;k<passes;k++)
 	{
@@ -41,10 +47,11 @@ void AsynchSolver(Link** sys,unsigned int N,unsigned int* my_sys,unsigned int my
 		current = sys[my_sys[my_N-1]];
 		curr_idx = 0;
 		last_idx = my_N - 1;
-		for(i=0;i<my_N;i++)	done[i] = 0;
+
+        memset(done, 0, my_N * sizeof(short int));
 
 		//Read in next set of forcing data
-		maxtime = GlobalVars->maxtime;
+        double maxtime = GlobalVars->maxtime;
 		for(i=0;i<GlobalVars->num_forcings;i++)
 		{
 			if(forcings[i]->active)
@@ -59,6 +66,24 @@ void AsynchSolver(Link** sys,unsigned int N,unsigned int* my_sys,unsigned int my
 				maxtime = min(maxtime,forcings[i]->maxtime);
 			}
 		}
+
+        //Check shapshot next time
+        if (GlobalVars->dump_loc_flag == 4)
+        {
+            double last_time = sys[my_sys[0]]->last_t;
+            double next_time = fmod(last_time, GlobalVars->dump_time);
+            if (next_time < 1e-14)
+            {
+                char suffix[ASYNCH_MAX_TIMESTAMP_LENGTH];
+                snprintf(suffix, ASYNCH_MAX_TIMESTAMP_LENGTH, "%d", (int)round(last_time));
+                GlobalVars->output_data->CreateSnapShot(sys, N, assignments, GlobalVars, suffix, NULL);
+                next_time = last_time + GlobalVars->dump_time;
+            }
+            else
+                next_time = ceil(next_time) * GlobalVars->dump_time;
+
+            maxtime = min(maxtime, next_time);
+        }
 
 		//If a state forcing is used, previously outputted data may need to be rewritten
 		if(GlobalVars->res_flag)

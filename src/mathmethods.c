@@ -525,7 +525,7 @@ void v_copy(VEC src,VEC dest)
 void v_copy_n(VEC src,VEC dest,unsigned int n)
 {
     assert(n <= dest.dim);
-    assert(n >= src.dim);
+    assert(n <= src.dim);
     memcpy(dest.ve, src.ve, n * sizeof(double));
 }
 

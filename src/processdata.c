@@ -1470,17 +1470,28 @@ int DataDump2(Link** sys,unsigned int N,int* assignments,UnivVars* GlobalVars,ch
 	return 0;
 }
 
-int DataDumpH5(Link** sys, unsigned int N, int* assignments, UnivVars* GlobalVars, char* preface, ConnData* conninfo)
+int DataDumpH5(Link** sys, unsigned int N, int* assignments, UnivVars* GlobalVars, char* suffix, ConnData* conninfo)
 {
     unsigned int i;
     unsigned int res = 0;
 
     if (my_rank == 0)	//Creating the file
     {
-        hid_t file_id = H5Fcreate(GlobalVars->dump_loc_filename, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+        char dump_loc_filename[ASYNCH_MAX_PATH_LENGTH];
+        strcpy(dump_loc_filename, GlobalVars->dump_loc_filename);
+        if (suffix)
+        {
+            char *dot = strrchr(dump_loc_filename, '.');
+            if (dot != NULL)
+                *dot = NULL;
+
+            snprintf(dump_loc_filename, ASYNCH_MAX_PATH_LENGTH, "%s_%s.h5", dump_loc_filename, suffix);
+        }   
+        
+        hid_t file_id = H5Fcreate(dump_loc_filename, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
         if (file_id < 0)
         {
-            printf("Error: could not open h5 file %s.\n", GlobalVars->dump_loc_filename);
+            printf("Error: could not open h5 file %s.\n", dump_loc_filename);
             res = 1;
             MPI_Bcast(&res, 1, MPI_UNSIGNED, 0, MPI_COMM_WORLD);
             return res;

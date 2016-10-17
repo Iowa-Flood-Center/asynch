@@ -789,7 +789,7 @@ int Initialize_Model(Link** system,unsigned int N,unsigned int* my_sys,unsigned 
                     smallest_dim = system[i]->errorinfo->reltol_dense.dim;
 				if(GlobalVars->min_error_tolerances > smallest_dim)
 				{
-					printf("[%i] Error: link id %u does not have enough error tolerances (got %u, expected %u)\n",my_rank,system[i]->ID,smallest_dim,system[i]->dim);
+					printf("[%i] Error: link id %u does not have enough error tolerances (got %u, expected %u)\n",my_rank,system[i]->ID,smallest_dim, GlobalVars->min_error_tolerances);
 					my_error_code = 1;
 					break;
 				}
@@ -3055,7 +3055,7 @@ UnivVars* Read_Global_Data(char globalfilename[],ErrorData** GlobalErrors,Forcin
 
 			ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size);
 			valsread = sscanf(linebuffer,"%u %lf %u %u",&(forcings[i]->increment),&(forcings[i]->file_time),&(forcings[i]->first_file),&(forcings[i]->last_file));
-			if(ReadLineError(valsread,4,"time increment, file time, first file, and last file"))	return NULL;
+			if(ReadLineError(valsread,4,"chunk size, time resolution, beginning unix time, and ending unix time"))	return NULL;
 			forcings[i]->raindb_start_time = forcings[i]->first_file;
 		}
 		else if(forcings[i]->flag == 9)	//Database with irregular timesteps
@@ -3287,6 +3287,14 @@ UnivVars* Read_Global_Data(char globalfilename[],ErrorData** GlobalErrors,Forcin
 		//GlobalVars->dump_loc_filename = NULL;
 		db_connections[ASYNCH_DB_LOC_SNAPSHOT_OUTPUT] = ReadDBC(db_filename,string_size);
 	}
+    else if (GlobalVars->dump_loc_flag == 4)
+    {
+        GlobalVars->dump_loc_filename = (char*)malloc(string_size * sizeof(char));
+        valsread = sscanf(linebuffer, "%*u %lf %s", &GlobalVars->dump_time, GlobalVars->dump_loc_filename);
+        if (ReadLineError(valsread, 2, "snapshot time and filename"))	return NULL;
+        if (!CheckFilenameExtension(GlobalVars->dump_loc_filename, ".h5"))
+            return NULL;
+    }
 
 	//Grab folder locations
 	//GlobalVars->results_folder = (char*) malloc(string_size*sizeof(char));
