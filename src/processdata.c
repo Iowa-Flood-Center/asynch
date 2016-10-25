@@ -152,7 +152,7 @@ int Process_Data(Link** sys,UnivVars* GlobalVars,unsigned int N,unsigned int* sa
 				if(my_rank == 0)
 					fprintf(outputfile,"\n%u %u\n",save_list[i],current->disk_iterations);
 				else
-					MPI_Send(&(current->disk_iterations),1,MPI_UNSIGNED,0,save_list[i],MPI_COMM_WORLD);
+					MPI_Ssend(&(current->disk_iterations),1,MPI_UNSIGNED,0,save_list[i],MPI_COMM_WORLD);
 
 				//Read data in the temp file
 				if(my_rank == 0)
@@ -174,7 +174,7 @@ int Process_Data(Link** sys,UnivVars* GlobalVars,unsigned int N,unsigned int* sa
 						for(m=0;m<dim;m++)
 						{
 							fread(data_storage,GlobalVars->output_sizes[m],1,inputfile);
-							MPI_Send(&data_storage,size,MPI_CHAR,0,save_list[i],MPI_COMM_WORLD);
+							MPI_Ssend(&data_storage,size,MPI_CHAR,0,save_list[i],MPI_COMM_WORLD);
 						}
 					}
 				}
@@ -267,7 +267,7 @@ int Process_Data(Link** sys,UnivVars* GlobalVars,unsigned int N,unsigned int* sa
 			{
 				if(my_max_disk < current->disk_iterations)	my_max_disk = current->disk_iterations;
 				if(my_rank != 0)
-					MPI_Send(&(current->disk_iterations),1,MPI_INT,0,save_list[j],MPI_COMM_WORLD);
+					MPI_Ssend(&(current->disk_iterations),1,MPI_INT,0,save_list[j],MPI_COMM_WORLD);
 			}
 			else if(my_rank == 0)
 				MPI_Recv(&(current->disk_iterations),1,MPI_INT,assignments[loc],save_list[j],MPI_COMM_WORLD,MPI_STATUS_IGNORE);
@@ -363,7 +363,7 @@ int Process_Data(Link** sys,UnivVars* GlobalVars,unsigned int N,unsigned int* sa
 						for(l=0;l<dim;l++)
 						{
 							fread(data_storage,GlobalVars->output_sizes[l],1,inputfile);
-							MPI_Send(&data_storage,16,MPI_CHAR,0,save_list[i],MPI_COMM_WORLD);
+							MPI_Ssend(&data_storage,16,MPI_CHAR,0,save_list[i],MPI_COMM_WORLD);
 						}
 						fgetpos(inputfile,&(positions[i]));
 						(space_counter[i])++;
@@ -1461,7 +1461,7 @@ int DataDump2(Link** sys,unsigned int N,int* assignments,UnivVars* GlobalVars,ch
 			if(assignments[i] == my_rank)
 			{
                 memcpy(buffer, sys[i]->list->tail->y_approx.ve, sys[i]->dim * sizeof(double));
-				MPI_Send(buffer,sys[i]->dim,MPI_DOUBLE,0,i,MPI_COMM_WORLD);
+				MPI_Ssend(buffer,sys[i]->dim,MPI_DOUBLE,0,i,MPI_COMM_WORLD);
 			}
 		}
 	}
@@ -1542,7 +1542,7 @@ int DataDumpH5(Link** sys, unsigned int N, int* assignments, UnivVars* GlobalVar
         for (i = 0; i<N; i++)
         {
             if (assignments[i] == my_rank)
-                MPI_Send(sys[i]->list->tail->y_approx.ve, sys[i]->dim, MPI_DOUBLE, 0, i, MPI_COMM_WORLD);
+                MPI_Ssend(sys[i]->list->tail->y_approx.ve, sys[i]->dim, MPI_DOUBLE, 0, i, MPI_COMM_WORLD);
         }
     }
 
@@ -1709,7 +1709,7 @@ int UploadDBDataDump(Link** sys,unsigned int N,int* assignments,UnivVars* Global
 					for(j=0;j<sys[i]->dim;j++)
 						nbytes += CatBinaryToString(&(submission[nbytes]),"%.6e",(char*)&(sys[i]->list->tail->y_approx.ve[j]), ASYNCH_DOUBLE,",");
 					submission[nbytes-1] = '\n';
-					MPI_Send(&(submission[init_length]),size-init_length,MPI_CHAR,0,sys[i]->ID,MPI_COMM_WORLD);
+					MPI_Ssend(&(submission[init_length]),size-init_length,MPI_CHAR,0,sys[i]->ID,MPI_COMM_WORLD);
 				}
 			}
 		}
@@ -2136,8 +2136,8 @@ void LoadRecoveryFile(char* filename,Link** sys,unsigned int N,unsigned int my_N
                 v_copy(buffer,sys[i]->list->tail->y_approx);
 			else
 			{
-				MPI_Send(&i,1,MPI_UNSIGNED,assignments[i],0,MPI_COMM_WORLD);
-				MPI_Send(buffer.ve,buffer.dim,MPI_DOUBLE,assignments[i],0,MPI_COMM_WORLD);
+				MPI_Ssend(&i,1,MPI_UNSIGNED,assignments[i],0,MPI_COMM_WORLD);
+				MPI_Ssend(buffer.ve,buffer.dim,MPI_DOUBLE,assignments[i],0,MPI_COMM_WORLD);
 			}
 			v_free(&buffer);
 		}
