@@ -1478,15 +1478,28 @@ int DataDumpH5(Link** sys, unsigned int N, int* assignments, UnivVars* GlobalVar
     if (my_rank == 0)	//Creating the file
     {
         char dump_loc_filename[ASYNCH_MAX_PATH_LENGTH];
-        strcpy(dump_loc_filename, GlobalVars->dump_loc_filename);
+
+        printf("dump_loc_filename: %s\n", dump_loc_filename);
+        printf("suffix: %s\n", suffix);
+
         if (suffix)
         {
-            char *dot = strrchr(dump_loc_filename, '.');
-            if (dot != NULL)
-                *dot = NULL;
+            char basename[ASYNCH_MAX_PATH_LENGTH];
+            strcpy(basename, GlobalVars->dump_loc_filename);
 
-            snprintf(dump_loc_filename, ASYNCH_MAX_PATH_LENGTH, "%s_%s.h5", dump_loc_filename, suffix);
-        }   
+            char *dot = strrchr(basename, '.');
+            if (dot != NULL)
+                *dot = '\0';
+
+            printf("basename : %s\n", basename);
+
+            snprintf(dump_loc_filename, ASYNCH_MAX_PATH_LENGTH, "%s_%s.h5", basename, suffix);
+        }
+        else
+        {
+            strcpy(dump_loc_filename, GlobalVars->dump_loc_filename);
+        }
+
         
         hid_t file_id = H5Fcreate(dump_loc_filename, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
         if (file_id < 0)
