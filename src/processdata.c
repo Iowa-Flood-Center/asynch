@@ -34,6 +34,9 @@
 
 #include "processdata.h"
 
+#define ASYNCH_OUTPUT_BUFFER_SIZE 256
+#define ASYNCH_UNIX_TIMESTAMP_LENGTH 10
+
 //Reads the results stored in temporary files and outputs them conveniently to a new file.
 //Use this for parallel implementations.
 //There could be problems if there is lots of data in the temporary files. Improve on this in the future.
@@ -1129,8 +1132,6 @@ int PreparePeakFlowFiles(UnivVars* GlobalVars,unsigned int peaksave_size)
 }
 
 
-#define ASYNCH_OUTPUT_BUFFER_SIZE 256
-
 //Writes to disk the current peakflow information.
 int DumpPeakFlowData(Link** sys,UnivVars* GlobalVars,unsigned int N,int* assignments,unsigned int* peaksave_list,unsigned int peaksave_size,unsigned int** id_to_loc,ConnData* conninfo)
 {
@@ -1474,20 +1475,44 @@ int DataDumpH5(Link** sys, unsigned int N, int* assignments, UnivVars* GlobalVar
 {
     unsigned int i;
     unsigned int res = 0;
-
     if (my_rank == 0)	//Creating the file
     {
         char dump_loc_filename[ASYNCH_MAX_PATH_LENGTH];
         if (suffix)
-        {
-            char basename[ASYNCH_MAX_PATH_LENGTH];
-            strcpy(basename, GlobalVars->dump_loc_filename);
-
-            char *dot = strrchr(basename, '.');
-            if (dot != NULL)
-                *dot = '\0';
-
-            snprintf(dump_loc_filename, ASYNCH_MAX_PATH_LENGTH, "%s_%s.h5", basename, suffix);
+        {	//get the base name from the global file. parse the runID (the part before underscore)
+			unsigned int _index=0;
+			 _index= (int)(strrchr(GlobalVars->dump_loc_filename, '_') - GlobalVars->dump_loc_filename); //position of the underscore char _			 
+			 if (_index > 0) {
+				 char baseName[ASYNCH_MAX_PATH_LENGTH];
+				 char baseTimestamp[ASYNCH_UNIX_TIMESTAMP_LENGTH + 1];;
+				 strncpy(baseName, GlobalVars->dump_loc_filename, _index);
+				 baseName[_index] = '\0';
+				 strncpy(baseTimestamp, GlobalVars->dump_loc_filename + _index + 1, ASYNCH_UNIX_TIMESTAMP_LENGTH);
+				 baseTimestamp[10] = '\0';
+				 char *endptr;
+				 int timestamp = strtol(baseTimestamp, &endptr, ASYNCH_UNIX_TIMESTAMP_LENGTH);
+				 if (*endptr != '\0')
+				 {
+					 printf("Error: Output file name %s not standard: runID_timestamp.h5", GlobalVars->dump_loc_filename);
+					 res = 1;
+					 MPI_Abort(MPI_COMM_WORLD, 1);
+					 return res;
+				 }
+				 
+				 //int timestamp = atoi(baseTimestamp);
+				
+				 timestamp = atoi(suffix) * 60 + timestamp;
+				 char timestamp_str[11];
+				 sprintf(timestamp_str, "%d", timestamp);				
+				 timestamp_str[10] = '\0';
+				 snprintf(dump_loc_filename, ASYNCH_MAX_PATH_LENGTH, "%s_%s.h5", baseName, timestamp_str);
+			 }
+			 else {
+				 printf("Error: Output file name %s not standard: runID_timestamp.h5", GlobalVars->dump_loc_filename);
+				 res = 1;
+				 MPI_Abort(MPI_COMM_WORLD, 1);
+				 return res;
+			 }
         }
         else
         {
