@@ -39,8 +39,10 @@ in *Small, et. al. An Asynchronous Solver for Systems of ODEs Linked by a Direct
 
  - [Installation](INSTALL.md)
  - [Getting Started](docs/getting_started.md)
- - [Async]()
-   - [libasync]()
+ - [Input/Output Formats](docs/input_output.md)
+ - [ASYNCH]()
+   - [libasynch (C API)]()
+   - [asynchpy (Python binding)](py/api.md)
    - [asynch CLI]()
  - [Forecasters]()
  - [Forecasters JS]()

@@ -51,12 +51,12 @@ function getLatest(re) {
     })
     .reduce(function(max, x) {
       return x.time > max.time ? x : max;
-    });
+    }, {time: null});
 }
 
 // Get the latest available state
 function getLatestState() {
-  return getLatest(/^state_(\d+).(rec|h5)$/);
+  return getLatest(/^state_ifc_(\d+).(rec|h5)$/);
 }
 
 // Get the latest forcing
@@ -77,23 +77,23 @@ function render(template, out, context) {
 }
 
 //Check whether a simulation is already running
-sge.qstat('IFC_QPF')
+sge.qstat('QPF')
 .then(function (status) {
   debug(status);
   if (status && status.state.indexOf('r') !== -1) {
     throw 'Simulation already running';
   } else if (status && status.state.indexOf('w') !== -1) {
     debug('Simulation is waiting, put on hold while job is updated');
-    return sge.qhold('IFC_QPF');
+    return sge.qhold('QPF');
   } else {
     debug('No job found, submit a new one');
     render(templates.job, 'qpf.job', {
-      name: 'IFC_QPF',
+      name: 'QPF',
       globalFile: 'qpf.gbl',
       workingDir: path.resolve(outputDir)
     });
 
-    return sge.qsub(path.join(outputDir, 'qpf.job'), ['IFC_QPE']);
+    return sge.qsub(path.join(outputDir, 'qpf.job'), ['QPE_IFC']);
   }
 })
 .then(function () {
@@ -135,7 +135,7 @@ sge.qstat('IFC_QPF')
   // If we have new obs ready
   if (forcingTime >= latestTime) {
     debug ('Simulation is already up to date');
-    return sge.qrls('IFC_QPF');
+    return sge.qrls('QPF');
   }
 
   var context = {
@@ -145,9 +145,9 @@ sge.qstat('IFC_QPF')
     duration: 14400,
     iniStateMode: iniStateMode,
     iniStateFile: latestState.filename,
-    endStateFile: 'forecast_qpf_' + endTime + '.rec',
+    endStateFile: 'forecast_qpf_' + endTime + '.h5',
     rainFileType: 1,
-    rainFile: latestForcing.filename,
+    rainFile: 'forcing_rain_qpf_' + latestTime + '.str',
     outHydrographsDb: {
       file: 'save_hydrograph.dbc',
       table: 'qpf.hydrographs'
@@ -158,13 +158,29 @@ sge.qstat('IFC_QPF')
     }
   };
 
+  //Update the run start time
+  pgp.connect(config.outConn).then(function (client) {
+    debug('updating run start time ' + context.begin);
+    return client.query('UPDATE runs SET start_time = to_timestamp($1) WHERE run LIKE $2', [context.begin, 'qpf']);
+  })
+  .then(function (query){
+    return query.fetchOneRowIfExists();
+  })
+  .then(function (result) {
+    result.client.done();
+    debug('done.');
+  })
+  .catch(function (err) {
+    debug(err);
+  });
+
   // Render a new set of config files
   render(templates.gbl, 'qpf.gbl', context);
 
   // Get the QPF data and generate the stormfile
   var links = {};
   return result.client.query(config.qpfQuery, [context.begin])
-    .onRow(stormfile.mapLink(context.begin, 300, links))
+    .onRow(stormfile.mapLink(context.begin, 3600, links))
   .then(function (result) {
     debug('got ' + result.rowCount + ' QPF rainfall rows');
     result.client.done();
@@ -173,7 +189,7 @@ sge.qstat('IFC_QPF')
 
     // Run the simulations
     debug('Release the simulation');
-    return sge.qrls('IFC_QPF');
+    return sge.qrls('QPF');
   });
 })
 .catch(function (err) {

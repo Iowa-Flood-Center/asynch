@@ -51,12 +51,12 @@ function getLatest(re) {
     })
     .reduce(function(max, x) {
       return x.time > max.time ? x : max;
-    });
+    }, {time: null});
 }
 
 // Get the latest available state
 function getLatestState() {
-  return getLatest(/^state_(\d+).(rec|h5)$/);
+  return getLatest(/^state_ifc_(\d+).(rec|h5)$/);
 }
 
 // Create output dir if not exists
@@ -72,23 +72,23 @@ function render(template, out, context) {
 }
 
 //Check whether a simulation is already running
-sge.qstat('IFC_WHATIF_2IN24H')
+sge.qstat('WHATIF_2IN24H')
 .then(function (status) {
   debug(status);
   if (status && status.state.indexOf('r') !== -1) {
     throw 'Simulation already running';
   } else if (status && status.state.indexOf('w') !== -1) {
     debug('Simulation is waiting, put on hold while job is updated');
-    return sge.qhold('IFC_WHATIF_2IN24H');
+    return sge.qhold('WHATIF_2IN24H');
   } else {
     debug('No job found, submit a new one');
     render(templates.job, 'whatif_2in24h.job', {
-      name: 'IFC_WHATIF_2IN24H',
+      name: 'WHATIF_2IN24H',
       globalFile: 'whatif_2in24h.gbl',
       workingDir: path.resolve(outputDir)
     });
 
-    return sge.qsub(path.join(outputDir, 'whatif_2in24h.job'), ['IFC_QPE']);
+    return sge.qsub(path.join(outputDir, 'whatif_2in24h.job'), ['QPE_IFC']);
   }
 })
 .then(function () {
@@ -122,7 +122,7 @@ sge.qstat('IFC_WHATIF_2IN24H')
     rainFile: 'forcing_rain_2inches24hour.ustr',
     iniStateMode: iniStateMode,
     iniStateFile: latestState.filename,
-    endStateFile: 'forecast_2in24h_' + endTime + '.rec',
+    endStateFile: 'forecast_2in24h_' + endTime + '.h5',
     outHydrographsDb: {
       file: 'save_hydrograph.dbc',
       table: 'whatif_2in24h.hydrographs'
@@ -138,7 +138,22 @@ sge.qstat('IFC_WHATIF_2IN24H')
 
   // Run the simulations
   debug('Release the simulation');
-  return sge.qrls('IFC_WHATIF_2IN24H');
+  return sge.qrls('WHATIF_2IN24H');
+  //Update the run start time
+  return pgp.connect(config.outConn).then(function (client) {
+    debug('updating run start time ' + context.begin);
+    return client.query('UPDATE runs SET start_time = to_timestamp($1) WHERE run LIKE $2', [context.begin, 'whatif_2in24h']);
+  })
+  .then(function (query){
+    return query.fetchOneRowIfExists();
+  })
+  .then(function (result) {
+    result.client.done();
+    debug('done.');
+  })
+  .catch(function (err) {
+    debug(err);
+  });
 })
 .catch(function (err) {
   return debug(err);

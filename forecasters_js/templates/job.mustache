@@ -1,10 +1,11 @@
 #!/bin/bash
 ##$ -pe 16cpn 16
-#$ -pe smp 4
+#$ -pe smp 8
 #$ -N {{name}}
-#$ -l h_rt=00:15:00
+#$ -l h_rt=02:00:00
 #$ -e {{workingDir}}
 #$ -o {{workingDir}}
+#$ -q IFC
 
 echo Running on host: `hostname`.
 echo In directory: `pwd`
@@ -12,4 +13,9 @@ echo Starting on: `date`
 echo Got $NSLOTS slots.
 echo
 
-mpirun -np $NSLOTS -wdir {{workingDir}} /Groups/IFC/.local/bin/asynch {{globalFile}}
+mpirun -np $NSLOTS -wdir {{workingDir}} /Groups/IFC/.helium/bin/asynch {{globalFile}}
+
+{{#rainfallProduct}}
+scp -p {{workingDir}}/state_{{rainfallProduct}}_*.h5 s-iihr54:/groups/asynch/runs/{{rainfallProduct}}/p0
+ssh s-iihr54 chown sdebionne:asynch /groups/asynch/runs/{{rainfallProduct}}/p0/*.h5
+{{/rainfallProduct}}
