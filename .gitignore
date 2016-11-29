@@ -16,7 +16,7 @@ Makefile.in
 /install-sh
 /missing
 /stamp-h1
-/ide/msvc/asynch.VC.db
+
 # others
 
 dist
