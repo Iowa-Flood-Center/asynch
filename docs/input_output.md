@@ -695,7 +695,12 @@ For pulling links from a database table, only one query is required:
 
 ## Snapshot Output
 
-Snapshot outputs can take two formats: recovery files and database tables. The format for recovery files is covered in Section 6 5 as an input.
+Snapshot outputs can be generated in 3 formats: recovery files (.rec), HDF5 (.h5) and database tables. The format for recovery files is covered in Section 6 5 as an input.
+
+```
+%Snapshot information (0 = none, 1 = .rec, 2 = .dbc, 3 = .h5, 4 = periodical .h5)
+4 60 filename_TIMESTAMP.h5
+```
 
 For using a database table, a database connection file is specified The database connection file has three optional queries:
 
@@ -710,6 +715,23 @@ For using a database table, a database connection file is specified The database
    - Returned tuples: none
 
 In practice, snapshots are often applied periodically as a way to create check points for the program. The third query allows the user to limit the number of snapshots in a table to one.
+
+Options 4 generates periodical snapshots. The first parameter is the interval between two snapshots. The second parameter is the output filename pattern. The timestamp given in the filename (10 digits) is used as the start timestamp and is incremented with the interval duration for every snapshots so that
+
+```
+%Snapshot information (0 = none, 1 = .rec, 2 = .dbc, 3 = .h5, 4 = periodical .h5)
+4 60 filename_1480000000.h5
+```
+
+generates
+
+```
+filename_1480000000.h5
+filename_1480000060.h5
+filename_1480000120.h5
+...
+```
+
 
 ## Runge-Kutta Data Input
 
