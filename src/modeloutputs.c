@@ -134,27 +134,27 @@ unsigned int CalcTotalOutputSize(GlobalVars* GlobalVars)
 //Returns 0 if an output is not set, 1 if all outputs are good to go.
 int OutputsSet(GlobalVars* GlobalVars)
 {
-    unsigned int i;
+	unsigned int i;
 
     for (i = 0; i < GlobalVars->num_print; i++)
-    {
+	{
         switch (GlobalVars->output_types[i])
-        {
-        case ASYNCH_BAD_TYPE:
-            return 0;
-        case ASYNCH_DOUBLE:
+		{
+			case ASYNCH_BAD_TYPE:
+				return 0;
+			case ASYNCH_DOUBLE:
             if (!(GlobalVars->outputs_d[i]))	return 0;
-            break;
-        case ASYNCH_INT:
+				break;
+			case ASYNCH_INT:
             if (!(GlobalVars->outputs_i[i]))	return 0;
-            break;
-        default:
+				break;
+			default:
             printf("[%i]: Error: Bad output type (%hi) encountered while checking if outputs set.\n", my_rank, GlobalVars->output_types[i]);
             MPI_Abort(MPI_COMM_WORLD, 1);
-        }
-    }
+		}
+	}
 
-    return 1;
+	return 1;
 }
 
 //Returns 0 if peakflow output is not set, 1 if it is.

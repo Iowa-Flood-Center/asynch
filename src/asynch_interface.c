@@ -408,8 +408,6 @@ void Asynch_Finalize_Network(AsynchSolver* asynch)
     MPI_Barrier(asynch->comm);
 }
 
-// End network setup ******************************************************************************************************
-
 
 //Trash an asynchsolver object
 void Asynch_Free(AsynchSolver* asynch)
@@ -423,9 +421,10 @@ void Asynch_Free(AsynchSolver* asynch)
     Destroy_Workspace(asynch->workspace, asynch->globals->max_s, asynch->globals->max_parents);
     free(asynch->workspace);
     free(asynch->getting);
-    if (asynch->outputfile)	fclose(asynch->outputfile);
-    if (asynch->peakfile)	fclose(asynch->peakfile);
     
+    if (asynch->outputfile)
+        fclose(asynch->outputfile);
+
     for (i = 0; i < asynch->N; i++)
         Destroy_Link(&asynch->sys[i], asynch->globals->iter_limit, asynch->rkdfilename[0] != '\0', asynch->forcings, asynch->globals);
 
@@ -511,7 +510,6 @@ Link* Asynch_Get_Links_Proc(AsynchSolver* asynch)
         return NULL;
     return asynch->sys;
 }
-
 
 void Asynch_Set_Database_Connection(AsynchSolver* asynch, const char* connstring, unsigned int conn_idx)
 {
@@ -819,7 +817,7 @@ int Asynch_Set_Output_Int(AsynchSolver* asynch, char* name, OutputIntCallback* c
                 if (used_states[i] == current->dense_indices[j])
                 {
                     states_to_add[num_to_add++] = used_states[i];
-                    break;
+        break;
                 }
             }
         }
@@ -853,8 +851,8 @@ int Asynch_Set_Output_Double(AsynchSolver* asynch, char* name, OutputDoubleCallb
         if (strcmp(name, asynch->globals->output_names[i]) == 0)
         {
             idx = i;
-            break;
-        }
+        break;
+    }
     }
 
     if (i == asynch->globals->num_print)

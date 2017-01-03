@@ -4,6 +4,7 @@
 #include <config_msvc.h>
 #endif
 
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
@@ -532,8 +533,11 @@ int Create_Rain_Database(Link* sys,unsigned int N,unsigned int my_N,GlobalVars* 
 	int received_time;
 	char* query = conninfo->query;
 	PGresult *res;
-	unsigned int *db_unix_time,*db_link_id;
-	float *db_rain_intens;
+	unsigned int *db_unix_time = NULL, *db_link_id = NULL;
+	float *db_rain_intens = NULL;
+
+    if (last <= first)
+        return first;
 
 	unsigned int *total_times = (unsigned int*) calloc(my_N,sizeof(unsigned int));
 	for(i=0;i<my_N;i++)
@@ -581,28 +585,32 @@ int Create_Rain_Database(Link* sys,unsigned int N,unsigned int my_N,GlobalVars* 
 		res = PQexec(conninfo->conn,query);
 		CheckResError(res,"downloading rainfall data");
 		tuple_count = PQntuples(res);
-printf("Received %u intensities.\n",tuple_count);
+//printf("Received %u intensities.\n",tuple_count);
 		//Disconnect
 		DisconnectPGDB(conninfo);
 
 		//Allocate space
 		MPI_Bcast(&tuple_count,1,MPI_INT,0,MPI_COMM_WORLD);
-		db_unix_time = malloc(tuple_count*sizeof(unsigned int));
-		db_rain_intens = malloc(tuple_count*sizeof(float));
-		db_link_id = malloc(tuple_count*sizeof(unsigned int));
 
-		//Load up the buffers
-		for(i=0;i<tuple_count;i++)
-		{
-			db_unix_time[i] = atoi(PQgetvalue(res,i,0));
-			db_rain_intens[i] = atof(PQgetvalue(res,i,1));
-			db_link_id[i] = atoi(PQgetvalue(res,i,2));
-		}
+        if (tuple_count) 
+        {
+		    db_unix_time = malloc(tuple_count*sizeof(unsigned int));
+		    db_rain_intens = malloc(tuple_count*sizeof(float));
+		    db_link_id = malloc(tuple_count*sizeof(unsigned int));
 
-		//Broadcast the data
-		MPI_Bcast(db_unix_time,tuple_count,MPI_INT,0,MPI_COMM_WORLD);
-		MPI_Bcast(db_rain_intens,tuple_count,MPI_FLOAT,0,MPI_COMM_WORLD);
-		MPI_Bcast(db_link_id,tuple_count,MPI_INT,0,MPI_COMM_WORLD);
+		    //Load up the buffers
+		    for(i=0;i<tuple_count;i++)
+		    {
+			    db_unix_time[i] = atoi(PQgetvalue(res,i,0));
+			    db_rain_intens[i] = atof(PQgetvalue(res,i,1));
+			    db_link_id[i] = atoi(PQgetvalue(res,i,2));
+		    }
+
+		    //Broadcast the data
+		    MPI_Bcast(db_unix_time,tuple_count,MPI_INT,0,MPI_COMM_WORLD);
+		    MPI_Bcast(db_rain_intens,tuple_count,MPI_FLOAT,0,MPI_COMM_WORLD);
+		    MPI_Bcast(db_link_id,tuple_count,MPI_INT,0,MPI_COMM_WORLD);
+        }
 
 		//Clean up
 		PQclear(res);
@@ -611,14 +619,18 @@ printf("Received %u intensities.\n",tuple_count);
 	{
 		//Allocate space
 		MPI_Bcast(&tuple_count,1,MPI_INT,0,MPI_COMM_WORLD);
-		db_unix_time = malloc(tuple_count*sizeof(unsigned int));
-		db_rain_intens = malloc(tuple_count*sizeof(float));
-		db_link_id = malloc(tuple_count*sizeof(unsigned int));
 
-		//Receive the data
-		MPI_Bcast(db_unix_time,tuple_count,MPI_INT,0,MPI_COMM_WORLD);
-		MPI_Bcast(db_rain_intens,tuple_count,MPI_FLOAT,0,MPI_COMM_WORLD);
-		MPI_Bcast(db_link_id,tuple_count,MPI_INT,0,MPI_COMM_WORLD);
+        if (tuple_count)
+        {
+            db_unix_time = malloc(tuple_count * sizeof(unsigned int));
+            db_rain_intens = malloc(tuple_count * sizeof(float));
+            db_link_id = malloc(tuple_count * sizeof(unsigned int));
+
+            //Receive the data
+            MPI_Bcast(db_unix_time, tuple_count, MPI_INT, 0, MPI_COMM_WORLD);
+            MPI_Bcast(db_rain_intens, tuple_count, MPI_FLOAT, 0, MPI_COMM_WORLD);
+            MPI_Bcast(db_link_id, tuple_count, MPI_INT, 0, MPI_COMM_WORLD);
+        }
 	}
 
 	MPI_Barrier(MPI_COMM_WORLD);
@@ -750,9 +762,12 @@ printf("!!!! i = %i k = %i received = %i unix_time = %i raindb_start = %i\n",i,k
 
 	//Clean up
 	free(total_times);
-	free(db_unix_time);
-	free(db_link_id);
-	free(db_rain_intens);
+    if (db_unix_time)
+	    free(db_unix_time);
+    if (db_link_id)
+        free(db_link_id);
+    if (db_unix_time)
+	    free(db_rain_intens);
 
 #else //HAVE_POSTGRESQL
 

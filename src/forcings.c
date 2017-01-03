@@ -183,8 +183,10 @@ double NextForcingDatabase(Link* sys,unsigned int N,unsigned int* my_sys,unsigne
 
 	if( (int)(sys[my_sys[0]].last_t*60 + .001) + forcing->raindb_start_time == (int)(forcing->first_file+iteration*forcing->file_time*60.0*forcing->increment+0.01) )
 	{
-		if(iteration == passes-1)	maxtime = GlobalVars->maxtime;	//!!!! Is this really needed? !!!!
-		else				maxtime = min(GlobalVars->maxtime,(iteration+1)*forcing->file_time*forcing->increment);
+		if(iteration == passes-1)
+            maxtime = GlobalVars->maxtime;	//!!!! Is this really needed? !!!!
+		else
+            maxtime = min(GlobalVars->maxtime,(iteration+1)*forcing->file_time*forcing->increment);
 		int maxfileindex = (int) min((double) forcing->first_file+(iteration+1)*60*forcing->file_time*forcing->increment,(double) forcing->last_file);
 
 		first_timestamp = forcing->first_file + (unsigned int)(iteration*forcing->file_time*60.0*forcing->increment + 0.01);

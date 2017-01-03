@@ -268,7 +268,7 @@ typedef struct GlobalVars
     unsigned short int peaksave_flag;   //!< 0 if not saving peak flows, 1 if saving
     char* hydrosave_filename;
     char* peaksave_filename;
-    char* peakfilename;
+    char* peakfilename;             //!< Filename for .pea file
     //char* identifier;
     unsigned int max_dim;
     unsigned int outletlink;        //!< For database: holds the link id of the outlet. Use 0 if reading entire database.
@@ -539,7 +539,6 @@ typedef struct AsynchSolver
     char rkdfilename[ASYNCH_MAX_PATH_LENGTH];	//!< Filename for .rkd file
     FILE* outputfile;		    //!< File handle for outputing temporary data
     FILE* peakfile;			    //!< File handle for the peakflow data
-    char peakfilename[ASYNCH_MAX_PATH_LENGTH];		    //!< Filename for .pea file
     ConnData db_connections[ASYNCH_MAX_DB_CONNECTIONS];	//!< Database connection information
     Forcing forcings[ASYNCH_MAX_DB_CONNECTIONS - ASYNCH_DB_LOC_FORCING_START];	//!< Forcing information
     Model* custom_model;

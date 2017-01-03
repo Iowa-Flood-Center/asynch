@@ -67,7 +67,20 @@ typedef double (OutputDoubleCallback)(unsigned int id, double t, VEC y_i, VEC gl
 typedef void (PeakflowOutputCallback)(unsigned int, double, VEC, VEC, VEC, double, unsigned int, void*, char*);
 
 //Function signatures
-typedef void (DifferentialFunc)(double, VEC, VEC*, unsigned short int, VEC, double*, QVSData*, VEC, int, void*, VEC);                    //!< Right-hand side function for ODE                                            
+
+/// These are the right-hand side functions for the ODEs.
+///
+/// \param t The current time
+/// \param y_i The approximate value of the solution to the ODEs at the current link at time t
+/// \param y_p y_p[j] has the approximate values for the immediately upstream link j to the current link at time t
+/// \param num_parents The number of upstream links (parents) to link i
+/// \param global_params The global parameters
+/// \param forcings The rain fall values for link i
+/// \param params The parameters for link i
+/// \param state The current state of the system
+/// \param user A pointer to user specified data
+/// \param ans (set by method, assumed that space is allocated): The value returned by the right-hand side function
+typedef void (DifferentialFunc)(double t, VEC y_i, VEC* y_p, unsigned short int num_parents, VEC global_params, double* forcings, QVSData*, VEC params, int state, void* user, VEC ans);                    //!< Right-hand side function for ODE                                            
 typedef void (AlgebraicFunc)(VEC, VEC, VEC, QVSData*, int, void*, VEC);                                                                  //!< Function for algebraic variables
 typedef int (CheckStateFunc)(VEC, VEC, VEC, QVSData*, unsigned int);                                                                     //!< Function to check what "state" the state variables are in (for discontinuities)
 typedef void (JacobianFunc)(double, VEC, VEC*, unsigned short int, VEC, double*, VEC, MAT*);                                                    //!< Jacobian of right-hand side function
@@ -553,7 +566,6 @@ void Asynch_Set_System_State(AsynchSolver* asynch, double unix_time, VEC* states
 ///
 /// \param asynch A pointer to a AsynchSolver object to use.
 void Asynch_Reset_Peakflow_Data(AsynchSolver* asynch);
-
 int Asynch_Set_Forcing_State(AsynchSolver* asynch, unsigned int idx, double t_0, unsigned int first_file, unsigned int last_file);
 
 /// This routine gets the filename of the output peakflow file. If a database connection is used, then
@@ -572,7 +584,6 @@ int Asynch_Get_Peakflow_Output_Name(AsynchSolver* asynch, char* peakflowname);
 /// \param peakflowname Name to set the peakflow output filename.
 /// \return 0 if the filename was set successfully. 1 otherwise.
 int Asynch_Set_Peakflow_Output_Name(AsynchSolver* asynch, char* peakflowname);
-
 unsigned int Asynch_Get_Local_LinkID(AsynchSolver* asynch, unsigned int location);
 
 int Asynch_Set_Init_Timestamp(AsynchSolver* asynch, unsigned int unix_time);

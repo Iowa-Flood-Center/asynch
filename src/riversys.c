@@ -47,7 +47,7 @@ Link* Create_River_Network(GlobalVars* globals, unsigned int* N, unsigned int***
     unsigned int **loc_to_children = NULL;
     unsigned int *loc_to_children_array = NULL;
     unsigned int curr_loc;
-    
+
     if (globals->rvr_flag == 0)	//Read topo data from file
     {
         if (my_rank == 0)
@@ -140,7 +140,7 @@ Link* Create_River_Network(GlobalVars* globals, unsigned int* N, unsigned int***
                 *N = PQntuples(mainres);
 
                 //Get the list of link ids
-                link_ids = (unsigned int*) malloc(*N * sizeof(unsigned int));
+                link_ids = (unsigned int*)malloc(*N * sizeof(unsigned int));
                 for (i = 0; i < *N; i++)
                     link_ids[i] = atoi(PQgetvalue(mainres, i, 0));
                 PQclear(mainres);
@@ -248,7 +248,7 @@ Link* Create_River_Network(GlobalVars* globals, unsigned int* N, unsigned int***
         }
 
 #else //HAVE_POSTGRESQL
-        
+
         if (my_rank == 0)	printf("Error: Asynch was build without PostgreSQL support.\n");
         MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
 
@@ -562,14 +562,14 @@ int Partition_Network(Link* system, unsigned int N, GlobalVars* GlobalVars, unsi
     unsigned int i, j;
     Link *current, *prev;//**upstream_order = (Link**) malloc(N*sizeof(Link*));
 
-/*
-    //Order the links by upstream area
-    for(i=0;i<N;i++)
-        upstream_order[i] = system[i];
-    merge_sort(upstream_order,N,globals->area_idx);
-*/
+                         /*
+                         //Order the links by upstream area
+                         for(i=0;i<N;i++)
+                         upstream_order[i] = system[i];
+                         merge_sort(upstream_order,N,globals->area_idx);
+                         */
 
-//Perform a DFS to sort the leaves
+                         //Perform a DFS to sort the leaves
     Link** stack = malloc(N * sizeof(Link*)); //Holds the index in system
     int stack_size = 0;
 
@@ -670,7 +670,7 @@ int Build_RKData(Link* system, char rk_filename[], unsigned int N, unsigned int*
     for (i = 1; i < *nummethods; i++)
     {
         globals->max_localorder = (globals->max_localorder < (*AllMethods)[i]->localorder) ? (*AllMethods)[i]->localorder : globals->max_localorder;
-        globals->max_s = (globals->max_s > (*AllMethods)[i]->s) ? globals->max_s : (*AllMethods)[i]->s;
+        globals->max_s = (globals->max_s >(*AllMethods)[i]->s) ? globals->max_s : (*AllMethods)[i]->s;
         //!!!! Note: Use a +1 for Radau solver? !!!!
     }
 
@@ -1375,8 +1375,8 @@ static int Load_Initial_Conditions_Dbc(Link* system, unsigned int N, int* assign
 
 #else //HAVE_POSTGRESQL
 
-if (my_rank == 0)	printf("Error: Asynch was build without PostgreSQL support.\n");
-MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
+    if (my_rank == 0)	printf("Error: Asynch was build without PostgreSQL support.\n");
+    MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
 
 #endif //HAVE_POSTGRESQL
 
@@ -1408,9 +1408,6 @@ static int Load_Initial_Conditions_H5(Link* system, unsigned int N, int* assignm
             return 1;
         }
 
-        //Assume that every links have the same dimension
-        unsigned int dim = system[0].dim;
-
         //Read model type, init time
         unsigned short type;
         H5LTget_attribute_ushort(file_id, "/", "model", &type);
@@ -1427,8 +1424,9 @@ static int Load_Initial_Conditions_H5(Link* system, unsigned int N, int* assignm
         int *index = malloc(dims[0] * sizeof(unsigned int));
         double *data = malloc(dims[0] * dims[1] * sizeof(double));
 
-        H5LTread_dataset_int(file_id, "/index", index);
-        H5LTread_dataset_double(file_id, "/state", data);
+        herr_t ret;
+        ret = H5LTread_dataset_int(file_id, "/index", index);
+        ret = H5LTread_dataset_double(file_id, "/state", data);
 
         //Read the .h5 file
         for (unsigned int i = 0; i < N; i++)
@@ -1456,7 +1454,7 @@ static int Load_Initial_Conditions_H5(Link* system, unsigned int N, int* assignm
 
             //Read init data
             VEC y_0 = v_get(dim);
-            memcpy(y_0.ve, &data[i * dim], dim * sizeof(double));
+            memcpy(y_0.ve, &data[i * dims[1]], dims[1] * sizeof(double));
 
             //Send data to assigned proc and getting proc
             if (assignments[loc] == my_rank || getting[loc])
@@ -1562,6 +1560,20 @@ int Load_Initial_Conditions(Link* system, unsigned int N, int* assignments, shor
     default:
         printf("Error: invalid intial condition file type.\n");
         res = -1;
+    }
+
+    //TODO Check intial conditions
+    for (unsigned int i = 0; i < N; i++)
+    {
+        if (system[i].list)
+        {
+            VEC y = system[i].list->head->y_approx;
+            if (y.ve[0] < 0.0 || y.ve[1] < 0.0 || y.ve[2] < 0.0 || y.ve[3] < 0.0)
+            {
+                printf("ERROR: Invalid initial conditions");
+                exit(EXIT_FAILURE);
+            }
+        }
     }
 
     return res;
@@ -1992,7 +2004,7 @@ int Load_Forcings(Link* system, unsigned int N, unsigned int* my_sys, unsigned i
             if (forcings[l].flag == 9)	//Download some extra data if the first_file is not on a timestamp with a forcing
                 forcings[l].next_timestamp = forcings[l].good_timestamp;	//!!!! Could probably do something similar for flag 3 !!!!
 
-            //Allocate space
+                                                                            //Allocate space
             for (i = 0; i < N; i++)
             {
                 if (assignments[i] == my_rank)
@@ -2189,7 +2201,7 @@ int Load_Forcings(Link* system, unsigned int N, unsigned int* my_sys, unsigned i
         forcings[globals->res_forcing_idx].GetNextForcing(system, N, my_sys, my_N, assignments, globals, &forcings[globals->res_forcing_idx], db_connections, id_to_loc, globals->res_forcing_idx);
         forcings[globals->res_forcing_idx].iteration = start_iteration;	//Keep this the same
 
-        //Setup init condition at links with forcing
+                                                                        //Setup init condition at links with forcing
         Exchange_InitState_At_Forced(system, N, assignments, getting, res_list, res_size, id_to_loc, globals);
     }
 
@@ -2581,8 +2593,8 @@ int Load_Dams(Link* system, unsigned int N, unsigned int* my_sys, unsigned int m
 
 #else //HAVE_POSTGRESQL
 
-if (my_rank == 0)	printf("Error: Asynch was build without PostgreSQL support.\n");
-MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
+        if (my_rank == 0)	printf("Error: Asynch was build without PostgreSQL support.\n");
+        MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
 
 #endif //HAVE_POSTGRESQL
     }
@@ -3788,4 +3800,3 @@ int FindFilename(char* fullpath, char* filename)
     sprintf(filename, "%s", &(fullpath[i]));
     return 0;
 }
-

@@ -378,94 +378,94 @@ void RadauIIA3_b(double theta, VEC b)
 
 double InitialStepSize(double t, Link* link_i, GlobalVars* GlobalVars, TempStorage* workspace)
 {
-    unsigned int start = link_i->diff_start;
-    VEC y0 = link_i->list->tail->y_approx;
-    double t_0 = link_i->list->tail->t;
-    VEC** temp_parent_approx = workspace->temp_parent_approx;
-    VEC fy0 = workspace->temp;
-    VEC fy1 = workspace->sum;
-    VEC y1 = workspace->temp2;
-    VEC SC = workspace->temp3;
-    unsigned int p = link_i->method->localorder;
-    Link* currentp;
-    RKSolutionNode* curr_node;
+	unsigned int start = link_i->diff_start;
+	VEC y0 = link_i->list->tail->y_approx;
+	double t_0 = link_i->list->tail->t;
+	VEC** temp_parent_approx = workspace->temp_parent_approx;
+	VEC fy0 = workspace->temp;
+	VEC fy1 = workspace->sum;
+	VEC y1 = workspace->temp2;
+	VEC SC = workspace->temp3;
+	unsigned int p = link_i->method->localorder;
+	Link* currentp;
+	RKSolutionNode* curr_node;
     double d0, d1, d2, h0, h1, largest, timediff, current_theta;
     unsigned int i, l, m, idx;
-    unsigned int dim = link_i->dim;
-    unsigned int num_dense = link_i->num_dense;
-    unsigned int* dense_indices = link_i->dense_indices;
-    ErrorData* error = link_i->errorinfo;
+	unsigned int dim = link_i->dim;
+	unsigned int num_dense = link_i->num_dense;
+	unsigned int* dense_indices = link_i->dense_indices;
+	ErrorData* error = link_i->errorinfo;
 
-    //Build SC for this link
+	//Build SC for this link
     for (i = 0; i < dim; i++)	SC.ve[i] = max(fabs(y0.ve[i]), fabs(y0.ve[i])) * error->reltol.ve[i] + error->abstol.ve[i];
 
-    //Grab parents data
+	//Grab parents data
     for (i = 0; i < link_i->num_parents; i++)
-    {
-        currentp = link_i->parents[i];
-        curr_node = currentp->list->head;
+	{
+		currentp = link_i->parents[i];
+		curr_node = currentp->list->head;
 
         if (fabs(currentp->list->tail->t - t) < 1e-10)	//!!!! Ugh... !!!!
             v_copy_n(currentp->list->tail->y_approx, temp_parent_approx[0][i], currentp->dim);
-        else
-        {
-            //Find the corresponding theta value and approximate solution
+		else
+		{
+			//Find the corresponding theta value and approximate solution
             while (t > curr_node->t)
-                curr_node = curr_node->next;
+				curr_node = curr_node->next;
             if (curr_node != currentp->list->head)	curr_node = curr_node->prev;
 
-            timediff = curr_node->next->t - curr_node->t;
+			timediff = curr_node->next->t - curr_node->t;
             current_theta = (t - curr_node->t) / timediff;
             currentp->method->dense_b(current_theta, currentp->method->b_theta);
 
-            // !!!! Note: this varies with num_print. Consider doing a linear interpolation. !!!!
+			// !!!! Note: this varies with num_print. Consider doing a linear interpolation. !!!!
             for (m = 0; m < currentp->num_dense; m++)
-            {
-                idx = currentp->dense_indices[m];
-                temp_parent_approx[0][i].ve[idx] = curr_node->y_approx.ve[idx];
+			{
+				idx = currentp->dense_indices[m];
+				temp_parent_approx[0][i].ve[idx] = curr_node->y_approx.ve[idx];
                 for (l = 0; l < currentp->method->s; l++)
-                    temp_parent_approx[0][i].ve[idx] += timediff*currentp->method->b_theta.ve[l] * curr_node->next->k[l].ve[m];
-            }
+					temp_parent_approx[0][i].ve[idx] += timediff*currentp->method->b_theta.ve[l] * curr_node->next->k[l].ve[m];
+			}
             link_i->CheckConsistency(temp_parent_approx[0][i], currentp->params, GlobalVars->global_params);
-            //if(link_i->alg != NULL)	link_i->alg(temp_parent_approx[0][i],GlobalVars->global_params,currentp->params,currentp->qvs,curr_node->next->state,temp_parent_approx[0][i]);
+			//if(link_i->alg != NULL)	link_i->alg(temp_parent_approx[0][i],GlobalVars->global_params,currentp->params,currentp->qvs,curr_node->next->state,temp_parent_approx[0][i]);
             if (currentp->alg)	currentp->alg(temp_parent_approx[0][i], GlobalVars->global_params, currentp->params, currentp->qvs, curr_node->state, currentp->user, temp_parent_approx[0][i]);
-        }
-    }
+		}
+	}
 
-    //Step a
-    //d0 = vector_norminf(y0,start);
+	//Step a
+	//d0 = vector_norminf(y0,start);
     d0 = norm_inf_u(y0, SC, start, link_i->dim);
     link_i->f(t_0, y0, temp_parent_approx[0], link_i->num_parents, GlobalVars->global_params, link_i->forcing_values, link_i->qvs, link_i->params, link_i->state, link_i->user, fy0);
     d1 = norm_inf_u(fy0, SC, start, link_i->dim);
 
-    //Step b
+	//Step b
     if (d0 < 1e-5 || d1 < 1e-5)	h0 = 1e-6;
     else				h0 = 0.01*(d0 / d1);
 
-    //Step c
-    //Note: This assumes the parents discharge is the same. It also assume no change in rain or state
+	//Step c
+	//Note: This assumes the parents discharge is the same. It also assume no change in rain or state
     v_copy_n(y0, y1, link_i->dim);
     daxpy_u(h0, fy0, y1, start, link_i->dim);
     link_i->CheckConsistency(y1, link_i->params, GlobalVars->global_params);
     link_i->f(t_0 + h0, y1, temp_parent_approx[0], link_i->num_parents, GlobalVars->global_params, link_i->forcing_values, link_i->qvs, link_i->params, link_i->state, link_i->user, fy1);
 
-    //Step d
+	//Step d
     v_sub(fy1, fy0, fy1, start);
     d2 = norm_inf_u(fy1, SC, start, link_i->dim);
 
-    //Step e
+	//Step e
     largest = max(d1, d2);
     h1 = (largest < 1e-1) ? max(1e-6, h0*1e-3) : pow(1e-2 / largest, 1.0 / (p + 1.0));
 
-    //Step f
+	//Step f
     h1 = min(100.0*h0, h1);
 
-    //Make sure returned value is not too small. This can create roundoff problems when time gets larger
-    //return h1;
-    //frexp(h1,&exponent);
-    //if(exponent < -29)	return 1e-10;
+	//Make sure returned value is not too small. This can create roundoff problems when time gets larger
+	//return h1;
+	//frexp(h1,&exponent);
+	//if(exponent < -29)	return 1e-10;
     if (y0.ve[0] < 1e-6)	return 1e-2;
-    else			return h1;
+	else			return h1;
 }
 
 
@@ -866,8 +866,8 @@ int ExplicitRKSolver(Link* link_i, GlobalVars* GlobalVars, int* assignments, boo
         //Trash the data from the failed step
         Undo_Step(link_i->list);
 
-        return 0;
-    }
+		return 0;
+	}
 }
 
 
@@ -879,81 +879,81 @@ int ExplicitRKSolver(Link* link_i, GlobalVars* GlobalVars, int* assignments, boo
 int ExplicitRKIndex1Solver(Link* link_i, GlobalVars* GlobalVars, int* assignments, bool print_flag, FILE* outputfile, ConnData* conninfo, Forcing* forcings, TempStorage* workspace)
 {
     unsigned int i, j, l, m, idx;
-    //VEC** k;
-    VEC new_y;
+	//VEC** k;
+	VEC new_y;
     RKSolutionNode *curr_node[ASYNCH_LINK_MAX_PARENTS], *node, *new_node;
-    Link* currentp;
+	Link* currentp;
     double t_needed, timediff, theta;
 
-    //Some variables to make things easier to read
-    VEC y_0 = link_i->list->tail->y_approx;
-    double h = link_i->h;
-    double t = link_i->list->tail->t;
-    MAT A = link_i->method->A;
-    VEC b = link_i->method->b;
-    VEC c = link_i->method->c;
-    unsigned int s = link_i->method->s;
-    VEC params = link_i->params;
-    VEC e = link_i->method->e;
-    VEC d = link_i->method->d;
-    RKMethod* meth = link_i->method;
-    ErrorData* error = link_i->errorinfo;
-    const unsigned int dim = link_i->dim;
-    unsigned int num_dense = link_i->num_dense;
-    unsigned int* dense_indices = link_i->dense_indices;
-    unsigned int num_print = GlobalVars->num_print;
-    unsigned int* print_indices = GlobalVars->print_indices;
-    VEC temp = workspace->temp;
-    VEC sum = workspace->sum;
-    VEC** temp_parent_approx = workspace->temp_parent_approx;
-    VEC* temp_k = workspace->temp_k;
+	//Some variables to make things easier to read
+	VEC y_0 = link_i->list->tail->y_approx;
+	double h = link_i->h;
+	double t = link_i->list->tail->t;
+	MAT A = link_i->method->A;
+	VEC b = link_i->method->b;
+	VEC c = link_i->method->c;
+	unsigned int s = link_i->method->s;
+	VEC params = link_i->params;
+	VEC e = link_i->method->e;
+	VEC d = link_i->method->d;
+	RKMethod* meth = link_i->method;
+	ErrorData* error = link_i->errorinfo;
+	const unsigned int dim = link_i->dim;
+	unsigned int num_dense = link_i->num_dense;
+	unsigned int* dense_indices = link_i->dense_indices;
+	unsigned int num_print = GlobalVars->num_print;
+	unsigned int* print_indices = GlobalVars->print_indices;
+	VEC temp = workspace->temp;
+	VEC sum = workspace->sum;
+	VEC** temp_parent_approx = workspace->temp_parent_approx;
+	VEC* temp_k = workspace->temp_k;
 
-    //Get the approximate solutions from each parent
+	//Get the approximate solutions from each parent
     for (i = 0; i < link_i->num_parents; i++)
-    {
-        currentp = link_i->parents[i];
-        curr_node[i] = currentp->list->head;
+	{
+		currentp = link_i->parents[i];
+		curr_node[i] = currentp->list->head;
         for (j = 0; j < s; j++)
-        {
-            //Find the needed value of t and corresponding node for y_p
-            //Assuming everything needed is already calculated
-            //This assumes c_s is the biggest. If not, one extra step may not get freed.
+		{
+			//Find the needed value of t and corresponding node for y_p
+			//Assuming everything needed is already calculated
+			//This assumes c_s is the biggest. If not, one extra step may not get freed.
             t_needed = min(t + c.ve[j] * h, currentp->last_t);
-            //t_needed = t + c.ve[j]*h;
+			//t_needed = t + c.ve[j]*h;
 
-            //Find the corresponding theta value and approximate solution
+			//Find the corresponding theta value and approximate solution
             while (t_needed > curr_node[i]->t)
-                curr_node[i] = curr_node[i]->next;
+				curr_node[i] = curr_node[i]->next;
             if (curr_node[i] != currentp->list->head)	curr_node[i] = curr_node[i]->prev;
 
-            timediff = curr_node[i]->next->t - curr_node[i]->t;
+			timediff = curr_node[i]->next->t - curr_node[i]->t;
             theta = (t_needed - curr_node[i]->t) / timediff;
             currentp->method->dense_b(theta, currentp->method->b_theta);
 
             for (m = 0; m < currentp->num_dense; m++)
-            {
-                idx = currentp->dense_indices[m];
-                temp_parent_approx[j][i].ve[idx] = curr_node[i]->y_approx.ve[idx];
+			{
+				idx = currentp->dense_indices[m];
+				temp_parent_approx[j][i].ve[idx] = curr_node[i]->y_approx.ve[idx];
                 for (l = 0; l < currentp->method->s; l++)
-                    temp_parent_approx[j][i].ve[idx] += timediff*currentp->method->b_theta.ve[l] * curr_node[i]->next->k[l].ve[m];
-            }
+					temp_parent_approx[j][i].ve[idx] += timediff*currentp->method->b_theta.ve[l] * curr_node[i]->next->k[l].ve[m];
+			}
 
-            //Build the algebraic variable
+			//Build the algebraic variable
             currentp->CheckConsistency(temp_parent_approx[j][i], currentp->params, GlobalVars->global_params);
-            //link_i->alg(temp_parent_approx[j][i],GlobalVars->global_params,currentp->params,currentp->qvs,curr_node[i]->next->state,temp_parent_approx[j][i]);
+			//link_i->alg(temp_parent_approx[j][i],GlobalVars->global_params,currentp->params,currentp->qvs,curr_node[i]->next->state,temp_parent_approx[j][i]);
             if (currentp->alg)	currentp->alg(temp_parent_approx[j][i], GlobalVars->global_params, currentp->params, currentp->qvs, curr_node[i]->state, currentp->user, temp_parent_approx[j][i]);
-        }
-    }
+		}
+	}
 
-    //Do the RK method to get the next approximation
+	//Do the RK method to get the next approximation
 
-    //Setup variables for the new data
-    new_node = New_Step(link_i->list);
-    new_node->t = t + h;
-    //k = new_node->k;
-    new_y = new_node->y_approx;
+	//Setup variables for the new data
+	new_node = New_Step(link_i->list);
+	new_node->t = t + h;
+	//k = new_node->k;
+	new_y = new_node->y_approx;
 
-    //Compute the k's
+	//Compute the k's
     for (i = 0; i < s; i++)
     {
         v_copy_n(y_0, sum, link_i->dim);
@@ -1095,96 +1095,96 @@ int ExplicitRKIndex1Solver(Link* link_i, GlobalVars* GlobalVars, int* assignment
                 #endif
 */
 
-                link_i->next_save += link_i->print_time;
-            }
-        }
+				link_i->next_save += link_i->print_time;
+			}
+		}
 
-        //Check if this is a max discharge
+		//Check if this is a max discharge
         if (link_i->peak_flag && (new_y.ve[0] > link_i->peak_value.ve[0]))
-        {
+		{
             v_copy_n(new_y, link_i->peak_value, link_i->dim);
-            link_i->peak_time = link_i->last_t;
-        }
+			link_i->peak_time = link_i->last_t;
+		}
 
-        //Check if the newest step is on a change in rainfall
-        short int propagated = 0;	//Set to 1 when last_t has been propagated
+		//Check if the newest step is on a change in rainfall
+		short int propagated = 0;	//Set to 1 when last_t has been propagated
         for (j = 0; j < GlobalVars->num_forcings; j++)
-        {
+		{
             if (forcings[j].active && link_i->forcing_buff[j] && fabs(link_i->last_t - link_i->forcing_change_times[j]) < 1e-8)
-            {
-                //Propagate the discontinuity to downstream links
+			{
+				//Propagate the discontinuity to downstream links
                 if (!propagated)
-                {
-                    propagated = 1;
-                    Link* next = link_i->child;
-                    Link* prev = link_i;
+				{
+					propagated = 1;
+					Link* next = link_i->child;
+					Link* prev = link_i;
                     for (i = 0; i < GlobalVars->max_localorder && next != NULL; i++)
-                    {
+					{
                         if (assignments[next->location] == my_rank && i < next->method->localorder)
-                        {
-                            //Insert the time into the discontinuity list
+						{
+							//Insert the time into the discontinuity list
                             next->discont_end = Insert_Discontinuity(link_i->forcing_change_times[j], next->discont_start, next->discont_end, &(next->discont_count), GlobalVars->discont_size, next->discont, next->ID);
-                        }
+						}
                         else if (next != NULL && assignments[next->location] != my_rank)
-                        {
-                            //Store the time to send to another process
+						{
+							//Store the time to send to another process
                             Insert_SendDiscontinuity(link_i->forcing_change_times[j], i, &(prev->discont_send_count), GlobalVars->discont_size, prev->discont_send, prev->discont_order_send, prev->ID);
-                            break;
-                        }
+							break;
+						}
 
-                        prev = next;
-                        next = next->child;
-                    }
-                }
+						prev = next;
+						next = next->child;
+					}
+				}
 
-                //Find the right index in rainfall
-                //for(l=1;l<link_i->forcing_buff[j]->n_times;l++)
+				//Find the right index in rainfall
+				//for(l=1;l<link_i->forcing_buff[j]->n_times;l++)
                 for (l = link_i->forcing_indices[j] + 1; l < link_i->forcing_buff[j]->nrows; l++)
                     if (fabs(link_i->forcing_change_times[j] - link_i->forcing_buff[j]->data[l][0]) < 1e-8)	break;
-                link_i->forcing_indices[j] = l;
+				link_i->forcing_indices[j] = l;
 
                 double forcing_buffer = link_i->forcing_buff[j]->data[l][1];
-                link_i->forcing_values[j] = forcing_buffer;
+				link_i->forcing_values[j] = forcing_buffer;
 
-                //Find and set the new change in rainfall
+				//Find and set the new change in rainfall
                 for (i = l + 1; i < link_i->forcing_buff[j]->nrows; i++)
-                {
-                    //if(link_i->forcing_buff[j]->rainfall[i][1] != forcing_buffer)
+				{
+					//if(link_i->forcing_buff[j]->rainfall[i][1] != forcing_buffer)
                     if (fabs(link_i->forcing_buff[j]->data[i][1] - forcing_buffer) > 1e-8)
-                    {
+					{
                         link_i->forcing_change_times[j] = link_i->forcing_buff[j]->data[i][0];
-                        break;
-                    }
-                }
+						break;
+					}
+				}
                 if (i == link_i->forcing_buff[j]->nrows)
                     link_i->forcing_change_times[j] = link_i->forcing_buff[j]->data[i - 1][0];
-            }
-        }
+			}
+		}
 
-        //Select new step size, if forcings changed
+		//Select new step size, if forcings changed
         if (propagated)	link_i->h = InitialStepSize(link_i->last_t, link_i, GlobalVars, workspace);
 
-        //Free up parents' old data
+		//Free up parents' old data
         for (i = 0; i < link_i->num_parents; i++)
-        {
-            currentp = link_i->parents[i];
+		{
+			currentp = link_i->parents[i];
             while (currentp->list->head != curr_node[i])
-            {
-                Remove_Head_Node(currentp->list);
-                currentp->current_iterations--;
-                currentp->iters_removed++;
-            }
-        }
+			{
+				Remove_Head_Node(currentp->list);
+				currentp->current_iterations--;
+				currentp->iters_removed++;
+			}
+		}
 
-        return 1;
-    }
-    else
-    {
-        //Trash the data from the failed step
-        Undo_Step(link_i->list);
+		return 1;
+	}
+	else
+	{
+		//Trash the data from the failed step
+		Undo_Step(link_i->list);
 
-        return 0;
-    }
+		return 0;
+	}
 }
 
 
@@ -1197,118 +1197,118 @@ int ExplicitRKIndex1Solver(Link* link_i, GlobalVars* GlobalVars, int* assignment
 int ExplicitRKIndex1SolverDam(Link* link_i, GlobalVars* GlobalVars, int* assignments, bool print_flag, FILE* outputfile, ConnData* conninfo, Forcing* forcings, TempStorage* workspace)
 {
     unsigned int i, j, l, m, idx;
-    VEC new_y;
+	VEC new_y;
     RKSolutionNode *curr_node[ASYNCH_LINK_MAX_PARENTS], *node, *new_node;
-    Link* currentp;
+	Link* currentp;
     double t_needed, timediff, current_theta;
 
-    //Some variables to make things easier to read
-    VEC y_0 = link_i->list->tail->y_approx;
-    double h = link_i->h;
-    double t = link_i->list->tail->t;
-    MAT A = link_i->method->A;
-    VEC b = link_i->method->b;
-    VEC c = link_i->method->c;
-    unsigned int s = link_i->method->s;
-    VEC params = link_i->params;
-    VEC e = link_i->method->e;
-    VEC d = link_i->method->d;
-    RKMethod* meth = link_i->method;
-    ErrorData* error = link_i->errorinfo;
-    const unsigned int dim = link_i->dim;
-    unsigned int num_dense = link_i->num_dense;
-    unsigned int* dense_indices = link_i->dense_indices;
-    unsigned int num_print = GlobalVars->num_print;
-    unsigned int* print_indices = GlobalVars->print_indices;
-    VEC temp = workspace->temp;
-    VEC sum = workspace->sum;
-    VEC** temp_parent_approx = workspace->temp_parent_approx;
-    VEC* temp_k = workspace->temp_k;
+	//Some variables to make things easier to read
+	VEC y_0 = link_i->list->tail->y_approx;
+	double h = link_i->h;
+	double t = link_i->list->tail->t;
+	MAT A = link_i->method->A;
+	VEC b = link_i->method->b;
+	VEC c = link_i->method->c;
+	unsigned int s = link_i->method->s;
+	VEC params = link_i->params;
+	VEC e = link_i->method->e;
+	VEC d = link_i->method->d;
+	RKMethod* meth = link_i->method;
+	ErrorData* error = link_i->errorinfo;
+	const unsigned int dim = link_i->dim;
+	unsigned int num_dense = link_i->num_dense;
+	unsigned int* dense_indices = link_i->dense_indices;
+	unsigned int num_print = GlobalVars->num_print;
+	unsigned int* print_indices = GlobalVars->print_indices;
+	VEC temp = workspace->temp;
+	VEC sum = workspace->sum;
+	VEC** temp_parent_approx = workspace->temp_parent_approx;
+	VEC* temp_k = workspace->temp_k;
 
-    //Get the approximate solutions from each parent
+	//Get the approximate solutions from each parent
     for (i = 0; i < link_i->num_parents; i++)
-    {
-        currentp = link_i->parents[i];
-        curr_node[i] = currentp->list->head;
+	{
+		currentp = link_i->parents[i];
+		curr_node[i] = currentp->list->head;
         for (j = 0; j < s; j++)
-        {
-            //Find the needed value of t and corresponding node for y_p
-            //Assuming everything needed is already calculated
-            //This assumes c_s is the biggest. If not, one extra step may not get freed.
+		{
+			//Find the needed value of t and corresponding node for y_p
+			//Assuming everything needed is already calculated
+			//This assumes c_s is the biggest. If not, one extra step may not get freed.
             t_needed = min(t + c.ve[j] * h, currentp->last_t);
-            //t_needed = t + c.ve[j]*h;
+			//t_needed = t + c.ve[j]*h;
 
-            //Find the corresponding theta value and approximate solution
+			//Find the corresponding theta value and approximate solution
             while (t_needed > curr_node[i]->t)
-                curr_node[i] = curr_node[i]->next;
+				curr_node[i] = curr_node[i]->next;
             if (curr_node[i] != currentp->list->head)	curr_node[i] = curr_node[i]->prev;
 
-            timediff = curr_node[i]->next->t - curr_node[i]->t;
+			timediff = curr_node[i]->next->t - curr_node[i]->t;
             current_theta = (t_needed - curr_node[i]->t) / timediff;
             currentp->method->dense_b(current_theta, currentp->method->b_theta);
 
-            //v_copy(curr_node[i]->y_approx,temp_parent_approx[j][i]);
-            //for(l=0;l<currentp->method->s;l++)
-            //	daxpy(timediff*currentp->method->b_theta.ve[l],curr_node[i]->next->k[l],temp_parent_approx[j][i],1);
+			//v_copy(curr_node[i]->y_approx,temp_parent_approx[j][i]);
+			//for(l=0;l<currentp->method->s;l++)
+			//	daxpy(timediff*currentp->method->b_theta.ve[l],curr_node[i]->next->k[l],temp_parent_approx[j][i],1);
             for (m = 0; m < currentp->num_dense; m++)
-            {
-                idx = currentp->dense_indices[m];
-                temp_parent_approx[j][i].ve[idx] = curr_node[i]->y_approx.ve[idx];
+			{
+				idx = currentp->dense_indices[m];
+				temp_parent_approx[j][i].ve[idx] = curr_node[i]->y_approx.ve[idx];
                 for (l = 0; l < currentp->method->s; l++)
-                    temp_parent_approx[j][i].ve[idx] += timediff*currentp->method->b_theta.ve[l] * curr_node[i]->next->k[l].ve[m];
-            }
+					temp_parent_approx[j][i].ve[idx] += timediff*currentp->method->b_theta.ve[l] * curr_node[i]->next->k[l].ve[m];
+			}
 
-            //Build the algebraic variable
+			//Build the algebraic variable
             currentp->CheckConsistency(temp_parent_approx[j][i], currentp->params, GlobalVars->global_params);
-            //link_i->alg(temp_parent_approx[j][i],GlobalVars->global_params,currentp->params,currentp->qvs,curr_node[i]->next->state,temp_parent_approx[j][i]);
+			//link_i->alg(temp_parent_approx[j][i],GlobalVars->global_params,currentp->params,currentp->qvs,curr_node[i]->next->state,temp_parent_approx[j][i]);
             if (currentp->alg)	currentp->alg(temp_parent_approx[j][i], GlobalVars->global_params, currentp->params, currentp->qvs, curr_node[i]->state, currentp->user, temp_parent_approx[j][i]);
-        }
-    }
+		}
+	}
 
-    //Do the RK method to get the next approximation
+	//Do the RK method to get the next approximation
 
-    //Setup variables for the new data
-    new_node = New_Step(link_i->list);
-    new_node->t = t + h;
-    //k = new_node->k;
-    new_y = new_node->y_approx;
+	//Setup variables for the new data
+	new_node = New_Step(link_i->list);
+	new_node->t = t + h;
+	//k = new_node->k;
+	new_y = new_node->y_approx;
 
-    //Compute the k's
+	//Compute the k's
     for (i = 0; i < s; i++)
-    {
+	{
         v_copy_n(y_0, sum, link_i->dim);
         for (j = 0; j < i; j++)
             daxpy_u(h*A.me[i][j], temp_k[j], sum, 1, link_i->dim);
         link_i->CheckConsistency(sum, params, GlobalVars->global_params);
         link_i->f(t + c.ve[i] * h, sum, temp_parent_approx[i], link_i->num_parents, GlobalVars->global_params, link_i->forcing_values, link_i->qvs, params, link_i->state, link_i->user, temp_k[i]);
-    }
+	}
 
-    //Build the solution
+	//Build the solution
     v_copy_n(y_0, new_y, link_i->dim);
     for (i = 0; i < s; i++)	daxpy_u(h*b.ve[i], temp_k[i], new_y, 1, link_i->dim);
     link_i->CheckConsistency(new_y, params, GlobalVars->global_params);
     new_node->state = link_i->state_check(new_y, GlobalVars->global_params, params, link_i->qvs, link_i->dam);
     link_i->alg(new_y, GlobalVars->global_params, params, link_i->qvs, new_node->state, link_i->user, new_y);
 
-    //Error estimation and step size selection
+	//Error estimation and step size selection
 
-    //Check the error of y_1 (in inf norm) to determine if the step can be accepted
-    double err_1;
+	//Check the error of y_1 (in inf norm) to determine if the step can be accepted
+	double err_1;
     v_copy_n(temp_k[0], sum, link_i->dim);
     sv_mlt_u(h * e.ve[0], sum, 1, link_i->dim);
     for (i = 1; i < s; i++)	daxpy_u(h*e.ve[i], temp_k[i], sum, 1, link_i->dim);
 
-    //Build SC_i
+	//Build SC_i
     for (i = 1; i < dim; i++)
         temp.ve[i] = max(fabs(new_y.ve[i]), fabs(y_0.ve[i])) * error->reltol.ve[i] + error->abstol.ve[i];
 
-    //err_1 = norm_inf(sum,temp,meth->e_order_ratio,1);
+	//err_1 = norm_inf(sum,temp,meth->e_order_ratio,1);
     err_1 = norm_inf_u(sum, temp, 1, link_i->dim);
     double value_1 = pow(1.0 / err_1, 1.0 / meth->e_order);
 
 
-    //Check the dense error (in inf norm) to determine if the step can be accepted
-    double err_d;
+	//Check the dense error (in inf norm) to determine if the step can be accepted
+	double err_d;
     v_copy_n(temp_k[0], sum, link_i->dim);
     sv_mlt_u(h * d.ve[0], sum, 1, link_i->dim);
     for (i = 1; i < s; i++)	daxpy_u(h*d.ve[i], temp_k[i], sum, 1, link_i->dim);
@@ -1316,118 +1316,118 @@ int ExplicitRKIndex1SolverDam(Link* link_i, GlobalVars* GlobalVars, int* assignm
     for (i = 1; i < dim; i++)
         temp.ve[i] = max(fabs(new_y.ve[i]), fabs(y_0.ve[i])) * error->reltol_dense.ve[i] + error->abstol_dense.ve[i];
 
-    //err_d = norm_inf(sum,temp,meth->d_order_ratio,1);
+	//err_d = norm_inf(sum,temp,meth->d_order_ratio,1);
     err_d = norm_inf_u(sum, temp, 1, link_i->dim);
     double value_d = pow(1.0 / err_d, 1.0 / meth->d_order);
 
-    //Determine a new step size for the next step
+	//Determine a new step size for the next step
     double step_1 = h*min(error->facmax, max(error->facmin, error->fac * value_1));
     double step_d = h*min(error->facmax, max(error->facmin, error->fac * value_d));
     link_i->h = min(step_1, step_d);
-    //link_i->h = step_1;
+	//link_i->h = step_1;
 
     if (err_1 < 1.0 && err_d < 1.0)
-        //if(err_1 < 1.0)
-    {
-        //Check for issues with state discontinuities
+	//if(err_1 < 1.0)
+	{
+		//Check for issues with state discontinuities
         if (link_i->rejected == 2)
-        {
-            int old_state = link_i->state;
+		{
+			int old_state = link_i->state;
             link_i->state = link_i->state_check(new_y, GlobalVars->global_params, params, link_i->qvs, link_i->dam);
 
             if (old_state != link_i->state)
-            {
-                //Pass the time to the next link
+			{
+				//Pass the time to the next link
                 double xh = t + h;
-                Link* next = link_i->child;
-                Link* prev = link_i;
+				Link* next = link_i->child;
+				Link* prev = link_i;
 
                 for (i = 1; i < GlobalVars->max_localorder && next != NULL; i++)
-                {
+				{
                     if (assignments[next->location] == my_rank && i < next->method->localorder)
-                    {
-                        //Insert the time into the discontinuity list
+					{
+						//Insert the time into the discontinuity list
                         next->discont_end = Insert_Discontinuity(xh, next->discont_start, next->discont_end, &(next->discont_count), GlobalVars->discont_size, next->discont, next->ID);
-                    }
+					}
                     else if (assignments[next->location] != my_rank)
-                    {
-                        //Store the time to send to another process
+					{
+						//Store the time to send to another process
                         Insert_SendDiscontinuity(xh, i, &(prev->discont_send_count), GlobalVars->discont_size, prev->discont_send, prev->discont_order_send, prev->ID);
-                        break;
-                    }
+						break;
+					}
 
-                    prev = next;
-                    next = next->child;
-                }
+					prev = next;
+					next = next->child;
+				}
 
                 link_i->h = InitialStepSize(link_i->last_t, link_i, GlobalVars, workspace);
-            }
-        }
-        else
-        {
-            //Check for discontinuities
+			}
+		}
+		else
+		{
+			//Check for discontinuities
             unsigned int sign_l, sign_h, sign_m;
-            //sign_l = link_i->state_check(y_0,GlobalVars->global_params,params,link_i->qvs,link_i->dam);
-            sign_l = link_i->state;
+			//sign_l = link_i->state_check(y_0,GlobalVars->global_params,params,link_i->qvs,link_i->dam);
+			sign_l = link_i->state;
             sign_h = link_i->state_check(new_y, GlobalVars->global_params, params, link_i->qvs, link_i->dam);
-            new_node->state = sign_h;
+			new_node->state = sign_h;
             if (sign_l != sign_h)
-            {
-                double xl = t;
-                double xh = t + h;
-                double xm = (xl + xh) / 2.0;
+			{
+				double xl = t;
+				double xh = t + h;
+				double xm = (xl + xh) / 2.0;
 
-                //Form the derivative of the interpolant
+				//Form the derivative of the interpolant
                 meth->dense_bderiv(1.0, meth->b_theta_deriv);
                 for (i = 0; i < dim; i++)	sum.ve[i] = 0.0;
                 for (i = 0; i < s; i++)	daxpy_u(h*meth->b_theta_deriv.ve[i], temp_k[i], sum, 0, link_i->dim);
 
-                //Get the approximate solutions from each parent
+				//Get the approximate solutions from each parent
                 for (i = 0; i < link_i->num_parents; i++)
-                {
-                    currentp = link_i->parents[i];
-                    curr_node[i] = currentp->list->head;
+				{
+					currentp = link_i->parents[i];
+					curr_node[i] = currentp->list->head;
 
-                    //Find the needed value of t and corresponding node for y_p
-                    //Assuming everything needed is already calculated
+					//Find the needed value of t and corresponding node for y_p
+					//Assuming everything needed is already calculated
                     t_needed = min(t + h, currentp->last_t);
-                    //t_needed = t + h;
+					//t_needed = t + h;
 
-                    //Find the corresponding theta value and approximate solution
+					//Find the corresponding theta value and approximate solution
                     while (t_needed > curr_node[i]->t)
-                        curr_node[i] = curr_node[i]->next;
+						curr_node[i] = curr_node[i]->next;
                     if (curr_node[i] != currentp->list->head)	curr_node[i] = curr_node[i]->prev;
 
-                    timediff = curr_node[i]->next->t - curr_node[i]->t;
+					timediff = curr_node[i]->next->t - curr_node[i]->t;
                     current_theta = (t_needed - curr_node[i]->t) / timediff;
                     currentp->method->dense_b(current_theta, currentp->method->b_theta);
 
                     for (m = 0; m < currentp->num_dense; m++)
-                    {
-                        idx = currentp->dense_indices[m];
-                        temp_parent_approx[0][i].ve[idx] = curr_node[i]->y_approx.ve[idx];
+					{
+						idx = currentp->dense_indices[m];
+						temp_parent_approx[0][i].ve[idx] = curr_node[i]->y_approx.ve[idx];
                         for (l = 0; l < currentp->method->s; l++)
-                            temp_parent_approx[0][i].ve[idx] += timediff*currentp->method->b_theta.ve[l] * curr_node[i]->next->k[l].ve[m];
-                    }
+							temp_parent_approx[0][i].ve[idx] += timediff*currentp->method->b_theta.ve[l] * curr_node[i]->next->k[l].ve[m];
+					}
 
                     if (currentp->alg)	currentp->alg(temp_parent_approx[0][i], GlobalVars->global_params, currentp->params, currentp->qvs, curr_node[i]->next->state, currentp->user, temp_parent_approx[0][i]);
-                }
+				}
 
-                //Exact derivative at time t + h
+				//Exact derivative at time t + h
                 link_i->f(t + h, new_y, temp_parent_approx[0], link_i->num_parents, GlobalVars->global_params, link_i->forcing_values, link_i->qvs, params, link_i->state, link_i->user, temp);
 
-                //Form the defect for a stopping criteria
+				//Form the defect for a stopping criteria
                 v_sub(sum, temp, temp, 1);
                 double norm_defect = vector_norminf(temp, 1);
-                double prev_error;
+				double prev_error;
                 double curr_error = (xh - xl)*norm_defect;
 
-                //Locate the discontinuity
-                do
-                {
-                    prev_error = curr_error;
+				//Locate the discontinuity
+				do
+				{
+					prev_error = curr_error;
 
-                    //Build the solution at time xm
+					//Build the solution at time xm
                     v_copy_n(y_0, sum, link_i->dim);
                     current_theta = (xm - t) / h;
                     meth->dense_b(current_theta, meth->b_theta);
@@ -1436,101 +1436,101 @@ int ExplicitRKIndex1SolverDam(Link* link_i, GlobalVars* GlobalVars, int* assignm
                     sign_m = link_i->state_check(sum, GlobalVars->global_params, params, link_i->qvs, link_i->dam);
 
                     if (sign_l != sign_m)
-                    {
-                        sign_h = sign_m;
-                        xh = xm;
-                    }
+					{
+						sign_h = sign_m;
+						xh = xm;
+					}
                     else if (sign_m != sign_h)
-                    {
-                        sign_l = sign_m;
-                        xl = xm;
-                    }
-                    else
-                        printf("Uh oh....\n");
+					{
+						sign_l = sign_m;
+						xl = xm;
+					}
+					else
+						printf("Uh oh....\n");
 
                     xm = (xl + xh) / 2.0;
                     curr_error = (xh - xl)*norm_defect;
 
                 } while (curr_error > GlobalVars->discont_tol  &&  fabs(curr_error - prev_error) > 1e-13);
 
-                //Prepare to redo the step
+				//Prepare to redo the step
                 if (curr_error <= GlobalVars->discont_tol)
-                {
-                    //Prepare to step on the time of the discontinuity next iteration
-                    link_i->h = xh - t;
-                    Undo_Step(link_i->list);
+				{
+					//Prepare to step on the time of the discontinuity next iteration
+					link_i->h = xh - t;
+					Undo_Step(link_i->list);
 
-                    return 2;
-                }
-                else
-                {
-                    //printf("[%i]: Notice: Discontinuity error has converged. Rejecting current step.\n",my_rank);
-                    //printf("[%i]: ID = %u t = %f old h = %e current error = %.16e  previous error = %.16e\n",my_rank,link_i->ID,t,h,curr_error,prev_error);
+					return 2;
+				}
+				else
+				{
+					//printf("[%i]: Notice: Discontinuity error has converged. Rejecting current step.\n",my_rank);
+					//printf("[%i]: ID = %u t = %f old h = %e current error = %.16e  previous error = %.16e\n",my_rank,link_i->ID,t,h,curr_error,prev_error);
 
-                    //Cut the step size and redo the iteration
-                    link_i->h = h * 0.5;
-                    Undo_Step(link_i->list);
+					//Cut the step size and redo the iteration
+					link_i->h = h * 0.5;
+					Undo_Step(link_i->list);					
 
-                    return 0;
-                }
-            }
-        }
+					return 0;
+				}
+			}
+		}
 
-        //Check if a propagated discontinuity has been stepped on
+		//Check if a propagated discontinuity has been stepped on
         if (link_i->discont_count > 0 && (t + h) >= link_i->discont[link_i->discont_start])
-        {
-            (link_i->discont_count)--;
-            link_i->discont_start = (link_i->discont_start + 1) % GlobalVars->discont_size;
+		{
+			(link_i->discont_count)--;
+			link_i->discont_start = (link_i->discont_start + 1) % GlobalVars->discont_size;
             link_i->h = InitialStepSize(link_i->last_t, link_i, GlobalVars, workspace);
-        }
+		}
 
-        //Save the new data
-        link_i->last_t = t + h;
-        link_i->current_iterations++;
+		//Save the new data
+		link_i->last_t = t + h;
+		link_i->current_iterations++;
         store_k(temp_k, new_node->k, s, dense_indices, num_dense);
 
-        //Check if new data should be written to disk
+		//Check if new data should be written to disk
         if (print_flag)
-        {
-            //while(t <= link_i->next_save && link_i->next_save <= link_i->last_t)
+		{
+			//while(t <= link_i->next_save && link_i->next_save <= link_i->last_t)
             while (t <= link_i->next_save && (link_i->next_save < link_i->last_t || fabs(link_i->next_save - link_i->last_t) / link_i->next_save < 1e-8))
-            {
+			{
                 /*
-                                //Don't write anything if using data assimilation and at a time when data is available
-                                if(GlobalVars->assim_flag)
-                                {
-                                    double rounded = 1e-13*rint(1e13*(GlobalVars->maxtime - link_i->next_save));
-                                    if(rounded < 1e-13 && -rounded < 1e-13)		break;
-                                }
+				//Don't write anything if using data assimilation and at a time when data is available
+				if(GlobalVars->assim_flag)
+				{
+					double rounded = 1e-13*rint(1e13*(GlobalVars->maxtime - link_i->next_save));
+					if(rounded < 1e-13 && -rounded < 1e-13)		break;
+				}
                 */
                 if (link_i->disk_iterations == link_i->expected_file_vals)
-                {
+				{
                     printf("[%i]: Warning: Too many steps computed for link id %u. Expected no more than %u. No more values will be stored for this link.\n", my_rank, link_i->ID, link_i->expected_file_vals);
-                    break;
-                }
-                (link_i->disk_iterations)++;
-                node = link_i->list->tail->prev;
+					break;
+				}
+				(link_i->disk_iterations)++;
+				node = link_i->list->tail->prev;
                 current_theta = (link_i->next_save - t) / h;
                 link_i->method->dense_b(current_theta, link_i->method->b_theta);
 
-                //v_copy(node->y_approx,sum);
-                //for(l=0;l<link_i->method->s;l++)
-                //	daxpy(h * link_i->method->b_theta.ve[l],node->next->k[l],sum,1);
+				//v_copy(node->y_approx,sum);
+				//for(l=0;l<link_i->method->s;l++)
+				//	daxpy(h * link_i->method->b_theta.ve[l],node->next->k[l],sum,1);
                 for (m = 0; m < num_dense; m++)
-                {
-                    idx = dense_indices[m];
-                    sum.ve[idx] = node->y_approx.ve[idx];
+				{
+					idx = dense_indices[m];
+					sum.ve[idx] = node->y_approx.ve[idx];
                     for (l = 0; l < link_i->method->s; l++)
-                        sum.ve[idx] += h*link_i->method->b_theta.ve[l] * node->next->k[l].ve[m];
-                }
+						sum.ve[idx] += h*link_i->method->b_theta.ve[l] * node->next->k[l].ve[m];
+				}
                 link_i->alg(sum, GlobalVars->global_params, link_i->params, link_i->qvs, link_i->list->tail->state, link_i->user, sum);
                 link_i->CheckConsistency(sum, params, GlobalVars->global_params);
 
-                //Write to a file
-                //fsetpos(outputfile,&(link_i->pos));
-                //WriteStep(link_i->next_save,sum,GlobalVars,params,link_i->state,outputfile,link_i->output_user,&(link_i->pos));
+				//Write to a file
+				//fsetpos(outputfile,&(link_i->pos));
+				//WriteStep(link_i->next_save,sum,GlobalVars,params,link_i->state,outputfile,link_i->output_user,&(link_i->pos));
                 WriteStep(outputfile, link_i->ID, link_i->next_save, sum, GlobalVars, params, link_i->state, link_i->output_user, &(link_i->pos_offset));
-                //fgetpos(outputfile,&(link_i->pos));
+				//fgetpos(outputfile,&(link_i->pos));
 /*
                 fsetpos(outputfile,&(link_i->pos));
                 fwrite(&(link_i->next_save),sizeof(double),1,outputfile);
@@ -1559,96 +1559,96 @@ int ExplicitRKIndex1SolverDam(Link* link_i, GlobalVars* GlobalVars, int* assignm
                 #endif
 */
 
-                link_i->next_save += link_i->print_time;
-            }
-        }
+				link_i->next_save += link_i->print_time;
+			}
+		}
 
-        //Check if this is a max discharge
+		//Check if this is a max discharge
         if (link_i->peak_flag && (new_y.ve[0] > link_i->peak_value.ve[0]))
-        {
+		{
             v_copy_n(new_y, link_i->peak_value, link_i->dim);
-            link_i->peak_time = link_i->last_t;
-        }
+			link_i->peak_time = link_i->last_t;
+		}
 
-        //Check if the newest step is on a change in rainfall
-        short int propagated = 0;	//Set to 1 when last_t has been propagated
+		//Check if the newest step is on a change in rainfall
+		short int propagated = 0;	//Set to 1 when last_t has been propagated
         for (j = 0; j < GlobalVars->num_forcings; j++)
-        {
+		{
             if (forcings[j].active && link_i->forcing_buff[j] && fabs(link_i->last_t - link_i->forcing_change_times[j]) < 1e-8)
-            {
-                //Propagate the discontinuity to downstream links
+			{
+				//Propagate the discontinuity to downstream links
                 if (!propagated)
-                {
-                    propagated = 1;
-                    Link* next = link_i->child;
-                    Link* prev = link_i;
+				{
+					propagated = 1;
+					Link* next = link_i->child;
+					Link* prev = link_i;
                     for (i = 0; i < GlobalVars->max_localorder && next != NULL; i++)
-                    {
+					{
                         if (assignments[next->location] == my_rank && i < next->method->localorder)
-                        {
-                            //Insert the time into the discontinuity list
+						{
+							//Insert the time into the discontinuity list
                             next->discont_end = Insert_Discontinuity(link_i->forcing_change_times[j], next->discont_start, next->discont_end, &(next->discont_count), GlobalVars->discont_size, next->discont, next->ID);
-                        }
+						}
                         else if (next != NULL && assignments[next->location] != my_rank)
-                        {
-                            //Store the time to send to another process
+						{
+							//Store the time to send to another process
                             Insert_SendDiscontinuity(link_i->forcing_change_times[j], i, &(prev->discont_send_count), GlobalVars->discont_size, prev->discont_send, prev->discont_order_send, prev->ID);
-                            break;
-                        }
+							break;
+						}
 
-                        prev = next;
-                        next = next->child;
-                    }
-                }
+						prev = next;
+						next = next->child;
+					}
+				}
 
-                //Find the right index in rainfall
+				//Find the right index in rainfall
                 //for(l=1;l<link_i->forcing_buff[j]->n_times;l++)
                 for (l = link_i->forcing_indices[j] + 1; l < link_i->forcing_buff[j]->nrows; l++)
                     if (fabs(link_i->forcing_change_times[j] - link_i->forcing_buff[j]->data[l][0]) < 1e-8)	break;
-                link_i->forcing_indices[j] = l;
+				link_i->forcing_indices[j] = l;
 
                 double forcing_buffer = link_i->forcing_buff[j]->data[l][1];
-                link_i->forcing_values[j] = forcing_buffer;
+				link_i->forcing_values[j] = forcing_buffer;
 
-                //Find and set the new change in rainfall
+				//Find and set the new change in rainfall
                 for (i = l + 1; i < link_i->forcing_buff[j]->nrows; i++)
-                {
-                    //if(link_i->forcing_buff[j]->rainfall[i][1] != forcing_buffer)
+				{
+					//if(link_i->forcing_buff[j]->rainfall[i][1] != forcing_buffer)
                     if (fabs(link_i->forcing_buff[j]->data[i][1] - forcing_buffer) > 1e-8)
-                    {
+					{
                         link_i->forcing_change_times[j] = link_i->forcing_buff[j]->data[i][0];
-                        break;
-                    }
-                }
+						break;
+					}
+				}
                 if (i == link_i->forcing_buff[j]->nrows)
                     link_i->forcing_change_times[j] = link_i->forcing_buff[j]->data[i - 1][0];
-            }
-        }
+			}
+		}
 
-        //Select new step size, if forcings changed
+		//Select new step size, if forcings changed
         if (propagated)	link_i->h = InitialStepSize(link_i->last_t, link_i, GlobalVars, workspace);
 
-        //Free up parents' old data
+		//Free up parents' old data
         for (i = 0; i < link_i->num_parents; i++)
-        {
-            currentp = link_i->parents[i];
+		{
+			currentp = link_i->parents[i];
             while (currentp->list->head != curr_node[i])
-            {
-                Remove_Head_Node(currentp->list);
-                currentp->current_iterations--;
-                currentp->iters_removed++;
-            }
-        }
+			{
+				Remove_Head_Node(currentp->list);
+				currentp->current_iterations--;
+				currentp->iters_removed++;
+			}
+		}
 
-        return 1;
-    }
-    else
-    {
-        //Trash the data from the failed step
-        Undo_Step(link_i->list);
+		return 1;
+	}
+	else
+	{
+		//Trash the data from the failed step
+		Undo_Step(link_i->list);
 
-        return 0;
-    }
+		return 0;
+	}
 }
 
 
@@ -1662,231 +1662,231 @@ int ExplicitRKIndex1SolverDam(Link* link_i, GlobalVars* GlobalVars, int* assignm
 int ExplicitRKSolverDiscont(Link* link_i, GlobalVars* GlobalVars, int* assignments, bool print_flag, FILE* outputfile, ConnData* conninfo, Forcing* forcings, TempStorage* workspace)
 {
     unsigned int i, j, l, m, idx;
-    VEC new_y;
+	VEC new_y;
     RKSolutionNode *curr_node[ASYNCH_LINK_MAX_PARENTS], *node, *new_node;
-    Link* currentp;
+	Link* currentp;
     double t_needed, timediff, current_theta;
 
-    //Some variables to make things easier to read
-    VEC y_0 = link_i->list->tail->y_approx;
-    double h = link_i->h;
-    double t = link_i->list->tail->t;
-    MAT A = link_i->method->A;
-    VEC b = link_i->method->b;
-    VEC c = link_i->method->c;
-    unsigned int s = link_i->method->s;
-    VEC params = link_i->params;
-    VEC e = link_i->method->e;
-    VEC d = link_i->method->d;
-    RKMethod* meth = link_i->method;
-    ErrorData* error = link_i->errorinfo;
-    const unsigned int dim = link_i->dim;
-    unsigned int num_dense = link_i->num_dense;
-    unsigned int* dense_indices = link_i->dense_indices;
-    unsigned int num_print = GlobalVars->num_print;
-    unsigned int* print_indices = GlobalVars->print_indices;
-    VEC temp = workspace->temp;
-    VEC sum = workspace->sum;
-    VEC** temp_parent_approx = workspace->temp_parent_approx;
-    VEC* temp_k = workspace->temp_k;
+	//Some variables to make things easier to read
+	VEC y_0 = link_i->list->tail->y_approx;
+	double h = link_i->h;
+	double t = link_i->list->tail->t;
+	MAT A = link_i->method->A;
+	VEC b = link_i->method->b;
+	VEC c = link_i->method->c;
+	unsigned int s = link_i->method->s;
+	VEC params = link_i->params;
+	VEC e = link_i->method->e;
+	VEC d = link_i->method->d;
+	RKMethod* meth = link_i->method;
+	ErrorData* error = link_i->errorinfo;
+	const unsigned int dim = link_i->dim;
+	unsigned int num_dense = link_i->num_dense;
+	unsigned int* dense_indices = link_i->dense_indices;
+	unsigned int num_print = GlobalVars->num_print;
+	unsigned int* print_indices = GlobalVars->print_indices;
+	VEC temp = workspace->temp;
+	VEC sum = workspace->sum;
+	VEC** temp_parent_approx = workspace->temp_parent_approx;
+	VEC* temp_k = workspace->temp_k;
 
-    //Get the approximate solutions from each parent
+	//Get the approximate solutions from each parent
     for (i = 0; i < link_i->num_parents; i++)
-    {
-        currentp = link_i->parents[i];
-        curr_node[i] = currentp->list->head;
+	{
+		currentp = link_i->parents[i];
+		curr_node[i] = currentp->list->head;
         for (j = 0; j < s; j++)
-        {
-            //Find the needed value of t and corresponding node for y_p
-            //Assuming everything needed is already calculated
-            //This assumes c_s is the biggest. If not, one extra step may not get freed.
+		{
+			//Find the needed value of t and corresponding node for y_p
+			//Assuming everything needed is already calculated
+			//This assumes c_s is the biggest. If not, one extra step may not get freed.
             t_needed = min(t + c.ve[j] * h, currentp->last_t);
-            //t_needed = t + c.ve[j]*h;
+			//t_needed = t + c.ve[j]*h;
 
-            //Find the corresponding theta value and approximate solution
+			//Find the corresponding theta value and approximate solution
             while (t_needed > curr_node[i]->t)
-                curr_node[i] = curr_node[i]->next;
+				curr_node[i] = curr_node[i]->next;
             if (curr_node[i] != currentp->list->head)	curr_node[i] = curr_node[i]->prev;
 
-            timediff = curr_node[i]->next->t - curr_node[i]->t;
+			timediff = curr_node[i]->next->t - curr_node[i]->t;
             current_theta = (t_needed - curr_node[i]->t) / timediff;
             currentp->method->dense_b(current_theta, currentp->method->b_theta);
 
-            //v_copy(curr_node[i]->y_approx,temp_parent_approx[j][i]);
-            //for(l=0;l<currentp->method->s;l++)
-            //	daxpy(timediff*currentp->method->b_theta.ve[l],curr_node[i]->next->k[l],temp_parent_approx[j][i],1);
+			//v_copy(curr_node[i]->y_approx,temp_parent_approx[j][i]);
+			//for(l=0;l<currentp->method->s;l++)
+			//	daxpy(timediff*currentp->method->b_theta.ve[l],curr_node[i]->next->k[l],temp_parent_approx[j][i],1);
             for (m = 0; m < currentp->num_dense; m++)
-            {
-                idx = currentp->dense_indices[m];
-                temp_parent_approx[j][i].ve[idx] = curr_node[i]->y_approx.ve[idx];
+			{
+				idx = currentp->dense_indices[m];
+				temp_parent_approx[j][i].ve[idx] = curr_node[i]->y_approx.ve[idx];
                 for (l = 0; l < currentp->method->s; l++)
-                    temp_parent_approx[j][i].ve[idx] += timediff*currentp->method->b_theta.ve[l] * curr_node[i]->next->k[l].ve[m];
-            }
+					temp_parent_approx[j][i].ve[idx] += timediff*currentp->method->b_theta.ve[l] * curr_node[i]->next->k[l].ve[m];
+			}
 
-            //Build the algebraic variable
+			//Build the algebraic variable
             currentp->CheckConsistency(temp_parent_approx[j][i], currentp->params, GlobalVars->global_params);
-        }
-    }
+		}
+	}
 
-    //Do the RK method to get the next approximation
+	//Do the RK method to get the next approximation
 
-    //Setup variables for the new data
-    new_node = New_Step(link_i->list);
-    new_node->t = t + h;
-    //k = new_node->k;
-    new_y = new_node->y_approx;
+	//Setup variables for the new data
+	new_node = New_Step(link_i->list);
+	new_node->t = t + h;
+	//k = new_node->k;
+	new_y = new_node->y_approx;
 
-    //Compute the k's
+	//Compute the k's
     for (i = 0; i < s; i++)
-    {
+	{
         v_copy_n(y_0, sum, link_i->dim);
         for (j = 0; j < i; j++)
             daxpy_u(h*A.me[i][j], temp_k[j], sum, 0, link_i->dim);
         link_i->CheckConsistency(sum, params, GlobalVars->global_params);
         link_i->f(t + c.ve[i] * h, sum, temp_parent_approx[i], link_i->num_parents, GlobalVars->global_params, link_i->forcing_values, link_i->qvs, params, link_i->state, link_i->user, temp_k[i]);
-    }
+	}
 
-    //Build the solution
+	//Build the solution
     v_copy_n(y_0, new_y, link_i->dim);
     for (i = 0; i < s; i++)	daxpy_u(h*b.ve[i], temp_k[i], new_y, 0, link_i->dim);
     link_i->CheckConsistency(new_y, params, GlobalVars->global_params);
     new_node->state = link_i->state_check(new_y, GlobalVars->global_params, params, link_i->qvs, link_i->dam);
 
-    //Error estimation and step size selection
+	//Error estimation and step size selection
 
-    //Check the error of y_1 (in inf norm) to determine if the step can be accepted
-    double err_1;
+	//Check the error of y_1 (in inf norm) to determine if the step can be accepted
+	double err_1;
     v_copy_n(temp_k[0], sum, link_i->dim);
     sv_mlt_u(h * e.ve[0], sum, 0, link_i->dim);
     for (i = 1; i < s; i++)	daxpy_u(h*e.ve[i], temp_k[i], sum, 0, link_i->dim);
 
-    //Build SC_i
+	//Build SC_i
     for (i = 0; i < dim; i++)
         temp.ve[i] = max(fabs(new_y.ve[i]), fabs(y_0.ve[i])) * error->reltol.ve[i] + error->abstol.ve[i];
 
-    //err_1 = norm_inf(sum,temp,meth->e_order_ratio,1);
+	//err_1 = norm_inf(sum,temp,meth->e_order_ratio,1);
     err_1 = norm_inf_u(sum, temp, 0, link_i->dim);
     double value_1 = pow(1.0 / err_1, 1.0 / meth->e_order);
 
 
-    //Check the dense error (in inf norm) to determine if the step can be accepted
-    double err_d;
+	//Check the dense error (in inf norm) to determine if the step can be accepted
+	double err_d;
     v_copy_n(temp_k[0], sum, link_i->dim);
     sv_mlt_u(h * d.ve[0], sum, 0, link_i->dim);
     for (i = 1; i < s; i++)	daxpy_u(h*d.ve[i], temp_k[i], sum, 0, link_i->dim);
     for (i = 0; i < dim; i++)
         temp.ve[i] = max(fabs(new_y.ve[i]), fabs(y_0.ve[i])) * error->reltol_dense.ve[i] + error->abstol_dense.ve[i];
 
-    //err_d = norm_inf(sum,temp,meth->d_order_ratio,1);
+	//err_d = norm_inf(sum,temp,meth->d_order_ratio,1);
     err_d = norm_inf_u(sum, temp, 0, link_i->dim);
     double value_d = pow(1.0 / err_d, 1.0 / meth->d_order);
 
-    //Determine a new step size for the next step
+	//Determine a new step size for the next step
     double step_1 = h*min(error->facmax, max(error->facmin, error->fac * value_1));
     double step_d = h*min(error->facmax, max(error->facmin, error->fac * value_d));
     link_i->h = min(step_1, step_d);
-    //link_i->h = step_1;
+	//link_i->h = step_1;
 
     if (err_1 < 1.0 && err_d < 1.0)
-        //if(err_1 < 1.0)
-    {
-        //Check for issues with state discontinuities
+	//if(err_1 < 1.0)
+	{
+		//Check for issues with state discontinuities
         if (link_i->rejected == 2)
-        {
-            int old_state = link_i->state;
+		{
+			int old_state = link_i->state;
             link_i->state = link_i->state_check(new_y, GlobalVars->global_params, params, link_i->qvs, link_i->dam);
 
             if (old_state != link_i->state)
-            {
-                //Pass the time to the next link
+			{
+				//Pass the time to the next link
                 double xh = t + h;
-                Link* next = link_i->child;
-                Link* prev = link_i;
+				Link* next = link_i->child;
+				Link* prev = link_i;
 
                 for (i = 1; i < GlobalVars->max_localorder && next != NULL; i++)
-                {
+				{
                     if (assignments[next->location] == my_rank && i < next->method->localorder)
-                    {
-                        //Insert the time into the discontinuity list
+					{
+						//Insert the time into the discontinuity list
                         next->discont_end = Insert_Discontinuity(xh, next->discont_start, next->discont_end, &(next->discont_count), GlobalVars->discont_size, next->discont, next->ID);
-                    }
+					}
                     else if (assignments[next->location] != my_rank)
-                    {
-                        //Store the time to send to another process
+					{
+						//Store the time to send to another process
                         Insert_SendDiscontinuity(xh, i, &(prev->discont_send_count), GlobalVars->discont_size, prev->discont_send, prev->discont_order_send, prev->ID);
-                        break;
-                    }
+						break;
+					}
 
-                    prev = next;
-                    next = next->child;
-                }
+					prev = next;
+					next = next->child;
+				}
 
                 link_i->h = InitialStepSize(link_i->last_t, link_i, GlobalVars, workspace);
-            }
-        }
-        else
-        {
-            //Check for discontinuities
+			}
+		}
+		else
+		{
+			//Check for discontinuities
             unsigned int sign_l, sign_h, sign_m;
-            //sign_l = link_i->state_check(y_0,GlobalVars->global_params,params,link_i->qvs,link_i->dam);
-            sign_l = link_i->state;
+			//sign_l = link_i->state_check(y_0,GlobalVars->global_params,params,link_i->qvs,link_i->dam);
+			sign_l = link_i->state;
             sign_h = link_i->state_check(new_y, GlobalVars->global_params, params, link_i->qvs, link_i->dam);
-            new_node->state = sign_h;
+			new_node->state = sign_h;
             if (sign_l != sign_h)
-            {
-                double xl = t;
-                double xh = t + h;
-                double xm = (xl + xh) / 2.0;
+			{
+				double xl = t;
+				double xh = t + h;
+				double xm = (xl + xh) / 2.0;
 
-                //Form the derivative of the interpolant
+				//Form the derivative of the interpolant
                 meth->dense_bderiv(1.0, meth->b_theta_deriv);
                 for (i = 0; i < dim; i++)	sum.ve[i] = 0.0;
                 for (i = 0; i < s; i++)	daxpy_u(h*meth->b_theta_deriv.ve[i], temp_k[i], sum, 0, link_i->dim);
 
-                //Get the approximate solutions from each parent
+				//Get the approximate solutions from each parent
                 for (i = 0; i < link_i->num_parents; i++)
-                {
-                    currentp = link_i->parents[i];
-                    curr_node[i] = currentp->list->head;
+				{
+					currentp = link_i->parents[i];
+					curr_node[i] = currentp->list->head;
 
-                    //Find the needed value of t and corresponding node for y_p
-                    //Assuming everything needed is already calculated
+					//Find the needed value of t and corresponding node for y_p
+					//Assuming everything needed is already calculated
                     t_needed = min(t + h, currentp->last_t);
-                    //t_needed = t + h;
+					//t_needed = t + h;
 
-                    //Find the corresponding theta value and approximate solution
+					//Find the corresponding theta value and approximate solution
                     while (t_needed > curr_node[i]->t)
-                        curr_node[i] = curr_node[i]->next;
+						curr_node[i] = curr_node[i]->next;
                     if (curr_node[i] != currentp->list->head)	curr_node[i] = curr_node[i]->prev;
 
-                    timediff = curr_node[i]->next->t - curr_node[i]->t;
+					timediff = curr_node[i]->next->t - curr_node[i]->t;
                     current_theta = (t_needed - curr_node[i]->t) / timediff;
                     currentp->method->dense_b(current_theta, currentp->method->b_theta);
 
                     for (m = 0; m < currentp->num_dense; m++)
-                    {
-                        idx = currentp->dense_indices[m];
-                        temp_parent_approx[0][i].ve[idx] = curr_node[i]->y_approx.ve[idx];
+					{
+						idx = currentp->dense_indices[m];
+						temp_parent_approx[0][i].ve[idx] = curr_node[i]->y_approx.ve[idx];
                         for (l = 0; l < currentp->method->s; l++)
-                            temp_parent_approx[0][i].ve[idx] += timediff*currentp->method->b_theta.ve[l] * curr_node[i]->next->k[l].ve[m];
-                    }
-                }
+							temp_parent_approx[0][i].ve[idx] += timediff*currentp->method->b_theta.ve[l] * curr_node[i]->next->k[l].ve[m];
+					}
+				}
 
-                //Exact derivative at time t + h
+				//Exact derivative at time t + h
                 link_i->f(t + h, new_y, temp_parent_approx[0], link_i->num_parents, GlobalVars->global_params, link_i->forcing_values, link_i->qvs, params, link_i->state, link_i->user, temp);
 
-                //Form the defect for a stopping criteria
+				//Form the defect for a stopping criteria
                 v_sub(sum, temp, temp, 0);
                 double norm_defect = vector_norminf(temp, 0);
-                double prev_error;
+				double prev_error;
                 double curr_error = (xh - xl)*norm_defect;
 
-                //Locate the discontinuity
-                do
-                {
-                    prev_error = curr_error;
+				//Locate the discontinuity
+				do
+				{
+					prev_error = curr_error;
 
-                    //Build the solution at time xm
+					//Build the solution at time xm
                     v_copy_n(y_0, sum, link_i->dim);
                     current_theta = (xm - t) / h;
                     meth->dense_b(current_theta, meth->b_theta);
@@ -1894,100 +1894,100 @@ int ExplicitRKSolverDiscont(Link* link_i, GlobalVars* GlobalVars, int* assignmen
                     sign_m = link_i->state_check(sum, GlobalVars->global_params, params, link_i->qvs, link_i->dam);
 
                     if (sign_l != sign_m)
-                    {
-                        sign_h = sign_m;
-                        xh = xm;
-                    }
+					{
+						sign_h = sign_m;
+						xh = xm;
+					}
                     else if (sign_m != sign_h)
-                    {
-                        sign_l = sign_m;
-                        xl = xm;
-                    }
-                    else
-                        printf("Uh oh....\n");
+					{
+						sign_l = sign_m;
+						xl = xm;
+					}
+					else
+						printf("Uh oh....\n");
 
                     xm = (xl + xh) / 2.0;
                     curr_error = (xh - xl)*norm_defect;
 
                 } while (curr_error > GlobalVars->discont_tol  &&  fabs(curr_error - prev_error) > 1e-13);
 
-                //Prepare to redo the step
+				//Prepare to redo the step
                 if (curr_error <= GlobalVars->discont_tol)
-                {
-                    //Prepare to step on the time of the discontinuity next iteration
-                    link_i->h = xh - t;
-                    Undo_Step(link_i->list);
+				{
+					//Prepare to step on the time of the discontinuity next iteration
+					link_i->h = xh - t;
+					Undo_Step(link_i->list);
 
-                    return 2;
-                }
-                else
-                {
-                    //printf("[%i]: Notice: Discontinuity error has converged. Rejecting current step.\n",my_rank);
-                    //printf("[%i]: ID = %u t = %f old h = %e current error = %.16e  previous error = %.16e\n",my_rank,link_i->ID,t,h,curr_error,prev_error);
+					return 2;
+				}
+				else
+				{
+					//printf("[%i]: Notice: Discontinuity error has converged. Rejecting current step.\n",my_rank);
+					//printf("[%i]: ID = %u t = %f old h = %e current error = %.16e  previous error = %.16e\n",my_rank,link_i->ID,t,h,curr_error,prev_error);
 
-                    //Cut the step size and redo the iteration
-                    link_i->h = h * 0.5;
-                    Undo_Step(link_i->list);
+					//Cut the step size and redo the iteration
+					link_i->h = h * 0.5;
+					Undo_Step(link_i->list);					
 
-                    return 0;
-                }
-            }
-        }
+					return 0;
+				}
+			}
+		}
 
-        //Check if a propagated discontinuity has been stepped on
+		//Check if a propagated discontinuity has been stepped on
         if (link_i->discont_count > 0 && (t + h) >= link_i->discont[link_i->discont_start])
-        {
-            (link_i->discont_count)--;
-            link_i->discont_start = (link_i->discont_start + 1) % GlobalVars->discont_size;
+		{
+			(link_i->discont_count)--;
+			link_i->discont_start = (link_i->discont_start + 1) % GlobalVars->discont_size;
             link_i->h = InitialStepSize(link_i->last_t, link_i, GlobalVars, workspace);
-        }
+		}
 
-        //Save the new data
-        link_i->last_t = t + h;
-        link_i->current_iterations++;
+		//Save the new data
+		link_i->last_t = t + h;
+		link_i->current_iterations++;
         store_k(temp_k, new_node->k, s, dense_indices, num_dense);
 
-        //Check if new data should be written to disk
+		//Check if new data should be written to disk
         if (print_flag)
-        {
-            //while(t <= link_i->next_save && link_i->next_save <= link_i->last_t)
+		{
+			//while(t <= link_i->next_save && link_i->next_save <= link_i->last_t)
             while (t <= link_i->next_save && (link_i->next_save < link_i->last_t || fabs(link_i->next_save - link_i->last_t) / link_i->next_save < 1e-12))
-            {
+			{
                 /*
-                                //Don't write anything if using data assimilation and at a time when data is available
-                                if(GlobalVars->assim_flag)
-                                {
-                                    double rounded = 1e-13*rint(1e13*(GlobalVars->maxtime - link_i->next_save));
-                                    if(rounded < 1e-13 && -rounded < 1e-13)		break;
-                                }
+				//Don't write anything if using data assimilation and at a time when data is available
+				if(GlobalVars->assim_flag)
+				{
+					double rounded = 1e-13*rint(1e13*(GlobalVars->maxtime - link_i->next_save));
+					if(rounded < 1e-13 && -rounded < 1e-13)		break;
+				}
                 */
                 if (link_i->disk_iterations == link_i->expected_file_vals)
-                {
+				{
                     printf("[%i]: Warning: Too many steps computed for link id %u. Expected no more than %u. No more values will be stored for this link.\n", my_rank, link_i->ID, link_i->expected_file_vals);
-                    break;
-                }
-                (link_i->disk_iterations)++;
-                node = link_i->list->tail->prev;
+					break;
+				}
+				(link_i->disk_iterations)++;
+				node = link_i->list->tail->prev;
                 current_theta = (link_i->next_save - t) / h;
                 link_i->method->dense_b(current_theta, link_i->method->b_theta);
 
-                //v_copy(node->y_approx,sum);
-                //for(l=0;l<link_i->method->s;l++)
-                //	daxpy(h * link_i->method->b_theta.ve[l],node->next->k[l],sum,0);
+				//v_copy(node->y_approx,sum);
+				//for(l=0;l<link_i->method->s;l++)
+				//	daxpy(h * link_i->method->b_theta.ve[l],node->next->k[l],sum,0);
                 for (m = 0; m < num_dense; m++)
-                {
-                    idx = dense_indices[m];
-                    sum.ve[idx] = node->y_approx.ve[idx];
+				{
+					idx = dense_indices[m];
+					sum.ve[idx] = node->y_approx.ve[idx];
                     for (l = 0; l < link_i->method->s; l++)
-                        sum.ve[idx] += h*link_i->method->b_theta.ve[l] * node->next->k[l].ve[m];
-                }
+						sum.ve[idx] += h*link_i->method->b_theta.ve[l] * node->next->k[l].ve[m];
+				}
                 link_i->CheckConsistency(sum, params, GlobalVars->global_params);
 
-                //Write to a file
-                //fsetpos(outputfile,&(link_i->pos));
-                //WriteStep(link_i->next_save,sum,GlobalVars,params,link_i->state,outputfile,link_i->output_user,&(link_i->pos));
+				//Write to a file
+				//fsetpos(outputfile,&(link_i->pos));
+				//WriteStep(link_i->next_save,sum,GlobalVars,params,link_i->state,outputfile,link_i->output_user,&(link_i->pos));
                 WriteStep(outputfile, link_i->ID, link_i->next_save, sum, GlobalVars, params, link_i->state, link_i->output_user, &(link_i->pos_offset));
-                //fgetpos(outputfile,&(link_i->pos));
+				//fgetpos(outputfile,&(link_i->pos));
 /*
                 fsetpos(outputfile,&(link_i->pos));
                 fwrite(&(link_i->next_save),sizeof(double),1,outputfile);
@@ -2015,96 +2015,96 @@ int ExplicitRKSolverDiscont(Link* link_i, GlobalVars* GlobalVars, int* assignmen
                     fgetpos(outputfile,&(link_i->pos));
                 #endif
 */
-                link_i->next_save += link_i->print_time;
-            }
-        }
+				link_i->next_save += link_i->print_time;
+			}
+		}
 
-        //Check if this is a max discharge
+		//Check if this is a max discharge
         if (link_i->peak_flag && (new_y.ve[0] > link_i->peak_value.ve[0]))
-        {
+		{
             v_copy_n(new_y, link_i->peak_value, link_i->dim);
-            link_i->peak_time = link_i->last_t;
-        }
+			link_i->peak_time = link_i->last_t;
+		}
 
-        //Check if the newest step is on a change in rainfall
-        short int propagated = 0;	//Set to 1 when last_t has been propagated
+		//Check if the newest step is on a change in rainfall
+		short int propagated = 0;	//Set to 1 when last_t has been propagated
         for (j = 0; j < GlobalVars->num_forcings; j++)
-        {
+		{
             if (forcings[j].active && link_i->forcing_buff[j] && fabs(link_i->last_t - link_i->forcing_change_times[j]) < 1e-8)
-            {
-                //Propagate the discontinuity to downstream links
+			{
+				//Propagate the discontinuity to downstream links
                 if (!propagated)
-                {
-                    propagated = 1;
-                    Link* next = link_i->child;
-                    Link* prev = link_i;
+				{
+					propagated = 1;
+					Link* next = link_i->child;
+					Link* prev = link_i;
                     for (i = 0; i < GlobalVars->max_localorder && next != NULL; i++)
-                    {
+					{
                         if (assignments[next->location] == my_rank && i < next->method->localorder)
-                        {
-                            //Insert the time into the discontinuity list
+						{
+							//Insert the time into the discontinuity list
                             next->discont_end = Insert_Discontinuity(link_i->forcing_change_times[j], next->discont_start, next->discont_end, &(next->discont_count), GlobalVars->discont_size, next->discont, next->ID);
-                        }
+						}
                         else if (next != NULL && assignments[next->location] != my_rank)
-                        {
-                            //Store the time to send to another process
+						{
+							//Store the time to send to another process
                             Insert_SendDiscontinuity(link_i->forcing_change_times[j], i, &(prev->discont_send_count), GlobalVars->discont_size, prev->discont_send, prev->discont_order_send, prev->ID);
-                            break;
-                        }
+							break;
+						}
 
-                        prev = next;
-                        next = next->child;
-                    }
-                }
+						prev = next;
+						next = next->child;
+					}
+				}
 
-                //Find the right index in rainfall
-                //for(l=1;l<link_i->forcing_buff[j]->n_times;l++)
+				//Find the right index in rainfall
+				//for(l=1;l<link_i->forcing_buff[j]->n_times;l++)
                 for (l = link_i->forcing_indices[j] + 1; l < link_i->forcing_buff[j]->nrows; l++)
                     if (fabs(link_i->forcing_change_times[j] - link_i->forcing_buff[j]->data[l][0]) < 1e-8)	break;
-                link_i->forcing_indices[j] = l;
+				link_i->forcing_indices[j] = l;
 
                 double forcing_buffer = link_i->forcing_buff[j]->data[l][1];
-                link_i->forcing_values[j] = forcing_buffer;
+				link_i->forcing_values[j] = forcing_buffer;
 
-                //Find and set the new change in rainfall
+				//Find and set the new change in rainfall
                 for (i = l + 1; i < link_i->forcing_buff[j]->nrows; i++)
-                {
-                    //if(link_i->forcing_buff[j]->rainfall[i][1] != forcing_buffer)
+				{
+					//if(link_i->forcing_buff[j]->rainfall[i][1] != forcing_buffer)
                     if (fabs(link_i->forcing_buff[j]->data[i][1] - forcing_buffer) < 1e-8)
-                    {
+					{
                         link_i->forcing_change_times[j] = link_i->forcing_buff[j]->data[i][0];
-                        break;
-                    }
-                }
+						break;
+					}
+				}
                 if (i == link_i->forcing_buff[j]->nrows)
                     link_i->forcing_change_times[j] = link_i->forcing_buff[j]->data[i - 1][0];
-            }
-        }
+			}
+		}
 
-        //Select new step size, if forcings changed
+		//Select new step size, if forcings changed
         if (propagated)	link_i->h = InitialStepSize(link_i->last_t, link_i, GlobalVars, workspace);
 
-        //Free up parents' old data
+		//Free up parents' old data
         for (i = 0; i < link_i->num_parents; i++)
-        {
-            currentp = link_i->parents[i];
+		{
+			currentp = link_i->parents[i];
             while (currentp->list->head != curr_node[i])
-            {
-                Remove_Head_Node(currentp->list);
-                currentp->current_iterations--;
-                currentp->iters_removed++;
-            }
-        }
+			{
+				Remove_Head_Node(currentp->list);
+				currentp->current_iterations--;
+				currentp->iters_removed++;
+			}
+		}
 
-        return 1;
-    }
-    else
-    {
-        //Trash the data from the failed step
-        Undo_Step(link_i->list);
+		return 1;
+	}
+	else
+	{
+		//Trash the data from the failed step
+		Undo_Step(link_i->list);
 
-        return 0;
-    }
+		return 0;
+	}
 }
 
 
@@ -2120,265 +2120,265 @@ int ExplicitRKSolverDiscont(Link* link_i, GlobalVars* GlobalVars, int* assignmen
 //Returns 1 if the step was successfully taken, 0 if the step was rejected.
 int RadauRKSolver(Link* link_i,UnivVars* GlobalVars,int* assignments,bool print_flag,FILE* outputfile,ConnData* conninfo,Forcing* forcings,TempStorage* workspace)
 {
-    unsigned int i,j,l,m;
-    VEC** k;
-    VEC* new_y;
-    RKSolutionNode *curr_node[link_i->num_parents],*node,*new_node;
-    Link* currentp;
-    double t_needed,timediff,current_theta;
+	unsigned int i,j,l,m;
+	VEC** k;
+	VEC* new_y;
+	RKSolutionNode *curr_node[link_i->num_parents],*node,*new_node;
+	Link* currentp;
+	double t_needed,timediff,current_theta;
 
-    //Some variables to make things easier to read
-    VEC* y_0 = link_i->list->tail->y_approx;
-    double h = link_i->h;
-    double t = link_i->list->tail->t;
-    MAT* A = link_i->method->A;
-    VEC* b = link_i->method->b;
-    VEC* c = link_i->method->c;
-    unsigned int s = link_i->method->s;
-    VEC* params = link_i->params;
-    VEC* e = link_i->method->e;
-    VEC* d = link_i->method->d;
-    RKMethod* meth = link_i->method;
-    ErrorData* error = link_i->errorinfo;
-    const unsigned int dim = link_i->dim;
-    VEC* temp = workspace->temp;
-    VEC* sum = workspace->sum;
-    VEC*** temp_parent_approx = workspace->temp_parent_approx;
+	//Some variables to make things easier to read
+	VEC* y_0 = link_i->list->tail->y_approx;
+	double h = link_i->h;
+	double t = link_i->list->tail->t;
+	MAT* A = link_i->method->A;
+	VEC* b = link_i->method->b;
+	VEC* c = link_i->method->c;
+	unsigned int s = link_i->method->s;
+	VEC* params = link_i->params;
+	VEC* e = link_i->method->e;
+	VEC* d = link_i->method->d;
+	RKMethod* meth = link_i->method;
+	ErrorData* error = link_i->errorinfo;
+	const unsigned int dim = link_i->dim;
+	VEC* temp = workspace->temp;
+	VEC* sum = workspace->sum;
+	VEC*** temp_parent_approx = workspace->temp_parent_approx;
 
-    //Get the approximate solutions from each parent
-    for(i=0;i<link_i->num_parents;i++)
-    {
-        currentp = link_i->parents[i];
-        curr_node[i] = currentp->list->head;
+	//Get the approximate solutions from each parent
+	for(i=0;i<link_i->num_parents;i++)
+	{
+		currentp = link_i->parents[i];
+		curr_node[i] = currentp->list->head;
 
-        //Find the needed value of t_0 and corresponding node for y_p for the extra stage
-        t_needed = t;
+		//Find the needed value of t_0 and corresponding node for y_p for the extra stage
+		t_needed = t;
 
-        //Find the corresponding theta value and approximate solution
-        while(t_needed > curr_node[i]->t)
-            curr_node[i] = curr_node[i]->next;
-        if(curr_node[i] != currentp->list->head)	curr_node[i] = curr_node[i]->prev;
+		//Find the corresponding theta value and approximate solution
+		while(t_needed > curr_node[i]->t)
+			curr_node[i] = curr_node[i]->next;
+		if(curr_node[i] != currentp->list->head)	curr_node[i] = curr_node[i]->prev;
 
-        timediff = curr_node[i]->next->t - curr_node[i]->t;
-        current_theta = (t_needed-curr_node[i]->t)/timediff;
-        currentp->method->dense_b(current_theta,currentp->method->b_theta);
+		timediff = curr_node[i]->next->t - curr_node[i]->t;
+		current_theta = (t_needed-curr_node[i]->t)/timediff;
+		currentp->method->dense_b(current_theta,currentp->method->b_theta);
 
-        v_copy(curr_node[i]->y_approx,temp_parent_approx[s][i]);
-        for(l=0;l<currentp->method->s;l++)
-            daxpy(timediff*currentp->method->b_theta.ve[l],curr_node[i]->next->k[l],temp_parent_approx[s][i],0);
+		v_copy(curr_node[i]->y_approx,temp_parent_approx[s][i]);
+		for(l=0;l<currentp->method->s;l++)
+			daxpy(timediff*currentp->method->b_theta.ve[l],curr_node[i]->next->k[l],temp_parent_approx[s][i],0);
 
 
-        //currentp = link_i->parents[i];
-        //curr_node[i] = currentp->list->head;
-        for(j=0;j<s;j++)
-        {
-            //Find the needed value of t and corresponding node for y_p
-            //Assuming everything needed is already calculated
-            //This assumes c_s is the biggest. If not, one extra step may not get freed.
-            t_needed = min(t + c.ve[j]*h,currentp->last_t);
-            //t_needed = t + c.ve[j]*h;
+		//currentp = link_i->parents[i];
+		//curr_node[i] = currentp->list->head;
+		for(j=0;j<s;j++)
+		{
+			//Find the needed value of t and corresponding node for y_p
+			//Assuming everything needed is already calculated
+			//This assumes c_s is the biggest. If not, one extra step may not get freed.
+			t_needed = min(t + c.ve[j]*h,currentp->last_t);
+			//t_needed = t + c.ve[j]*h;
 
-            //Find the corresponding theta value and approximate solution
-            while(t_needed > curr_node[i]->t)
-                curr_node[i] = curr_node[i]->next;
-            if(curr_node[i] != currentp->list->head)	curr_node[i] = curr_node[i]->prev;
+			//Find the corresponding theta value and approximate solution
+			while(t_needed > curr_node[i]->t)
+				curr_node[i] = curr_node[i]->next;
+			if(curr_node[i] != currentp->list->head)	curr_node[i] = curr_node[i]->prev;
 
-            timediff = curr_node[i]->next->t - curr_node[i]->t;
-            current_theta = (t_needed-curr_node[i]->t)/timediff;
-            currentp->method->dense_b(current_theta,currentp->method->b_theta);
+			timediff = curr_node[i]->next->t - curr_node[i]->t;
+			current_theta = (t_needed-curr_node[i]->t)/timediff;
+			currentp->method->dense_b(current_theta,currentp->method->b_theta);
 
-            v_copy(curr_node[i]->y_approx,temp_parent_approx[j][i]);
-            for(l=0;l<currentp->method->s;l++)
-                daxpy(timediff*currentp->method->b_theta.ve[l],curr_node[i]->next->k[l],temp_parent_approx[j][i],0);
-        }
-    }
+			v_copy(curr_node[i]->y_approx,temp_parent_approx[j][i]);
+			for(l=0;l<currentp->method->s;l++)
+				daxpy(timediff*currentp->method->b_theta.ve[l],curr_node[i]->next->k[l],temp_parent_approx[j][i],0);
+		}
+	}
 
-    //Do the RK method to get the next approximation
+	//Do the RK method to get the next approximation
 
-    //Allocate space. !!!! Do this elsewhere !!!!
-    int info;
-    int* ipiv = workspace->ipiv;
-    VEC* RHS = workspace->RHS;
+	//Allocate space. !!!! Do this elsewhere !!!!
+	int info;
+	int* ipiv = workspace->ipiv;
+	VEC* RHS = workspace->RHS;
 //	MAT* CoefMat = workspace->CoefMat;
     MAT* CoefMat = link_i->CoefMat;
 //	MAT* JMatrix = workspace->JMatrix;
-    MAT* tempmat = workspace->JMatrix;
-    VEC** Z_i = workspace->Z_i;
-    VEC** old_Z = link_i->Z_i;
-    VEC* err = workspace->err;
-    unsigned int iters = 10;
-    double normDelta = -1.0;
-    double normDeltam1 = -1.0;
-    double Theta,eta,error_est;
-    unsigned short int abort = 0;
-    unsigned short int newt = 0;
-    unsigned short int newtmax = 20;
+	MAT* tempmat = workspace->JMatrix;
+	VEC** Z_i = workspace->Z_i;
+	VEC** old_Z = link_i->Z_i;
+	VEC* err = workspace->err;
+	unsigned int iters = 10;
+	double normDelta = -1.0;
+	double normDeltam1 = -1.0;
+	double Theta,eta,error_est;
+	unsigned short int abort = 0;
+	unsigned short int newt = 0;
+	unsigned short int newtmax = 20;
 
-    //Construct a guess for the nonlinear solver
-    if(link_i->h_old < 0.0)
-        for(i=0;i<s;i++)	for(j=0;j<dim;j++)	Z_i[i].ve[j] = 0.0;
-    else
-    {
-        for(i=0;i<s;i++)
-        {
-            lagrange_bary(1.0 + h/link_i->h_old*c.ve[i],c,old_Z,meth->w,Z_i[i]);
-            v_add(Z_i[i],link_i->sol_diff,Z_i[i],0);
-            if(Z_i[i].ve[0] + y_0.ve[0] < 0.0)	Z_i[i].ve[0] = 0.0 - y_0.ve[0];
-            if(dim > 1 && Z_i[i].ve[1] + y_0.ve[1] < 0.0)	Z_i[i].ve[1] = -y_0.ve[1];
-            if(dim > 2 && Z_i[i].ve[2] + y_0.ve[2] < 0.0)	Z_i[i].ve[2] = -y_0.ve[2];
-            if(dim > 2 && Z_i[i].ve[2] + y_0.ve[2] > 1.0)	Z_i[i].ve[2] = 1.0 - y_0.ve[2] - 0.0;
-            if(dim > 3 && Z_i[i].ve[3] + y_0.ve[3] < 0.0)	Z_i[i].ve[3] = -y_0.ve[3];
-            if(dim > 3 && Z_i[i].ve[3] + y_0.ve[3] > 1.0 - Z_i[i].ve[2] - y_0.ve[2])	Z_i[i].ve[3] = 1.0 - Z_i[i].ve[2] - y_0.ve[2] - y_0.ve[3];
-        }
-    }
+	//Construct a guess for the nonlinear solver
+	if(link_i->h_old < 0.0)
+		for(i=0;i<s;i++)	for(j=0;j<dim;j++)	Z_i[i].ve[j] = 0.0;
+	else
+	{
+		for(i=0;i<s;i++)
+		{
+			lagrange_bary(1.0 + h/link_i->h_old*c.ve[i],c,old_Z,meth->w,Z_i[i]);
+			v_add(Z_i[i],link_i->sol_diff,Z_i[i],0);
+			if(Z_i[i].ve[0] + y_0.ve[0] < 0.0)	Z_i[i].ve[0] = 0.0 - y_0.ve[0];
+			if(dim > 1 && Z_i[i].ve[1] + y_0.ve[1] < 0.0)	Z_i[i].ve[1] = -y_0.ve[1];
+			if(dim > 2 && Z_i[i].ve[2] + y_0.ve[2] < 0.0)	Z_i[i].ve[2] = -y_0.ve[2];
+			if(dim > 2 && Z_i[i].ve[2] + y_0.ve[2] > 1.0)	Z_i[i].ve[2] = 1.0 - y_0.ve[2] - 0.0;
+			if(dim > 3 && Z_i[i].ve[3] + y_0.ve[3] < 0.0)	Z_i[i].ve[3] = -y_0.ve[3];
+			if(dim > 3 && Z_i[i].ve[3] + y_0.ve[3] > 1.0 - Z_i[i].ve[2] - y_0.ve[2])	Z_i[i].ve[3] = 1.0 - Z_i[i].ve[2] - y_0.ve[2] - y_0.ve[3];
+		}
+	}
 
-    //Build the coefficient matrix, if necessary
-    if(link_i->compute_J == 1)
-        link_i->Jacobian(t,y_0,temp_parent_approx[s],link_i->num_parents,GlobalVars,link_i->forcing_values,params,link_i->JMatrix);
+	//Build the coefficient matrix, if necessary
+	if(link_i->compute_J == 1)
+		link_i->Jacobian(t,y_0,temp_parent_approx[s],link_i->num_parents,GlobalVars,link_i->forcing_values,params,link_i->JMatrix);
 
-    if(link_i->compute_LU == 1)
-    {
-        for(i=0;i<s;i++) for(j=0;j<s;j++)
-        {
-            for(l=0;l<dim;l++) for(m=0;m<dim;m++)
-                CoefMat.me[i*dim + l][j*dim + m] = -h*A.me[i][j]*link_i->JMatrix.me[l][m];
-        }
-        for(i=0;i<s*dim;i++)	CoefMat.me[i][i] += 1.0;
-        info = clapack_dgetrf(CblasRowMajor,s*dim,s*dim,CoefMat->array,CoefMat->m,ipiv);
-    }
+	if(link_i->compute_LU == 1)
+	{
+		for(i=0;i<s;i++) for(j=0;j<s;j++)
+		{
+			for(l=0;l<dim;l++) for(m=0;m<dim;m++)
+				CoefMat.me[i*dim + l][j*dim + m] = -h*A.me[i][j]*link_i->JMatrix.me[l][m];
+		}
+		for(i=0;i<s*dim;i++)	CoefMat.me[i][i] += 1.0;
+		info = clapack_dgetrf(CblasRowMajor,s*dim,s*dim,CoefMat->array,CoefMat->m,ipiv);
+	}
 
-    //Perform the simplified Newton iterations
-    do
-    {
-        //Initialize RHS
-        for(j=0;j<s;j++) for(l=0;l<dim;l++)
-            RHS.ve[l+j*dim] = -Z_i[j].ve[l];
+	//Perform the simplified Newton iterations
+	do
+	{
+		//Initialize RHS
+		for(j=0;j<s;j++) for(l=0;l<dim;l++)
+			RHS.ve[l+j*dim] = -Z_i[j].ve[l];
 
-        //Evaluate the guess in the system created by the numerical method
-        for(j=0;j<s;j++)
-        {
-            v_add(y_0,Z_i[j],sum,0);
-            if(sum.ve[0] < 0.0)	sum.ve[0] = 0.0;	//A negative discharge is clearly a poor approximation
-            if(dim > 1 && sum.ve[1] < 0.0)	sum.ve[1] = 0.0;
-            if(dim > 2 && sum.ve[2] < 0.0)	sum.ve[2] = 0.0;
-            if(dim > 2 && sum.ve[2] > 1.0)	sum.ve[2] = 1.0;
-            if(dim > 3 && sum.ve[3] < 0.0)	sum.ve[3] = 0.0;
-            if(dim > 3 && sum.ve[3] > 1.0 - sum.ve[2])	sum.ve[3] = 1.0 - sum.ve[2];
-            link_i->f(t+c.ve[j]*h,sum,temp_parent_approx[j],link_i->num_parents,GlobalVars,link_i->forcing_values,link_i->qvs,params,link_i->state,link_i->user,temp);
-            for(l=0;l<s;l++)
-                daxpy(h*A.me[l][j],temp,RHS,l*dim);
-        }
+		//Evaluate the guess in the system created by the numerical method
+		for(j=0;j<s;j++)
+		{
+			v_add(y_0,Z_i[j],sum,0);
+			if(sum.ve[0] < 0.0)	sum.ve[0] = 0.0;	//A negative discharge is clearly a poor approximation
+			if(dim > 1 && sum.ve[1] < 0.0)	sum.ve[1] = 0.0;
+			if(dim > 2 && sum.ve[2] < 0.0)	sum.ve[2] = 0.0;
+			if(dim > 2 && sum.ve[2] > 1.0)	sum.ve[2] = 1.0;
+			if(dim > 3 && sum.ve[3] < 0.0)	sum.ve[3] = 0.0;
+			if(dim > 3 && sum.ve[3] > 1.0 - sum.ve[2])	sum.ve[3] = 1.0 - sum.ve[2];
+			link_i->f(t+c.ve[j]*h,sum,temp_parent_approx[j],link_i->num_parents,GlobalVars,link_i->forcing_values,link_i->qvs,params,link_i->state,link_i->user,temp);
+			for(l=0;l<s;l++)
+				daxpy(h*A.me[l][j],temp,RHS,l*dim);
+		}
 
-        //Make sure RHS has valid values
-        for(j=0;j<s;j++)
-        {
-            if(RHS.ve[j*dim] + (y_0.ve[0] + Z_i[j].ve[0]) < 0.0)	RHS.ve[j*dim] = -(y_0.ve[0] + Z_i[j].ve[0]);
-            if(dim > 1 && RHS.ve[j*dim + 1] + (y_0.ve[1] + Z_i[j].ve[1]) < 0.0)	RHS.ve[j*dim + 1] = -(y_0.ve[1] + Z_i[j].ve[1]);
-            if(dim > 2 && RHS.ve[j*dim + 2] + (y_0.ve[2] + Z_i[j].ve[2]) < 0.0)	RHS.ve[j*dim + 2] = -(y_0.ve[2] + Z_i[j].ve[2]);
-            if(dim > 2 && RHS.ve[j*dim + 2] + (y_0.ve[2] + Z_i[j].ve[2]) > 1.0)	RHS.ve[j*dim + 2] = 1.0 -(y_0.ve[2] + Z_i[j].ve[2]);
-            if(dim > 3 && RHS.ve[j*dim + 3] + (y_0.ve[3] + Z_i[j].ve[3]) < 0.0)	RHS.ve[j*dim + 3] = -(y_0.ve[3] + Z_i[j].ve[3]);
-            if(dim > 3 && RHS.ve[j*dim + 3] + (y_0.ve[3] + Z_i[j].ve[3]) > 1.0 - RHS.ve[j*dim + 2] - (y_0.ve[2] + Z_i[j].ve[2]))	RHS.ve[j*dim + 3] = 1.0 - RHS.ve[j*dim + 2] - (y_0.ve[2] + Z_i[j].ve[2]) - (y_0.ve[3] + Z_i[j].ve[3]);
-        }
+		//Make sure RHS has valid values
+		for(j=0;j<s;j++)
+		{
+			if(RHS.ve[j*dim] + (y_0.ve[0] + Z_i[j].ve[0]) < 0.0)	RHS.ve[j*dim] = -(y_0.ve[0] + Z_i[j].ve[0]);
+			if(dim > 1 && RHS.ve[j*dim + 1] + (y_0.ve[1] + Z_i[j].ve[1]) < 0.0)	RHS.ve[j*dim + 1] = -(y_0.ve[1] + Z_i[j].ve[1]);
+			if(dim > 2 && RHS.ve[j*dim + 2] + (y_0.ve[2] + Z_i[j].ve[2]) < 0.0)	RHS.ve[j*dim + 2] = -(y_0.ve[2] + Z_i[j].ve[2]);
+			if(dim > 2 && RHS.ve[j*dim + 2] + (y_0.ve[2] + Z_i[j].ve[2]) > 1.0)	RHS.ve[j*dim + 2] = 1.0 -(y_0.ve[2] + Z_i[j].ve[2]);
+			if(dim > 3 && RHS.ve[j*dim + 3] + (y_0.ve[3] + Z_i[j].ve[3]) < 0.0)	RHS.ve[j*dim + 3] = -(y_0.ve[3] + Z_i[j].ve[3]);
+			if(dim > 3 && RHS.ve[j*dim + 3] + (y_0.ve[3] + Z_i[j].ve[3]) > 1.0 - RHS.ve[j*dim + 2] - (y_0.ve[2] + Z_i[j].ve[2]))	RHS.ve[j*dim + 3] = 1.0 - RHS.ve[j*dim + 2] - (y_0.ve[2] + Z_i[j].ve[2]) - (y_0.ve[3] + Z_i[j].ve[3]);
+		}
 
-        //Solve the system
-        info = clapack_dgetrs(CblasRowMajor,111,s*dim,1,CoefMat->array,CoefMat->m,ipiv,RHS.ve,s*dim);
+		//Solve the system
+		info = clapack_dgetrs(CblasRowMajor,111,s*dim,1,CoefMat->array,CoefMat->m,ipiv,RHS.ve,s*dim);
 
-        //Form the solution to the iteration
-        for(j=0;j<s;j++)	v_add(RHS,Z_i[j],Z_i[j],j*dim);
+		//Form the solution to the iteration
+		for(j=0;j<s;j++)	v_add(RHS,Z_i[j],Z_i[j],j*dim);
 
-        //Make sure Z_i has valid values
-        for(j=0;j<s;j++)
-        {
-            if(Z_i[j].ve[0] + y_0.ve[0] < 0.0)	Z_i[j].ve[0] = 0.0 - y_0.ve[0];
-            if(dim > 1 && Z_i[j].ve[1] + y_0.ve[1] < 0.0)	Z_i[j].ve[1] = -y_0.ve[1];
-            if(dim > 2 && Z_i[j].ve[2] + y_0.ve[2] < 0.0)	Z_i[j].ve[2] = -y_0.ve[2];
-            if(dim > 2 && Z_i[j].ve[2] + y_0.ve[2] > 1.0)	Z_i[j].ve[2] = 1.0 - y_0.ve[2] - 0.0;
-            if(dim > 3 && Z_i[j].ve[3] + y_0.ve[3] < 0.0)	Z_i[j].ve[3] = -y_0.ve[3];
-            if(dim > 3 && Z_i[j].ve[3] + y_0.ve[3] > 1.0 - Z_i[j].ve[2] - y_0.ve[2])	Z_i[j].ve[3] = 1.0 - Z_i[j].ve[2] - y_0.ve[2] - y_0.ve[3];
-        }
+		//Make sure Z_i has valid values
+		for(j=0;j<s;j++)
+		{
+			if(Z_i[j].ve[0] + y_0.ve[0] < 0.0)	Z_i[j].ve[0] = 0.0 - y_0.ve[0];
+			if(dim > 1 && Z_i[j].ve[1] + y_0.ve[1] < 0.0)	Z_i[j].ve[1] = -y_0.ve[1];
+			if(dim > 2 && Z_i[j].ve[2] + y_0.ve[2] < 0.0)	Z_i[j].ve[2] = -y_0.ve[2];
+			if(dim > 2 && Z_i[j].ve[2] + y_0.ve[2] > 1.0)	Z_i[j].ve[2] = 1.0 - y_0.ve[2] - 0.0;
+			if(dim > 3 && Z_i[j].ve[3] + y_0.ve[3] < 0.0)	Z_i[j].ve[3] = -y_0.ve[3];
+			if(dim > 3 && Z_i[j].ve[3] + y_0.ve[3] > 1.0 - Z_i[j].ve[2] - y_0.ve[2])	Z_i[j].ve[3] = 1.0 - Z_i[j].ve[2] - y_0.ve[2] - y_0.ve[3];
+		}
 
-        //Check if solution is accurate enough
-        normDeltam1 = normDelta;
-        normDelta = vector_norminf(RHS);
-        Theta = normDelta / normDeltam1;
-        if(normDeltam1 < 0.0)	eta = link_i->last_eta;
-        else			eta = Theta / (1.0 - Theta);
+		//Check if solution is accurate enough
+		normDeltam1 = normDelta;
+		normDelta = vector_norminf(RHS);
+		Theta = normDelta / normDeltam1;
+		if(normDeltam1 < 0.0)	eta = link_i->last_eta;
+		else			eta = Theta / (1.0 - Theta);
 
-        //Check that the error estimation is roughly correct
-        //error_est = pow(Theta,imax-i) / (1.0 - Theta) * normDelta;
+		//Check that the error estimation is roughly correct
+		//error_est = pow(Theta,imax-i) / (1.0 - Theta) * normDelta;
 
-        //Check abort conditions
-        newt++;
-        if(Theta >= 1.0 || newt == newtmax)	abort = 1;
-        else			abort = 0;
-    } while( eta*normDelta > 1e-10 && abort == 0 );
+		//Check abort conditions
+		newt++;
+		if(Theta >= 1.0 || newt == newtmax)	abort = 1;
+		else			abort = 0;
+	} while( eta*normDelta > 1e-10 && abort == 0 );
 
-    //Check that the nonlinear solver converged
-    if(abort)
-    {
-        link_i->h = link_i->h / 2;
-        if(link_i->ID == 10)	printf("Solver diverged. ID: %u Time: %f New Step: %.16f\n",link_i->ID,link_i->last_t,link_i->h);
-        link_i->compute_J = 1;
-        link_i->compute_LU = 1;
-        return 0;
-    }
-    else
-        link_i->last_eta = pow(eta,.8);
+	//Check that the nonlinear solver converged
+	if(abort)
+	{
+		link_i->h = link_i->h / 2;
+		if(link_i->ID == 10)	printf("Solver diverged. ID: %u Time: %f New Step: %.16f\n",link_i->ID,link_i->last_t,link_i->h);
+		link_i->compute_J = 1;
+		link_i->compute_LU = 1;
+		return 0;
+	}
+	else
+		link_i->last_eta = pow(eta,.8);
 
-    //Check if Jacobian should be recomputed
-    if(normDeltam1 < 0.0 || Theta < 1e-3)
-        link_i->compute_J = 0;
-    else
-        link_i->compute_J = 1;
+	//Check if Jacobian should be recomputed
+	if(normDeltam1 < 0.0 || Theta < 1e-3)
+		link_i->compute_J = 0;
+	else
+		link_i->compute_J = 1;
 
-    //Setup variables for the new data
-    new_node = New_Step(link_i->list);
-    new_node->t = t + h;
-    k = new_node->k;
-    new_y = new_node->y_approx;
+	//Setup variables for the new data
+	new_node = New_Step(link_i->list);
+	new_node->t = t + h;
+	k = new_node->k;
+	new_y = new_node->y_approx;
 
-    //Build the solution
-    v_add(y_0,Z_i[s-1],new_y,0);
-    if(new_y.ve[0] < 0.0)	new_y.ve[0] = 1e-15;	//A negative discharge is clearly a poor approximation
-    if(dim > 1 && new_y.ve[1] < 0.0)	new_y.ve[1] = 0.0;
-    if(dim > 2 && new_y.ve[2] < 0.0)	new_y.ve[2] = 0.0;
-    if(dim > 2 && new_y.ve[2] > 1.0)	new_y.ve[2] = 1.0 - 1e-15;
-    if(dim > 3 && new_y.ve[3] < 0.0)	new_y.ve[3] = 1e-15;
-    if(dim > 3 && sum.ve[3] > 1.0 - sum.ve[2])	sum.ve[3] = 1.0 - sum.ve[2];
+	//Build the solution
+	v_add(y_0,Z_i[s-1],new_y,0);
+	if(new_y.ve[0] < 0.0)	new_y.ve[0] = 1e-15;	//A negative discharge is clearly a poor approximation
+	if(dim > 1 && new_y.ve[1] < 0.0)	new_y.ve[1] = 0.0;
+	if(dim > 2 && new_y.ve[2] < 0.0)	new_y.ve[2] = 0.0;
+	if(dim > 2 && new_y.ve[2] > 1.0)	new_y.ve[2] = 1.0 - 1e-15;
+	if(dim > 3 && new_y.ve[3] < 0.0)	new_y.ve[3] = 1e-15;
+	if(dim > 3 && sum.ve[3] > 1.0 - sum.ve[2])	sum.ve[3] = 1.0 - sum.ve[2];
 
-    //Error estimation and step size selection
+	//Error estimation and step size selection
 
-    //Compute LU factorization of (I - h e[s] JMatrix)
-    dipaa(-h*e.ve[s],link_i->JMatrix,tempmat,0,0);
-    info = clapack_dgetrf(CblasRowMajor,dim,dim,tempmat->array,dim,ipiv);
+	//Compute LU factorization of (I - h e[s] JMatrix)
+	dipaa(-h*e.ve[s],link_i->JMatrix,tempmat,0,0);
+	info = clapack_dgetrf(CblasRowMajor,dim,dim,tempmat->array,dim,ipiv);
 
-    //Build err for y_1
-    v_copy(Z_i[0],sum);
-    sv_mlt(e.ve[0],sum,0);
-    for(i=1;i<s;i++)	daxpy(e.ve[i],Z_i[i],sum,0);
-    v_copy(sum,err);
-    link_i->f(t,y_0,temp_parent_approx[s],link_i->num_parents,GlobalVars,link_i->forcing_values,link_i->qvs,params,link_i->state,link_i->user,temp);	//Compute the extra k
-    daxpy(h*e.ve[s],temp,err,0);	//Extra k
-    info = clapack_dgetrs(CblasRowMajor,111,dim,1,tempmat->array,dim,ipiv,err.ve,dim);
+	//Build err for y_1
+	v_copy(Z_i[0],sum);
+	sv_mlt(e.ve[0],sum,0);
+	for(i=1;i<s;i++)	daxpy(e.ve[i],Z_i[i],sum,0);
+	v_copy(sum,err);
+	link_i->f(t,y_0,temp_parent_approx[s],link_i->num_parents,GlobalVars,link_i->forcing_values,link_i->qvs,params,link_i->state,link_i->user,temp);	//Compute the extra k
+	daxpy(h*e.ve[s],temp,err,0);	//Extra k
+	info = clapack_dgetrs(CblasRowMajor,111,dim,1,tempmat->array,dim,ipiv,err.ve,dim);
 
-    if(link_i->rejected == 0)	//If the previous step was rejected
-    {
-        v_add(y_0,err,temp,0);
-        v_copy(sum,err);
-        link_i->f(t,temp,temp_parent_approx[s],link_i->num_parents,GlobalVars,link_i->forcing_values,link_i->qvs,params,link_i->state,link_i->user,temp);
-        daxpy(h*e.ve[s],temp,err,0);
-        info = clapack_dgetrs(CblasRowMajor,111,dim,1,tempmat->array,dim,ipiv,err.ve,dim);
-    }
+	if(link_i->rejected == 0)	//If the previous step was rejected
+	{
+		v_add(y_0,err,temp,0);
+		v_copy(sum,err);
+		link_i->f(t,temp,temp_parent_approx[s],link_i->num_parents,GlobalVars,link_i->forcing_values,link_i->qvs,params,link_i->state,link_i->user,temp);
+		daxpy(h*e.ve[s],temp,err,0);
+		info = clapack_dgetrs(CblasRowMajor,111,dim,1,tempmat->array,dim,ipiv,err.ve,dim);
+	}
 
-    //Build SC_i for y_1
-    for(i=0;i<dim;i++)
-        temp.ve[i] = max(fabs(new_y.ve[i]),fabs(y_0.ve[i])) * error->reltol.ve[i] + error->abstol.ve[i];
+	//Build SC_i for y_1
+	for(i=0;i<dim;i++)
+		temp.ve[i] = max(fabs(new_y.ve[i]),fabs(y_0.ve[i])) * error->reltol.ve[i] + error->abstol.ve[i];
 
-    //err_1 = norm_inf(sum,temp,meth->e_order_ratio,0);
-    double err_1 = norm_inf(err,temp,1.0,0);
-    double value_1 = pow(1.0/err_1,1.0/meth->e_order);
+	//err_1 = norm_inf(sum,temp,meth->e_order_ratio,0);
+	double err_1 = norm_inf(err,temp,1.0,0);
+	double value_1 = pow(1.0/err_1,1.0/meth->e_order);
 
-    //Build err for dense output
+	//Build err for dense output
 //	v_copy(Z_i[0],sum);
 //	sv_mlt(d.ve[0],sum,0);
 //	for(i=1;i<s;i++)	daxpy(d.ve[i],Z_i[i],sum,0);
@@ -2416,162 +2416,162 @@ int RadauRKSolver(Link* link_i,UnivVars* GlobalVars,int* assignments,bool print_
 //	link_i->h = step_1;
 
 //	if(err_1 < 1.0 && err_d < 1.0)
-    if(err_1 < 1.0)
-    {
-        //Check if an LU factorization should take place in the next step
-        if( link_i->compute_J == 1 || h > step_1 || step_1 > 1.2*h )
-        {
-            link_i->h = min(step_1,step_log);
-            link_i->compute_LU = 1;
-        }
-        else
-            link_i->compute_LU = 0;
+	if(err_1 < 1.0)
+	{
+		//Check if an LU factorization should take place in the next step
+		if( link_i->compute_J == 1 || h > step_1 || step_1 > 1.2*h )
+		{
+			link_i->h = min(step_1,step_log);
+			link_i->compute_LU = 1;
+		}
+		else
+			link_i->compute_LU = 0;
 
-        //Save the new data
-        for(j=0;j<s;j++)
-        {
-            v_add(y_0,Z_i[j],sum,0);
-            if(sum.ve[0] < 0.0)	sum.ve[0] = 1e-10;	//A negative discharge is clearly a poor approximation
-            if(dim > 1 && sum.ve[1] < 0.0)	sum.ve[1] = 0.0;
-            if(dim > 2 && sum.ve[2] < 0.0)	sum.ve[2] = 0.0;
-            if(dim > 2 && sum.ve[2] > 1.0)	sum.ve[2] = 1.0 - 1e-10;
-            if(dim > 3 && sum.ve[3] < 0.0)	sum.ve[3] = 1e-10;
-            if(dim > 3 && sum.ve[3] > 1.0 - sum.ve[2])	sum.ve[3] = 1.0 - sum.ve[2];
-            link_i->f(t+c.ve[j]*h,sum,temp_parent_approx[j],link_i->num_parents,GlobalVars,link_i->forcing_values,link_i->qvs,params,link_i->state,link_i->user,k[j]);
-        }
-        link_i->last_t = t + h;
-        link_i->current_iterations++;
-        link_i->h_old = h;
-        link_i->value_old = value_1;
-        v_sub(y_0,new_y,link_i->sol_diff,0);
-        for(i=0;i<s;i++)	v_copy(Z_i[i],old_Z[i]);
+		//Save the new data
+		for(j=0;j<s;j++)
+		{
+			v_add(y_0,Z_i[j],sum,0);
+			if(sum.ve[0] < 0.0)	sum.ve[0] = 1e-10;	//A negative discharge is clearly a poor approximation
+			if(dim > 1 && sum.ve[1] < 0.0)	sum.ve[1] = 0.0;
+			if(dim > 2 && sum.ve[2] < 0.0)	sum.ve[2] = 0.0;
+			if(dim > 2 && sum.ve[2] > 1.0)	sum.ve[2] = 1.0 - 1e-10;
+			if(dim > 3 && sum.ve[3] < 0.0)	sum.ve[3] = 1e-10;
+			if(dim > 3 && sum.ve[3] > 1.0 - sum.ve[2])	sum.ve[3] = 1.0 - sum.ve[2];
+			link_i->f(t+c.ve[j]*h,sum,temp_parent_approx[j],link_i->num_parents,GlobalVars,link_i->forcing_values,link_i->qvs,params,link_i->state,link_i->user,k[j]);
+		}
+		link_i->last_t = t + h;
+		link_i->current_iterations++;
+		link_i->h_old = h;
+		link_i->value_old = value_1;
+		v_sub(y_0,new_y,link_i->sol_diff,0);
+		for(i=0;i<s;i++)	v_copy(Z_i[i],old_Z[i]);
 
-        //Check if new data should be written to disk
-        if(print_flag)
-        {
-            while(t <= link_i->next_save && link_i->next_save <= link_i->last_t)
-            {
-                //Don't write anything if using data assimilation and at a time when data is available
-                if(GlobalVars->assim_flag)
-                {
-                    double rounded = 1e-13*rint(1e13*(GlobalVars->maxtime - link_i->next_save));
-                    if(rounded < 1e-13 && -rounded < 1e-13)		break;
-                }
+		//Check if new data should be written to disk
+		if(print_flag)
+		{
+			while(t <= link_i->next_save && link_i->next_save <= link_i->last_t)
+			{
+				//Don't write anything if using data assimilation and at a time when data is available
+				if(GlobalVars->assim_flag)
+				{
+					double rounded = 1e-13*rint(1e13*(GlobalVars->maxtime - link_i->next_save));
+					if(rounded < 1e-13 && -rounded < 1e-13)		break;
+				}
 
-                (link_i->disk_iterations)++;
-                node = link_i->list->tail->prev;
-                current_theta = (link_i->next_save - t)/h;
-                link_i->method->dense_b(current_theta,link_i->method->b_theta);
+				(link_i->disk_iterations)++;
+				node = link_i->list->tail->prev;
+				current_theta = (link_i->next_save - t)/h;
+				link_i->method->dense_b(current_theta,link_i->method->b_theta);
 
-                v_copy(node->y_approx,sum);
-                for(l=0;l<link_i->method->s;l++)
-                    daxpy(h * link_i->method->b_theta.ve[l],node->next->k[l],sum,0);
-                if(sum.ve[0] < 0.0)	sum.ve[0] = 0.0;
-                if(dim > 1 && sum.ve[1] < 0.0)	sum.ve[1] = 0.0;
-                if(dim > 2 && new_y.ve[2] < 0.0)	new_y.ve[2] = 0.0;
-                if(dim > 2 && new_y.ve[2] > 1.0)	new_y.ve[2] = 1.0;
-                if(dim > 3 && new_y.ve[3] < 0.0)	new_y.ve[3] = 0.0;
-                if(dim > 3 && sum.ve[3] > 1.0 - sum.ve[2])	sum.ve[3] = 1.0 - sum.ve[2];
+				v_copy(node->y_approx,sum);
+				for(l=0;l<link_i->method->s;l++)
+					daxpy(h * link_i->method->b_theta.ve[l],node->next->k[l],sum,0);
+				if(sum.ve[0] < 0.0)	sum.ve[0] = 0.0;
+				if(dim > 1 && sum.ve[1] < 0.0)	sum.ve[1] = 0.0;
+				if(dim > 2 && new_y.ve[2] < 0.0)	new_y.ve[2] = 0.0;
+				if(dim > 2 && new_y.ve[2] > 1.0)	new_y.ve[2] = 1.0;
+				if(dim > 3 && new_y.ve[3] < 0.0)	new_y.ve[3] = 0.0;
+				if(dim > 3 && sum.ve[3] > 1.0 - sum.ve[2])	sum.ve[3] = 1.0 - sum.ve[2];
 
-                fsetpos(outputfile,&(link_i->pos));
-                fwrite(&(link_i->next_save),sizeof(double),1,outputfile);
-                for(j=0;j<num_print;j++)
-                    fwrite(&(sum.ve[print_indices[j]]),sizeof(double),1,outputfile);
-                fgetpos(outputfile,&(link_i->pos));
+				fsetpos(outputfile,&(link_i->pos));
+				fwrite(&(link_i->next_save),sizeof(double),1,outputfile);
+				for(j=0;j<num_print;j++)
+					fwrite(&(sum.ve[print_indices[j]]),sizeof(double),1,outputfile);
+				fgetpos(outputfile,&(link_i->pos));
 
-                link_i->next_save += link_i->print_time;
-            }
-        }
+				link_i->next_save += link_i->print_time;
+			}
+		}
 
-        //Check if this is a max discharge
-        if(new_y.ve[0] > link_i->peak_value.ve[0])
-        {
-            v_copy(new_y,link_i->peak_value);
-            link_i->peak_time = link_i->last_t;
-        }
+		//Check if this is a max discharge
+		if(new_y.ve[0] > link_i->peak_value.ve[0])
+		{
+			v_copy(new_y,link_i->peak_value);
+			link_i->peak_time = link_i->last_t;
+		}
 
-        //Check if the newest step is on a change in rainfall
-        short int propagated = 0;	//Set to 1 when last_t has been propagated
-        for(j=0;j<GlobalVars->num_forcings;j++)
-        {
-            if( link_i->forcing_buff[j] && fabs(link_i->last_t - link_i->forcing_change_times[j]) < 1e-14 )
-            {
-                //Propagate the discontinuity to downstream links
-                if(!propagated)
-                {
-                    propagated = 1;
-                    Link* next = link_i->child;
-                    Link* prev = link_i;
-                    for(i=0;i<GlobalVars->max_localorder && next != NULL;i++)
-                    {
-                        if(assignments[next->location] == my_rank && i < next->method->localorder)
-                        {
-                            //Insert the time into the discontinuity list
-                            next->discont_end = Insert_Discontinuity(link_i->forcing_change_times[j],next->discont_start,next->discont_end,&(next->discont_count),GlobalVars->discont_size,next->discont,next->ID);
-                        }
-                        else if(next != NULL && assignments[next->location] != my_rank)
-                        {
-                            //Store the time to send to another process
-                            Insert_SendDiscontinuity(link_i->forcing_change_times[j],i,&(prev->discont_send_count),GlobalVars->discont_size,prev->discont_send,prev->discont_order_send,prev->ID);
-                            break;
-                        }
+		//Check if the newest step is on a change in rainfall
+		short int propagated = 0;	//Set to 1 when last_t has been propagated
+		for(j=0;j<GlobalVars->num_forcings;j++)
+		{
+			if( link_i->forcing_buff[j] && fabs(link_i->last_t - link_i->forcing_change_times[j]) < 1e-14 )
+			{
+				//Propagate the discontinuity to downstream links
+				if(!propagated)
+				{
+					propagated = 1;
+					Link* next = link_i->child;
+					Link* prev = link_i;
+					for(i=0;i<GlobalVars->max_localorder && next != NULL;i++)
+					{
+						if(assignments[next->location] == my_rank && i < next->method->localorder)
+						{
+							//Insert the time into the discontinuity list
+							next->discont_end = Insert_Discontinuity(link_i->forcing_change_times[j],next->discont_start,next->discont_end,&(next->discont_count),GlobalVars->discont_size,next->discont,next->ID);
+						}
+						else if(next != NULL && assignments[next->location] != my_rank)
+						{
+							//Store the time to send to another process
+							Insert_SendDiscontinuity(link_i->forcing_change_times[j],i,&(prev->discont_send_count),GlobalVars->discont_size,prev->discont_send,prev->discont_order_send,prev->ID);
+							break;
+						}
 
-                        prev = next;
-                        next = next->child;
-                    }
-                }
+						prev = next;
+						next = next->child;
+					}
+				}
 
-                //Find the right index in rainfall
-                //for(l=1;l<link_i->forcing_buff[j]->n_times;l++)
-                for(l=link_i->forcing_indices[j]+1;l<link_i->forcing_buff[j]->n_times;l++)
-                    if( fabs(link_i->forcing_change_times[j] - link_i->forcing_buff[j]->rainfall[l][0]) < 1e-8 )	break;
-                link_i->forcing_indices[j] = l;
+				//Find the right index in rainfall
+				//for(l=1;l<link_i->forcing_buff[j]->n_times;l++)
+				for(l=link_i->forcing_indices[j]+1;l<link_i->forcing_buff[j]->n_times;l++)
+					if( fabs(link_i->forcing_change_times[j] - link_i->forcing_buff[j]->rainfall[l][0]) < 1e-8 )	break;
+				link_i->forcing_indices[j] = l;
 
-                double forcing_buffer = link_i->forcing_buff[j]->rainfall[l][1];
-                link_i->forcing_values[j] = forcing_buffer;
+				double forcing_buffer = link_i->forcing_buff[j]->rainfall[l][1];
+				link_i->forcing_values[j] = forcing_buffer;
 
-                //Find and set the new change in rainfall
-                for(i=l+1;i<link_i->forcing_buff[j]->n_times;i++)
-                {
-                    if(link_i->forcing_buff[j]->rainfall[i][1] != forcing_buffer)
-                    {
-                        link_i->forcing_change_times[j] = link_i->forcing_buff[j]->rainfall[i][0];
-                        break;
-                    }
-                }
-                if(i == link_i->forcing_buff[j]->n_times)
-                    link_i->forcing_change_times[j] = link_i->forcing_buff[j]->rainfall[i-1][0];
-            }
-        }
+				//Find and set the new change in rainfall
+				for(i=l+1;i<link_i->forcing_buff[j]->n_times;i++)
+				{
+					if(link_i->forcing_buff[j]->rainfall[i][1] != forcing_buffer)
+					{
+						link_i->forcing_change_times[j] = link_i->forcing_buff[j]->rainfall[i][0];
+						break;
+					}
+				}
+				if(i == link_i->forcing_buff[j]->n_times)
+					link_i->forcing_change_times[j] = link_i->forcing_buff[j]->rainfall[i-1][0];
+			}
+		}
 
-        //Select new step size, if forcings changed
-        if(propagated)	link_i->h = InitialStepSize(link_i->last_t,link_i,GlobalVars,workspace);
+		//Select new step size, if forcings changed
+		if(propagated)	link_i->h = InitialStepSize(link_i->last_t,link_i,GlobalVars,workspace);
 
-        //Free up parents' old data
-        for(i=0;i<link_i->num_parents;i++)
-        {
-            currentp = link_i->parents[i];
-            while(currentp->list->head != curr_node[i])
-            {
-                Remove_Head_Node(currentp->list);
-                currentp->current_iterations--;
-                currentp->iters_removed++;
-            }
-        }
+		//Free up parents' old data
+		for(i=0;i<link_i->num_parents;i++)
+		{
+			currentp = link_i->parents[i];
+			while(currentp->list->head != curr_node[i])
+			{
+				Remove_Head_Node(currentp->list);
+				currentp->current_iterations--;
+				currentp->iters_removed++;
+			}
+		}
 
-        return 1;
-    }
-    else
-    {
-        //Trash the data from the failed step
-        Undo_Step(link_i->list);
+		return 1;
+	}
+	else
+	{
+		//Trash the data from the failed step
+		Undo_Step(link_i->list);
 
-        link_i->h = min(step_1,step_log);
-        link_i->compute_J = 1;
-        link_i->compute_LU = 1;
+		link_i->h = min(step_1,step_log);
+		link_i->compute_J = 1;
+		link_i->compute_LU = 1;
 
-        return 0;
-    }
+		return 0;
+	}
 
 }
 */
@@ -2582,249 +2582,249 @@ int RadauRKSolver(Link* link_i,UnivVars* GlobalVars,int* assignments,bool print_
 int ForcedSolutionSolver(Link* link_i, GlobalVars* GlobalVars, int* assignments, bool print_flag, FILE* outputfile, ConnData* conninfo, Forcing* forcings, TempStorage* workspace)
 {
     unsigned int i, j, l;
-    VEC new_y;
+	VEC new_y;
     RKSolutionNode *curr_node[ASYNCH_LINK_MAX_PARENTS], *new_node;
-    Link* currentp;
-    double t_needed;
-    short int change_value = 0;
+	Link* currentp;
+	double t_needed;
+	short int change_value = 0;
 
-    //Some variables to make things easier to read
-    VEC y_0 = link_i->list->tail->y_approx;
-    double t = link_i->list->tail->t;
-    double h = link_i->h;
-    unsigned int s = link_i->method->s;
-    VEC params = link_i->params;
-    RKMethod* meth = link_i->method;
-    ErrorData* error = link_i->errorinfo;
-    const unsigned int dim = link_i->dim;
-    unsigned int num_dense = link_i->num_dense;
-    unsigned int* dense_indices = link_i->dense_indices;
-    unsigned int num_print = GlobalVars->num_print;
-    VEC** temp_parent_approx = workspace->temp_parent_approx;
-    VEC* temp_k = workspace->temp_k;
+	//Some variables to make things easier to read
+	VEC y_0 = link_i->list->tail->y_approx;
+	double t = link_i->list->tail->t;
+	double h = link_i->h;
+	unsigned int s = link_i->method->s;
+	VEC params = link_i->params;
+	RKMethod* meth = link_i->method;
+	ErrorData* error = link_i->errorinfo;
+	const unsigned int dim = link_i->dim;
+	unsigned int num_dense = link_i->num_dense;
+	unsigned int* dense_indices = link_i->dense_indices;
+	unsigned int num_print = GlobalVars->num_print;
+	VEC** temp_parent_approx = workspace->temp_parent_approx;
+	VEC* temp_k = workspace->temp_k;
 
-    //Find the next time to step on
-    t_needed = GlobalVars->maxtime;
+	//Find the next time to step on
+	t_needed = GlobalVars->maxtime;
     for (i = 0; i < GlobalVars->num_forcings; i++)
-    {
+	{
         if (forcings[i].active && link_i->forcing_buff[i])
-        {
+		{
             if (t_needed > link_i->forcing_change_times[i])
-            {
-                t_needed = link_i->forcing_change_times[i];
-                change_value = 1;
-            }
-        }
-    }
+			{
+				t_needed = link_i->forcing_change_times[i];
+				change_value = 1;
+			}
+		}
+	}
 
     for (i = 0; i < link_i->num_parents; i++)
-    {
+	{
         if (t_needed > link_i->parents[i]->last_t)
-        {
-            t_needed = link_i->parents[i]->last_t;
-            change_value = 0;
-        }
-    }
+		{
+			t_needed = link_i->parents[i]->last_t;
+			change_value = 0;
+		}
+	}
 
-    h = t_needed - t;
+	h = t_needed - t;
 
-    //Setup the current nodes at each parent (for deleting data)
+	//Setup the current nodes at each parent (for deleting data)
     for (i = 0; i < link_i->num_parents; i++)
-    {
-        currentp = link_i->parents[i];
-        curr_node[i] = currentp->list->head;
+	{
+		currentp = link_i->parents[i];
+		curr_node[i] = currentp->list->head;
 
-        //Find the corresponding theta value and approximate solution
+		//Find the corresponding theta value and approximate solution
         while (t_needed > curr_node[i]->t)
-            curr_node[i] = curr_node[i]->next;
+			curr_node[i] = curr_node[i]->next;
 
         if (curr_node[i] != currentp->list->head)	curr_node[i] = curr_node[i]->prev;
-    }
+	}
 
-    //Setup variables for the new data
-    new_node = New_Step(link_i->list);
-    new_node->t = t + h;
-    new_y = new_node->y_approx;
+	//Setup variables for the new data
+	new_node = New_Step(link_i->list);
+	new_node->t = t + h;
+	new_y = new_node->y_approx;
 
-    //Compute the k's
+	//Compute the k's
     for (i = 0; i < s; i++)
         for (j = 0; j < dim; j++)	temp_k[i].ve[j] = 0.0;
 
-    //Build the solution
+	//Build the solution
     if (change_value)
-    {
-        //Check if the newest step is on a change in rainfall
-        short int propagated = 0;	//Set to 1 when last_t has been propagated
+	{
+		//Check if the newest step is on a change in rainfall
+		short int propagated = 0;	//Set to 1 when last_t has been propagated
         for (j = 0; j < GlobalVars->num_forcings; j++)
-        {
+		{
             if (forcings[j].active && link_i->forcing_buff[j] && (fabs(new_node->t - link_i->forcing_change_times[j]) < 1e-8))
-            {
-                //Propagate the discontinuity to downstream links
+			{
+				//Propagate the discontinuity to downstream links
                 if (!propagated)
-                {
-                    propagated = 1;
-                    Link* next = link_i->child;
-                    Link* prev = link_i;
+				{
+					propagated = 1;
+					Link* next = link_i->child;
+					Link* prev = link_i;
                     for (i = 0; i < GlobalVars->max_localorder && next != NULL; i++)
-                    {
+					{
                         if (assignments[next->location] == my_rank && i < next->method->localorder)
-                        {
-                            //Insert the time into the discontinuity list
+						{
+							//Insert the time into the discontinuity list
                             next->discont_end = Insert_Discontinuity(link_i->forcing_change_times[j], next->discont_start, next->discont_end, &(next->discont_count), GlobalVars->discont_size, next->discont, next->ID);
-                        }
+						}
                         else if (next != NULL && assignments[next->location] != my_rank)
-                        {
-                            //Store the time to send to another process
+						{
+							//Store the time to send to another process
                             Insert_SendDiscontinuity(link_i->forcing_change_times[j], i, &(prev->discont_send_count), GlobalVars->discont_size, prev->discont_send, prev->discont_order_send, prev->ID);
-                            break;
-                        }
+							break;
+						}
 
-                        prev = next;
-                        next = next->child;
-                    }
-                }
+						prev = next;
+						next = next->child;
+					}
+				}
 
-                //Find the right index in rainfall
-                //for(l=1;l<link_i->forcing_buff[j]->n_times;l++)
+				//Find the right index in rainfall
+				//for(l=1;l<link_i->forcing_buff[j]->n_times;l++)
                 for (l = link_i->forcing_indices[j] + 1; l < link_i->forcing_buff[j]->nrows; l++)
                     if (fabs(link_i->forcing_change_times[j] - link_i->forcing_buff[j]->data[l][0]) < 1e-8)	break;
-                link_i->forcing_indices[j] = l;
+				link_i->forcing_indices[j] = l;
 
                 double forcing_buffer = link_i->forcing_buff[j]->data[l][1];
-                link_i->forcing_values[j] = forcing_buffer;
+				link_i->forcing_values[j] = forcing_buffer;
 
-                //Find and set the new change in rainfall
+				//Find and set the new change in rainfall
                 for (i = l + 1; i < link_i->forcing_buff[j]->nrows; i++)
-                {
+				{
                     if (fabs(link_i->forcing_buff[j]->data[i][1] - forcing_buffer) > 1e-8)
-                    {
+					{
                         link_i->forcing_change_times[j] = link_i->forcing_buff[j]->data[i][0];
-                        break;
-                    }
-                }
+						break;
+					}
+				}
                 if (i == link_i->forcing_buff[j]->nrows)
                     link_i->forcing_change_times[j] = link_i->forcing_buff[j]->data[i - 1][0];
-            }
-        }
-    }
+			}
+		}
+	}
     link_i->f(t + h, y_0, NULL, link_i->num_parents, GlobalVars->global_params, link_i->forcing_values, link_i->qvs, params, link_i->state, link_i->user, new_y);
     if (link_i->state_check)	new_node->state = link_i->state_check(new_y, GlobalVars->global_params, link_i->params, link_i->qvs, link_i->dam);
 
-    //Set stepsize
-    link_i->h = h;
+	//Set stepsize
+	link_i->h = h;
 
-    //Ignore propagated discontinuities
-    link_i->discont_count = 0;
-    link_i->discont_start = 0;
+	//Ignore propagated discontinuities
+	link_i->discont_count = 0;
+	link_i->discont_start = 0;
     link_i->discont_end = GlobalVars->discont_size - 1;
 
-    //Save the new data
-    link_i->last_t = t + h;
-    link_i->current_iterations++;
+	//Save the new data
+	link_i->last_t = t + h;
+	link_i->current_iterations++;
     store_k(temp_k, new_node->k, s, dense_indices, num_dense);
 
-    //Check if new data should be written to disk
+	//Check if new data should be written to disk
     if (print_flag)
-    {
+	{
         while (t <= link_i->next_save && (link_i->next_save < link_i->last_t || fabs(link_i->next_save - link_i->last_t) / link_i->next_save < 1e-12))
-        {
+		{
             if (link_i->disk_iterations == link_i->expected_file_vals)
-            {
+			{
                 printf("[%i]: Warning: Too many steps computed for link id %u. Expected no more than %u. No more values will be stored for this link.\n", my_rank, link_i->ID, link_i->expected_file_vals);
-                break;
-            }
-            (link_i->disk_iterations)++;
+				break;
+			}
+			(link_i->disk_iterations)++;
 
-            //Write to a file
+			//Write to a file
             if (change_value && fabs((link_i->next_save - link_i->last_t) / link_i->next_save) < 1e-12)
                 WriteStep(outputfile, link_i->ID, link_i->next_save, new_y, GlobalVars, params, link_i->state, link_i->output_user, &(link_i->pos_offset));
-            else
+			else
                 WriteStep(outputfile, link_i->ID, link_i->next_save, y_0, GlobalVars, params, link_i->state, link_i->output_user, &(link_i->pos_offset));
-            link_i->next_save += link_i->print_time;
-        }
-    }
+			link_i->next_save += link_i->print_time;
+		}
+	}
 
-    //Check if this is a max discharge
+	//Check if this is a max discharge
     if (link_i->peak_flag && (new_y.ve[0] > link_i->peak_value.ve[0]))
-    {
+	{
         v_copy_n(new_y, link_i->peak_value, link_i->dim);
-        link_i->peak_time = link_i->last_t;
-    }
+		link_i->peak_time = link_i->last_t;
+	}
 
 
-    //Check if the newest step is on a change in rainfall
+	//Check if the newest step is on a change in rainfall
     if (!change_value)
-    {
-        short int propagated = 0;	//Set to 1 when last_t has been propagated
+	{
+		short int propagated = 0;	//Set to 1 when last_t has been propagated
         for (j = 0; j < GlobalVars->num_forcings; j++)
-        {
+		{
             if (forcings[j].active && link_i->forcing_buff[j] && (fabs(link_i->last_t - link_i->forcing_change_times[j]) < 1e-8))
-            {
-                //Propagate the discontinuity to downstream links
+			{
+				//Propagate the discontinuity to downstream links
                 if (!propagated)
-                {
-                    propagated = 1;
-                    Link* next = link_i->child;
-                    Link* prev = link_i;
+				{
+					propagated = 1;
+					Link* next = link_i->child;
+					Link* prev = link_i;
                     for (i = 0; i < GlobalVars->max_localorder && next != NULL; i++)
-                    {
+					{
                         if (assignments[next->location] == my_rank && i < next->method->localorder)
-                        {
-                            //Insert the time into the discontinuity list
+						{
+							//Insert the time into the discontinuity list
                             next->discont_end = Insert_Discontinuity(link_i->forcing_change_times[j], next->discont_start, next->discont_end, &(next->discont_count), GlobalVars->discont_size, next->discont, next->ID);
-                        }
+						}
                         else if (next != NULL && assignments[next->location] != my_rank)
-                        {
-                            //Store the time to send to another process
+						{
+							//Store the time to send to another process
                             Insert_SendDiscontinuity(link_i->forcing_change_times[j], i, &(prev->discont_send_count), GlobalVars->discont_size, prev->discont_send, prev->discont_order_send, prev->ID);
-                            break;
-                        }
+							break;
+						}
 
-                        prev = next;
-                        next = next->child;
-                    }
-                }
+						prev = next;
+						next = next->child;
+					}
+				}
 
-                //Find the right index in rainfall
-                //for(l=1;l<link_i->forcing_buff[j]->n_times;l++)
+				//Find the right index in rainfall
+				//for(l=1;l<link_i->forcing_buff[j]->n_times;l++)
                 for (l = link_i->forcing_indices[j] + 1; l < link_i->forcing_buff[j]->nrows; l++)
                     if (fabs(link_i->forcing_change_times[j] - link_i->forcing_buff[j]->data[l][0]) < 1e-8)	break;
-                link_i->forcing_indices[j] = l;
+				link_i->forcing_indices[j] = l;
 
                 double forcing_buffer = link_i->forcing_buff[j]->data[l][1];
-                link_i->forcing_values[j] = forcing_buffer;
+				link_i->forcing_values[j] = forcing_buffer;
 
-                //Find and set the new change in rainfall
+				//Find and set the new change in rainfall
                 for (i = l + 1; i < link_i->forcing_buff[j]->nrows; i++)
-                {
+				{
                     if (fabs(link_i->forcing_buff[j]->data[i][1] - forcing_buffer) > 1e-8)
-                    {
+					{
                         link_i->forcing_change_times[j] = link_i->forcing_buff[j]->data[i][0];
-                        break;
-                    }
-                }
+						break;
+					}
+				}
                 if (i == link_i->forcing_buff[j]->nrows)
                     link_i->forcing_change_times[j] = link_i->forcing_buff[j]->data[i - 1][0];
-            }
-        }
-    }
+			}
+		}
+	}
 
-    //Free up parents' old data
+	//Free up parents' old data
     for (i = 0; i < link_i->num_parents; i++)
-    {
-        currentp = link_i->parents[i];
+	{
+		currentp = link_i->parents[i];
         while (currentp->list->head != curr_node[i])
-        {
-            Remove_Head_Node(currentp->list);
-            currentp->current_iterations--;
-            currentp->iters_removed++;
-        }
-    }
+		{
+			Remove_Head_Node(currentp->list);
+			currentp->current_iterations--;
+			currentp->iters_removed++;
+		}
+	}
 
     //if(link_i->ID == 2)
     //printf("%f %f %u\n",link_i->last_t,link_i->forcing_values[2],link_i->forcing_indices[2]);
 
-    return 1;
+	return 1;
 }
 
 
@@ -2835,272 +2835,272 @@ int ForcedSolutionSolver(Link* link_i, GlobalVars* GlobalVars, int* assignments,
 //Returns 1 if the step was successfully taken, 0 if the step was rejected.
 int ExplicitRKSolver_DataAssim(Link* link_i,UnivVars* GlobalVars,int* assignments,bool print_flag,FILE* outputfile,ConnData* conninfo,Forcing* forcings,TempStorage* workspace)
 {
-    unsigned int i,j,l,m,idx;
-    VEC* new_y;
-    RKSolutionNode *curr_node[link_i->num_parents],*node,*new_node;
-    Link* currentp;
-    double t_needed,timediff,current_theta;
+	unsigned int i,j,l,m,idx;
+	VEC* new_y;
+	RKSolutionNode *curr_node[link_i->num_parents],*node,*new_node;
+	Link* currentp;
+	double t_needed,timediff,current_theta;
 
-    //Some variables to make things easier to read
-    VEC* y_0 = link_i->list->tail->y_approx;
-    double h = link_i->h;
-    double t = link_i->list->tail->t;
-    MAT* A = link_i->method->A;
-    VEC* b = link_i->method->b;
-    VEC* c = link_i->method->c;
-    unsigned int s = link_i->method->s;
-    VEC* params = link_i->params;
-    VEC* e = link_i->method->e;
-    VEC* d = link_i->method->d;
-    RKMethod* meth = link_i->method;
-    ErrorData* error = link_i->errorinfo;
-    //const unsigned int dim = GlobalVars->dim;
-    //unsigned int num_dense = GlobalVars->num_dense;
-    unsigned int* dense_indices = GlobalVars->dense_indices;
-    unsigned int num_print = GlobalVars->num_print;
-    VEC* temp = workspace->temp;
-    VEC* sum = workspace->sum;
-    VEC*** temp_parent_approx = workspace->temp_parent_approx;
-    VEC** temp_k = workspace->temp_k;
-    unsigned int problem_dim = GlobalVars->problem_dim;
+	//Some variables to make things easier to read
+	VEC* y_0 = link_i->list->tail->y_approx;
+	double h = link_i->h;
+	double t = link_i->list->tail->t;
+	MAT* A = link_i->method->A;
+	VEC* b = link_i->method->b;
+	VEC* c = link_i->method->c;
+	unsigned int s = link_i->method->s;
+	VEC* params = link_i->params;
+	VEC* e = link_i->method->e;
+	VEC* d = link_i->method->d;
+	RKMethod* meth = link_i->method;
+	ErrorData* error = link_i->errorinfo;
+	//const unsigned int dim = GlobalVars->dim;
+	//unsigned int num_dense = GlobalVars->num_dense;
+	unsigned int* dense_indices = GlobalVars->dense_indices;
+	unsigned int num_print = GlobalVars->num_print;
+	VEC* temp = workspace->temp;
+	VEC* sum = workspace->sum;
+	VEC*** temp_parent_approx = workspace->temp_parent_approx;
+	VEC** temp_k = workspace->temp_k;
+	unsigned int problem_dim = GlobalVars->problem_dim;
 
-    //Calculate total number of upstream links
-    unsigned int practical_dim,num_dense_parents[link_i->num_parents],num_upstream_links = 0;
-    for(i=0;i<link_i->num_parents;i++)
-    {
-        num_upstream_links += link_i->numupstream[i];
-        num_dense_parents[i] = (link_i->numupstream[i]*problem_dim + 1) * problem_dim;	//!!!! This is actually an upper bound. The extra problem_dim assumes all states are needed. !!!!
-    }
-    practical_dim = 2*problem_dim + (problem_dim - 1)*(problem_dim - 1) + problem_dim * num_upstream_links;
+	//Calculate total number of upstream links
+	unsigned int practical_dim,num_dense_parents[link_i->num_parents],num_upstream_links = 0;
+	for(i=0;i<link_i->num_parents;i++)
+	{
+		num_upstream_links += link_i->numupstream[i];
+		num_dense_parents[i] = (link_i->numupstream[i]*problem_dim + 1) * problem_dim;	//!!!! This is actually an upper bound. The extra problem_dim assumes all states are needed. !!!!
+	}
+	practical_dim = 2*problem_dim + (problem_dim - 1)*(problem_dim - 1) + problem_dim * num_upstream_links;
 
-    //Get the approximate solutions from each parent
-    for(i=0;i<link_i->num_parents;i++)
-    {
-        currentp = link_i->parents[i];
-        curr_node[i] = currentp->list->head;
+	//Get the approximate solutions from each parent
+	for(i=0;i<link_i->num_parents;i++)
+	{
+		currentp = link_i->parents[i];
+		curr_node[i] = currentp->list->head;
 
-        for(j=0;j<s;j++)
-        {
-            //Find the needed value of t and corresponding node for y_p
-            //Assuming everything needed is already calculated
-            //This assumes c_s is the biggest. If not, one extra step may not get freed.
-            t_needed = min(t + c.ve[j]*h,currentp->last_t);
-            //t_needed = t + c.ve[j]*h;
+		for(j=0;j<s;j++)
+		{
+			//Find the needed value of t and corresponding node for y_p
+			//Assuming everything needed is already calculated
+			//This assumes c_s is the biggest. If not, one extra step may not get freed.
+			t_needed = min(t + c.ve[j]*h,currentp->last_t);
+			//t_needed = t + c.ve[j]*h;
 
-            //Find the corresponding theta value and approximate solution
-            while(t_needed > curr_node[i]->t)
-                curr_node[i] = curr_node[i]->next;
-            if(curr_node[i] != currentp->list->head)	curr_node[i] = curr_node[i]->prev;
+			//Find the corresponding theta value and approximate solution
+			while(t_needed > curr_node[i]->t)
+				curr_node[i] = curr_node[i]->next;
+			if(curr_node[i] != currentp->list->head)	curr_node[i] = curr_node[i]->prev;
 
-            timediff = curr_node[i]->next->t - curr_node[i]->t;
-            current_theta = (t_needed-curr_node[i]->t)/timediff;
-            currentp->method->dense_b(current_theta,currentp->method->b_theta);
+			timediff = curr_node[i]->next->t - curr_node[i]->t;
+			current_theta = (t_needed-curr_node[i]->t)/timediff;
+			currentp->method->dense_b(current_theta,currentp->method->b_theta);
 
-            //for(m=0;m<num_dense;m++)
-            for(m=0;m<num_dense_parents[i];m++)
-            {
-                idx = dense_indices[m];
-                temp_parent_approx[j][i].ve[idx] = curr_node[i]->y_approx.ve[idx];
-                for(l=0;l<currentp->method->s;l++)
-                    temp_parent_approx[j][i].ve[idx] += timediff*currentp->method->b_theta.ve[l] * curr_node[i]->next->k[l].ve[m];
-            }
-            link_i->CheckConsistency(temp_parent_approx[j][i],params,GlobalVars->global_params);
+			//for(m=0;m<num_dense;m++)
+			for(m=0;m<num_dense_parents[i];m++)
+			{
+				idx = dense_indices[m];
+				temp_parent_approx[j][i].ve[idx] = curr_node[i]->y_approx.ve[idx];
+				for(l=0;l<currentp->method->s;l++)
+					temp_parent_approx[j][i].ve[idx] += timediff*currentp->method->b_theta.ve[l] * curr_node[i]->next->k[l].ve[m];
+			}
+			link_i->CheckConsistency(temp_parent_approx[j][i],params,GlobalVars->global_params);
 //printf("ID = %u parent = %u num_dense_parents = %u\n",link_i->ID,currentp->ID,num_dense_parents[i]);
 //Print_Vector(temp_parent_approx[j][i]);
         }
 //getchar();
-    }
+	}
 
-    //Do the RK method to get the next approximation
+	//Do the RK method to get the next approximation
 
-    //Setup variables for the new data
-    new_node = New_Step(link_i->list);
-    new_node->t = t + h;
-    new_y = new_node->y_approx;
+	//Setup variables for the new data
+	new_node = New_Step(link_i->list);
+	new_node->t = t + h;
+	new_y = new_node->y_approx;
 
-    //Compute the k's
-    for(i=0;i<s;i++)
-    {
-        v_copy_n(y_0,sum,practical_dim);
-        for(j=0;j<i;j++)
-            daxpy_u(h*A.me[i][j],temp_k[j],sum,0,practical_dim);
-        link_i->CheckConsistency(sum,params,GlobalVars->global_params);
-        link_i->f(t + c.ve[i] * h,sum,temp_parent_approx[i],link_i->num_parents,GlobalVars->global_params,link_i->forcing_values,link_i->qvs,params,link_i->state,link_i->user,temp_k[i]);
-    }
+	//Compute the k's
+	for(i=0;i<s;i++)
+	{
+		v_copy_n(y_0,sum,practical_dim);
+		for(j=0;j<i;j++)
+			daxpy_u(h*A.me[i][j],temp_k[j],sum,0,practical_dim);
+		link_i->CheckConsistency(sum,params,GlobalVars->global_params);
+		link_i->f(t + c.ve[i] * h,sum,temp_parent_approx[i],link_i->num_parents,GlobalVars->global_params,link_i->forcing_values,link_i->qvs,params,link_i->state,link_i->user,temp_k[i]);
+	}
 
-    //Build the solution
-    v_copy_n(y_0,new_y,practical_dim);
-    for(i=0;i<s;i++)	daxpy_u(h*b.ve[i],temp_k[i],new_y,0,practical_dim);
-    link_i->CheckConsistency(new_y,params,GlobalVars->global_params);
+	//Build the solution
+	v_copy_n(y_0,new_y,practical_dim);
+	for(i=0;i<s;i++)	daxpy_u(h*b.ve[i],temp_k[i],new_y,0,practical_dim);
+	link_i->CheckConsistency(new_y,params,GlobalVars->global_params);
 
-    //Error estimation and step size selection
+	//Error estimation and step size selection
 
-    //Check the error of y_1 (in inf norm) to determine if the step can be accepted
-    double err_1;
-    v_copy_n(temp_k[0],sum,practical_dim);
-    sv_mlt_u(h * e.ve[0],sum,0,practical_dim);
-    for(i=1;i<s;i++)	daxpy_u(h*e.ve[i],temp_k[i],sum,0,practical_dim);
+	//Check the error of y_1 (in inf norm) to determine if the step can be accepted
+	double err_1;
+	v_copy_n(temp_k[0],sum,practical_dim);
+	sv_mlt_u(h * e.ve[0],sum,0,practical_dim);
+	for(i=1;i<s;i++)	daxpy_u(h*e.ve[i],temp_k[i],sum,0,practical_dim);
 
-    //Build SC_i
-    //for(i=0;i<dim;i++)
-    for(i=0;i<practical_dim;i++)
-        temp.ve[i] = max(fabs(new_y.ve[i]),fabs(y_0.ve[i])) * error->reltol.ve[i] + error->abstol.ve[i];
+	//Build SC_i
+	//for(i=0;i<dim;i++)
+	for(i=0;i<practical_dim;i++)
+		temp.ve[i] = max(fabs(new_y.ve[i]),fabs(y_0.ve[i])) * error->reltol.ve[i] + error->abstol.ve[i];
 
-    err_1 = norm_inf_u(sum,temp,0,practical_dim);
-    double value_1 = pow(1.0/err_1,1.0/meth->e_order);
+	err_1 = norm_inf_u(sum,temp,0,practical_dim);
+	double value_1 = pow(1.0/err_1,1.0/meth->e_order);
 
-    //Check the dense error (in inf norm) to determine if the step can be accepted
-    double err_d;
-    v_copy_n(temp_k[0],sum,practical_dim);
-    sv_mlt_u(h * d.ve[0],sum,0,practical_dim);
-    for(i=1;i<s;i++)	daxpy_u(h*d.ve[i],temp_k[i],sum,0,practical_dim);
+	//Check the dense error (in inf norm) to determine if the step can be accepted
+	double err_d;
+	v_copy_n(temp_k[0],sum,practical_dim);
+	sv_mlt_u(h * d.ve[0],sum,0,practical_dim);
+	for(i=1;i<s;i++)	daxpy_u(h*d.ve[i],temp_k[i],sum,0,practical_dim);
 
-    //for(i=0;i<dim;i++)
-    for(i=0;i<practical_dim;i++)
-        temp.ve[i] = max(fabs(new_y.ve[i]),fabs(y_0.ve[i])) * error->reltol_dense.ve[i] + error->abstol_dense.ve[i];
+	//for(i=0;i<dim;i++)
+	for(i=0;i<practical_dim;i++)
+		temp.ve[i] = max(fabs(new_y.ve[i]),fabs(y_0.ve[i])) * error->reltol_dense.ve[i] + error->abstol_dense.ve[i];
 
-    err_d = norm_inf_u(sum,temp,0,practical_dim);
-    double value_d = pow(1.0/err_d,1.0/meth->d_order);
+	err_d = norm_inf_u(sum,temp,0,practical_dim);
+	double value_d = pow(1.0/err_d,1.0/meth->d_order);
 
-    //Determine a new step size for the next step
-    double step_1 = h*min(error->facmax,max(error->facmin,error->fac * value_1));
-    double step_d = h*min(error->facmax,max(error->facmin,error->fac * value_d));
-    link_i->h = min(step_1,step_d);
+	//Determine a new step size for the next step
+	double step_1 = h*min(error->facmax,max(error->facmin,error->fac * value_1));
+	double step_d = h*min(error->facmax,max(error->facmin,error->fac * value_d));
+	link_i->h = min(step_1,step_d);
 
 //printf("ID = %u t_0 = %e 1 = %e d = %e\n",link_i->ID,t,step_1,step_d);
 //Print_Vector(new_y);
 //getchar();
 
-    if(err_1 < 1.0 && err_d < 1.0)
-    {
-        //Check if a discontinuity has been stepped on
-        if(link_i->discont_count > 0 && (t + h) >= link_i->discont[link_i->discont_start])
-        {
-            (link_i->discont_count)--;
-            link_i->discont_start = (link_i->discont_start + 1) % GlobalVars->discont_size;
-            link_i->h = InitialStepSize(link_i->last_t,link_i,GlobalVars,workspace);
-        }
+	if(err_1 < 1.0 && err_d < 1.0)
+	{
+		//Check if a discontinuity has been stepped on
+		if(link_i->discont_count > 0 && (t + h) >= link_i->discont[link_i->discont_start])
+		{
+			(link_i->discont_count)--;
+			link_i->discont_start = (link_i->discont_start + 1) % GlobalVars->discont_size;
+			link_i->h = InitialStepSize(link_i->last_t,link_i,GlobalVars,workspace);
+		}
 
-        //Save the new data
-        link_i->last_t = t + h;
-        link_i->current_iterations++;
-        store_k(temp_k,new_node->k,s,dense_indices,num_dense);
+		//Save the new data
+		link_i->last_t = t + h;
+		link_i->current_iterations++;
+		store_k(temp_k,new_node->k,s,dense_indices,num_dense);
 
-        //Check if new data should be written to disk
-        if(print_flag)
-        {
-            while( t <= link_i->next_save && (link_i->next_save < link_i->last_t || fabs(link_i->next_save - link_i->last_t)/link_i->next_save < 1e-12) )
-            {
-                if(link_i->disk_iterations == link_i->expected_file_vals)
-                {
-                    printf("[%i]: Warning: Too many steps computed for link id %u. Expected no more than %u. No more values will be stored for this link.\n",my_rank,link_i->ID,link_i->expected_file_vals);
-                    break;
-                }
-                (link_i->disk_iterations)++;
-                node = link_i->list->tail->prev;
-                current_theta = (link_i->next_save - t)/h;
-                link_i->method->dense_b(current_theta,link_i->method->b_theta);
-                //for(m=0;m<num_dense;m++)
-                for(m=0;m<problem_dim;m++)	//!!!! This is wasteful if not all states are printed. Also forbids printing variational eq states. !!!!
-                {
-                    idx = dense_indices[m];
-                    sum.ve[idx] = node->y_approx.ve[idx];
-                    for(l=0;l<link_i->method->s;l++)
-                        sum.ve[idx] += h*link_i->method->b_theta.ve[l] * node->next->k[l].ve[m];
-                }
-                link_i->CheckConsistency(sum,params,GlobalVars->global_params);
+		//Check if new data should be written to disk
+		if(print_flag)
+		{
+			while( t <= link_i->next_save && (link_i->next_save < link_i->last_t || fabs(link_i->next_save - link_i->last_t)/link_i->next_save < 1e-12) )
+			{
+				if(link_i->disk_iterations == link_i->expected_file_vals)
+				{
+					printf("[%i]: Warning: Too many steps computed for link id %u. Expected no more than %u. No more values will be stored for this link.\n",my_rank,link_i->ID,link_i->expected_file_vals);
+					break;
+				}
+				(link_i->disk_iterations)++;
+				node = link_i->list->tail->prev;
+				current_theta = (link_i->next_save - t)/h;
+				link_i->method->dense_b(current_theta,link_i->method->b_theta);
+				//for(m=0;m<num_dense;m++)
+				for(m=0;m<problem_dim;m++)	//!!!! This is wasteful if not all states are printed. Also forbids printing variational eq states. !!!!
+				{
+					idx = dense_indices[m];
+					sum.ve[idx] = node->y_approx.ve[idx];
+					for(l=0;l<link_i->method->s;l++)
+						sum.ve[idx] += h*link_i->method->b_theta.ve[l] * node->next->k[l].ve[m];
+				}
+				link_i->CheckConsistency(sum,params,GlobalVars->global_params);
 
-                //Write to a file
-                WriteStep(link_i->next_save,sum,GlobalVars,params,link_i->state,outputfile,link_i->output_user,&(link_i->pos_offset));
+				//Write to a file
+				WriteStep(link_i->next_save,sum,GlobalVars,params,link_i->state,outputfile,link_i->output_user,&(link_i->pos_offset));
 
-                link_i->next_save += link_i->print_time;
-            }
-        }
+				link_i->next_save += link_i->print_time;
+			}
+		}
 
-        //Check if this is a max discharge
-        if( link_i->peak_flag && (new_y.ve[0] > link_i->peak_value.ve[0]) )
-        {
-            v_copy_n(new_y,link_i->peak_value,practical_dim);
-            link_i->peak_time = link_i->last_t;
-        }
+		//Check if this is a max discharge
+		if( link_i->peak_flag && (new_y.ve[0] > link_i->peak_value.ve[0]) )
+		{
+			v_copy_n(new_y,link_i->peak_value,practical_dim);
+			link_i->peak_time = link_i->last_t;
+		}
 
-        //Check if the newest step is on a change in rainfall
-        short int propagated = 0;	//Set to 1 when last_t has been propagated
-        for(j=0;j<GlobalVars->num_forcings;j++)
-        {
+		//Check if the newest step is on a change in rainfall
+		short int propagated = 0;	//Set to 1 when last_t has been propagated
+		for(j=0;j<GlobalVars->num_forcings;j++)
+		{
             if( forcings[j].active && link_i->forcing_buff[j] && (fabs(link_i->last_t - link_i->forcing_change_times[j]) < 1e-8) )
-            {
-                //Propagate the discontinuity to downstream links
-                if(!propagated)
-                {
-                    propagated = 1;
-                    Link* next = link_i->child;
-                    Link* prev = link_i;
-                    for(i=0;i<GlobalVars->max_localorder && next != NULL;i++)
-                    {
-                        if(assignments[next->location] == my_rank && i < next->method->localorder)
-                        {
-                            //Insert the time into the discontinuity list
-                            next->discont_end = Insert_Discontinuity(link_i->forcing_change_times[j],next->discont_start,next->discont_end,&(next->discont_count),GlobalVars->discont_size,next->discont,next->ID);
-                        }
-                        else if(next != NULL && assignments[next->location] != my_rank)
-                        {
-                            //Store the time to send to another process
-                            Insert_SendDiscontinuity(link_i->forcing_change_times[j],i,&(prev->discont_send_count),GlobalVars->discont_size,prev->discont_send,prev->discont_order_send,prev->ID);
-                            break;
-                        }
+			{
+				//Propagate the discontinuity to downstream links
+				if(!propagated)
+				{
+					propagated = 1;
+					Link* next = link_i->child;
+					Link* prev = link_i;
+					for(i=0;i<GlobalVars->max_localorder && next != NULL;i++)
+					{
+						if(assignments[next->location] == my_rank && i < next->method->localorder)
+						{
+							//Insert the time into the discontinuity list
+							next->discont_end = Insert_Discontinuity(link_i->forcing_change_times[j],next->discont_start,next->discont_end,&(next->discont_count),GlobalVars->discont_size,next->discont,next->ID);
+						}
+						else if(next != NULL && assignments[next->location] != my_rank)
+						{
+							//Store the time to send to another process
+							Insert_SendDiscontinuity(link_i->forcing_change_times[j],i,&(prev->discont_send_count),GlobalVars->discont_size,prev->discont_send,prev->discont_order_send,prev->ID);
+							break;
+						}
 
-                        prev = next;
-                        next = next->child;
-                    }
-                }
+						prev = next;
+						next = next->child;
+					}
+				}
 
-                //Find the right index in rainfall
-                for(l=link_i->forcing_indices[j]+1;l<link_i->forcing_buff[j]->n_times;l++)
-                    if( fabs(link_i->forcing_change_times[j] - link_i->forcing_buff[j]->rainfall[l][0]) < 1e-8 )	break;
-                link_i->forcing_indices[j] = l;
+				//Find the right index in rainfall
+				for(l=link_i->forcing_indices[j]+1;l<link_i->forcing_buff[j]->n_times;l++)
+					if( fabs(link_i->forcing_change_times[j] - link_i->forcing_buff[j]->rainfall[l][0]) < 1e-8 )	break;
+				link_i->forcing_indices[j] = l;
 
-                double forcing_buffer = link_i->forcing_buff[j]->rainfall[l][1];
-                link_i->forcing_values[j] = forcing_buffer;
+				double forcing_buffer = link_i->forcing_buff[j]->rainfall[l][1];
+				link_i->forcing_values[j] = forcing_buffer;
 
-                //Find and set the new change in rainfall
-                for(i=l+1;i<link_i->forcing_buff[j]->n_times;i++)
-                {
-                    if( fabs(link_i->forcing_buff[j]->rainfall[i][1] - forcing_buffer) > 1e-8 )
-                    {
-                        link_i->forcing_change_times[j] = link_i->forcing_buff[j]->rainfall[i][0];
-                        break;
-                    }
-                }
-                if(i == link_i->forcing_buff[j]->n_times)
-                    link_i->forcing_change_times[j] = link_i->forcing_buff[j]->rainfall[i-1][0];
-            }
-        }
+				//Find and set the new change in rainfall
+				for(i=l+1;i<link_i->forcing_buff[j]->n_times;i++)
+				{
+					if( fabs(link_i->forcing_buff[j]->rainfall[i][1] - forcing_buffer) > 1e-8 )
+					{
+						link_i->forcing_change_times[j] = link_i->forcing_buff[j]->rainfall[i][0];
+						break;
+					}
+				}
+				if(i == link_i->forcing_buff[j]->n_times)
+					link_i->forcing_change_times[j] = link_i->forcing_buff[j]->rainfall[i-1][0];
+			}
+		}
 
-        //Select new step size, if forcings changed
-        if(propagated)	link_i->h = InitialStepSize(link_i->last_t,link_i,GlobalVars,workspace);
+		//Select new step size, if forcings changed
+		if(propagated)	link_i->h = InitialStepSize(link_i->last_t,link_i,GlobalVars,workspace);
 
-        //Free up parents' old data
-        for(i=0;i<link_i->num_parents;i++)
-        {
-            currentp = link_i->parents[i];
-            while(currentp->list->head != curr_node[i])
-            {
-                Remove_Head_Node(currentp->list);
-                currentp->current_iterations--;
-                currentp->iters_removed++;
-            }
-        }
+		//Free up parents' old data
+		for(i=0;i<link_i->num_parents;i++)
+		{
+			currentp = link_i->parents[i];
+			while(currentp->list->head != curr_node[i])
+			{
+				Remove_Head_Node(currentp->list);
+				currentp->current_iterations--;
+				currentp->iters_removed++;
+			}
+		}
 
-        return 1;
-    }
-    else
-    {
-        //Trash the data from the failed step
-        Undo_Step(link_i->list);
+		return 1;
+	}
+	else
+	{
+		//Trash the data from the failed step
+		Undo_Step(link_i->list);
 
-        return 0;
-    }
+		return 0;
+	}
 }
 */
 

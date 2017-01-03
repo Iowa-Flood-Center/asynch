@@ -39,9 +39,16 @@ void Advance(Link* sys, unsigned int N, unsigned int* my_sys, unsigned int my_N,
     if (globals->dump_loc_flag == 4)
         passes = max(passes, (unsigned int)ceil(globals->maxtime / globals->dump_time));
 
+    for (i = 0; i < globals->num_forcings; i++)
+        if (forcings[i].active)
+            forcings[i].passes = passes;
+
     //Start the main loop
     for (k = 0; k < passes; k++)
     {
+        if (my_rank == 0)
+            printf("Pass %d out of %d           \r", k + 1, passes);
+
         alldone = 0;
         around = 0;
         current = &sys[my_sys[my_N - 1]];

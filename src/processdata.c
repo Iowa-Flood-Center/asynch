@@ -1331,18 +1331,19 @@ int DumpStateH5(Link* sys, unsigned int N, int* assignments, GlobalVars* globals
             i++;
 
         //Assume that every links have the same dimension
-        unsigned int dim = sys[i].dim;
+        //unsigned int dim = sys[i].dim;
+        unsigned int dim = 4;
 
         int *index = malloc(N * sizeof(unsigned int));
         double *data = malloc(N * dim * sizeof(double));
 
         for (i = 0; i < N; i++)
         {
-            assert(sys[i].dim == dim);
+            assert(sys[i].dim >= dim);
             if (assignments[i] != 0)
-                MPI_Recv(&data[i * dim], sys[i].dim, MPI_DOUBLE, assignments[i], i, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                MPI_Recv(&data[i * dim], dim, MPI_DOUBLE, assignments[i], i, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
             else
-                memcpy(&data[i * dim], sys[i].list->tail->y_approx.ve, sys[i].dim * sizeof(double));
+                memcpy(&data[i * dim], sys[i].list->tail->y_approx.ve, dim * sizeof(double));
 
             index[i] = sys[i].ID;
         }
