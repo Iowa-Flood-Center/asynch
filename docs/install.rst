@@ -164,7 +164,7 @@ Then run the class GNU tool chain:
 .. code-block:: sh
 
   mkdir build && cd build
-  ../configure --prefix=/Groups/IFC/.neon CFLAGS="-O2 -DNDEBUG" CHECK_CFLAGS=-I/Groups/IFC/.local/include CHECK_LIBS=/Groups/IFC/.local/lib/libcheck.a
+  ../configure --prefix=/Dedicated/IFC/.neon CFLAGS="-O2 -DNDEBUG" CHECK_CFLAGS=-I/Dedicated/IFC/.local/include CHECK_LIBS=/Dedicated/IFC/.local/lib/libcheck.a
   make
   make check
   make install
