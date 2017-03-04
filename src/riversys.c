@@ -569,7 +569,7 @@ int Partition_Network(Link* system, unsigned int N, GlobalVars* GlobalVars, unsi
     merge_sort(upstream_order,N,globals->area_idx);
 */
 
-//Perform a DFS to sort the leaves
+    //Perform a DFS to sort the leaves
     Link** stack = malloc(N * sizeof(Link*)); //Holds the index in system
     int stack_size = 0;
 
@@ -1375,8 +1375,8 @@ static int Load_Initial_Conditions_Dbc(Link* system, unsigned int N, int* assign
 
 #else //HAVE_POSTGRESQL
 
-if (my_rank == 0)	printf("Error: Asynch was build without PostgreSQL support.\n");
-MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
+    if (my_rank == 0)	printf("Error: Asynch was build without PostgreSQL support.\n");
+    MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
 
 #endif //HAVE_POSTGRESQL
 
@@ -1563,6 +1563,22 @@ int Load_Initial_Conditions(Link* system, unsigned int N, int* assignments, shor
         printf("Error: invalid intial condition file type.\n");
         res = -1;
     }
+
+#if !defined(NDEBUG)
+    //TODO Check intial conditions
+    for (unsigned int i = 0; i < N; i++)
+    {
+        if (system[i].list)
+        {
+            VEC y = system[i].list->head->y_approx;
+            if (y.ve[0] < 0.0 || y.ve[1] < 0.0 || y.ve[2] < 0.0 || y.ve[3] < 0.0)
+            {
+                printf("ERROR: Invalid initial conditions");
+                exit(EXIT_FAILURE);
+            }
+        }
+    }
+#endif
 
     return res;
 }
@@ -2581,8 +2597,8 @@ int Load_Dams(Link* system, unsigned int N, unsigned int* my_sys, unsigned int m
 
 #else //HAVE_POSTGRESQL
 
-if (my_rank == 0)	printf("Error: Asynch was build without PostgreSQL support.\n");
-MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
+     if (my_rank == 0)	printf("Error: Asynch was build without PostgreSQL support.\n");
+     MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
 
 #endif //HAVE_POSTGRESQL
     }

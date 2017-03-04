@@ -87,7 +87,20 @@ typedef union OutputCallback {
 typedef void (PeakflowOutputCallback)(unsigned int, double, VEC, VEC, VEC, double, unsigned int, void*, char*);
 
 //Function signatures
-typedef void (DifferentialFunc)(double, VEC, VEC*, unsigned short int, VEC, double*, QVSData*, VEC, int, void*, VEC);                    //!< Right-hand side function for ODE                                            
+
+/// These are the right-hand side functions for the ODEs.
+///
+/// \param t The current time
+/// \param y_i The approximate value of the solution to the ODEs at the current link at time t
+/// \param y_p y_p[j] has the approximate values for the immediately upstream link j to the current link at time t
+/// \param num_parents The number of upstream links (parents) to link i
+/// \param global_params The global parameters
+/// \param forcings The rain fall values for link i
+/// \param params The parameters for link i
+/// \param state The current state of the system
+/// \param user A pointer to user specified data
+/// \param ans (set by method, assumed that space is allocated): The value returned by the right-hand side function
+typedef void (DifferentialFunc)(double t, VEC y_i, VEC* y_p, unsigned short int num_parents, VEC global_params, double* forcings, QVSData*, VEC params, int state, void* user, VEC ans);                    //!< Right-hand side function for ODE                                            
 typedef void (AlgebraicFunc)(VEC, VEC, VEC, QVSData*, int, void*, VEC);                                                                  //!< Function for algebraic variables
 typedef int (CheckStateFunc)(VEC, VEC, VEC, QVSData*, unsigned int);                                                                     //!< Function to check what "state" the state variables are in (for discontinuities)
 typedef void (JacobianFunc)(double, VEC, VEC*, unsigned short int, VEC, double*, VEC, MAT*);                                                    //!< Jacobian of right-hand side function

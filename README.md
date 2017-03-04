@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/Iowa-Flood-Center/asynch.svg?branch=develop)](https://travis-ci.org/Iowa-Flood-Center/asynch)
+[![Build Status](https://travis-ci.org/Iowa-Flood-Center/asynch.svg?branch=master)](https://travis-ci.org/Iowa-Flood-Center/asynch)
 
 # ASYNCH
 

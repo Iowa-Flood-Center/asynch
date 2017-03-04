@@ -268,7 +268,7 @@ typedef struct GlobalVars
     unsigned short int peaksave_flag;   //!< 0 if not saving peak flows, 1 if saving
     char* hydrosave_filename;
     char* peaksave_filename;
-    char* peakfilename;
+    char* peakfilename;             //!< Filename for .pea file
     //char* identifier;
     unsigned int max_dim;
     unsigned int outletlink;        //!< For database: holds the link id of the outlet. Use 0 if reading entire database.
