@@ -776,13 +776,6 @@ printf("!!!! i = %i k = %i received = %i unix_time = %i raindb_start = %i\n",i,k
 
 #endif //HAVE_POSTGRESQL
 
-#else //HAVE_POSTGRESQL
-
-    if (my_rank == 0)	printf("Error: Asynch was build without PostgreSQL support.\n");
-    MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
-
-#endif //HAVE_POSTGRESQL
-
 	return 0;
 }
 
