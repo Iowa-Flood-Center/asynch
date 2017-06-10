@@ -27,6 +27,7 @@ int DumpTimeSerieFile(Link* sys, GlobalVars* GlobalVars, unsigned int N, unsigne
 int DumpTimeSerieDatFile(Link* sys, GlobalVars* globals, unsigned int N, unsigned int* save_list, unsigned int save_size, unsigned int my_save_size, const Lookup * const id_to_loc, int* assignments, char* additional_temp, char* additional_out);
 int DumpTimeSerieCsvFile(Link* sys, GlobalVars* globals, unsigned int N, unsigned int* save_list, unsigned int save_size, unsigned int my_save_size, const Lookup * const id_to_loc, int* assignments, char* additional_temp, char* additional_out);
 int DumpTimeSerieH5File(Link* sys, GlobalVars* globals, unsigned int N, unsigned int* save_list, unsigned int save_size, unsigned int my_save_size, const Lookup * const id_to_loc, int* assignments, char* additional_temp, char* additional_out);
+int DumpTimeSerieNcFile(Link* sys, GlobalVars* globals, unsigned int N, unsigned int* save_list, unsigned int save_size, unsigned int my_save_size, const Lookup * const id_to_loc, int* assignments, char* additional_temp, char* additional_out);
 
 #if defined(HAVE_POSTGRESQL)
 void PrepareDatabaseTable(GlobalVars* GlobalVars, ConnData* conninfo);

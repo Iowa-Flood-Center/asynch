@@ -234,9 +234,13 @@ int DumpTimeSerieFile(Link* sys, GlobalVars* globals, unsigned int N, unsigned i
         if (outputfile)	fclose(outputfile);
     }
 #endif //ASYNCH_HAVE_RADEK_PATENTED_COMPACT_BINARY_FORMAT_THAT_NO_ONE_ELSE_CAN_READ
-    else if (globals->hydros_loc_flag == 5)	//.h5
+    else if (globals->hydros_loc_flag == 5)	//.h5p
     {
         DumpTimeSerieH5File(sys, globals, N, save_list, save_size, my_save_size, id_to_loc, assignments, additional_temp, additional_out);
+    }
+    else if (globals->hydros_loc_flag == 6)	//.h5a
+    {
+        DumpTimeSerieNcFile(sys, globals, N, save_list, save_size, my_save_size, id_to_loc, assignments, additional_temp, additional_out);
     }
 
     MPI_Barrier(MPI_COMM_WORLD);
@@ -646,15 +650,15 @@ int DumpTimeSerieH5File(Link* sys, GlobalVars* globals, unsigned int N, unsigned
                 sprintf(filenamespace, "_%.4e", globals->global_params[i]);
                 strcat(output_filename, filenamespace);
             }
-            sprintf(filenamespace, ".csv");
+            sprintf(filenamespace, ".h5p");
             strcat(output_filename, filenamespace);
         }
         else
         {
             if (!additional_out)
-                sprintf(output_filename, "%s.h5", globals->hydros_loc_filename);
+                sprintf(output_filename, "%s.h5p", globals->hydros_loc_filename);
             else
-                sprintf(output_filename, "%s_%s.h5", globals->hydros_loc_filename, additional_out);
+                sprintf(output_filename, "%s_%s.h5p", globals->hydros_loc_filename, additional_out);
         }
         
         //Create output file
@@ -790,6 +794,270 @@ int DumpTimeSerieH5File(Link* sys, GlobalVars* globals, unsigned int N, unsigned
         H5PTclose(packet_file_id);
         H5Fclose(file_id);
         H5Tclose(compound_id);
+    }
+
+    if (my_rank == 0)
+        printf("\nResults written to file %s.\n", output_filename);
+
+    return 0;
+}
+
+
+int DumpTimeSerieNcFile(Link* sys, GlobalVars* globals, unsigned int N, unsigned int* save_list, unsigned int save_size, unsigned int my_save_size, const Lookup * const id_to_loc, int* assignments, char* additional_temp, char* additional_out)
+{
+    unsigned int size = 16;
+    char filename[ASYNCH_MAX_PATH_LENGTH], filenamespace[ASYNCH_MAX_PATH_LENGTH], output_filename[ASYNCH_MAX_PATH_LENGTH];
+    char *data_storage;
+    FILE *inputfile = NULL;
+    hid_t file_id;
+    hid_t dataset_id;
+    hid_t mem_dataspace_id, file_dataspace_id;
+    
+    hsize_t start[2];  // Start of hyperslab
+    hsize_t stride[2]; // Stride of hyperslab
+    hsize_t count[2];  // Block count
+    hsize_t block[2];  // Block sizes
+
+    hsize_t out_offset = 0;
+    float *out_buffer = NULL;
+
+    const hsize_t chunk_size = 512; // Chunk size, in number of table entries per chunk
+    const int compression = 5;      // Compression level, a value of 0 through 9.
+
+    //Find total size of a line in the temp files
+    unsigned int line_size = CalcTotalOutputSize(globals);
+
+    data_storage = malloc(chunk_size * line_size);
+
+    //Create output file
+    if (my_rank == 0)
+    {
+        if (globals->print_par_flag == 1)
+        {
+            if (!additional_out)
+                sprintf(output_filename, "%s", globals->hydros_loc_filename);
+            else
+                sprintf(output_filename, "%s_%s", globals->hydros_loc_filename, additional_out);
+            for (unsigned int i = 0; i < globals->num_global_params; i++)
+            {
+                sprintf(filenamespace, "_%.4e", globals->global_params[i]);
+                strcat(output_filename, filenamespace);
+            }
+            sprintf(filenamespace, ".h5a");
+            strcat(output_filename, filenamespace);
+        }
+        else
+        {
+            if (!additional_out)
+                sprintf(output_filename, "%s.h5a", globals->hydros_loc_filename);
+            else
+                sprintf(output_filename, "%s_%s.h5a", globals->hydros_loc_filename, additional_out);
+        }
+
+        //Create output file
+        file_id = H5Fcreate(output_filename, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+        if (file_id < 0)
+        {
+            printf("Error: could not open h5 file %s.\n", output_filename);
+            return 2;
+        }
+
+        //Set attributes
+        unsigned short type = globals->model_uid;
+        unsigned int issue_time = (unsigned int)globals->begin_time;
+        H5LTset_attribute_string(file_id, "/", "version", PACKAGE_VERSION);
+        H5LTset_attribute_ushort(file_id, "/", "model", &type, 1);
+        H5LTset_attribute_uint(file_id, "/", "issue_time", &issue_time, 1);
+
+        //Set the link_id axis
+        hsize_t num_link = save_size;
+        H5LTmake_dataset_int(file_id, "link_id", 1, &num_link, save_list);
+
+        //Make it a dimension scale
+        hid_t link_id_ds = H5Dopen(file_id, "link_id", H5P_DEFAULT);
+        H5DSset_scale(link_id_ds, "link_id");
+        //H5Dclose(link_id_ds);
+
+        //Set the time axis
+        hsize_t num_timestep = (int) (globals->maxtime / globals->print_time) + 1;
+        int *buffer = malloc(num_timestep * sizeof(int));
+        for (unsigned int i = 0; i < num_timestep; i++)
+        {
+            buffer[i] = (int) (globals->begin_time + (int)(i * globals->print_time * 60));
+        }
+        H5LTmake_dataset_int(file_id, "time", 1, &num_timestep, buffer);
+        free(buffer);
+        
+        //Make it a dimension scale
+        hid_t time_ds = H5Dopen(file_id, "time", H5P_DEFAULT);
+        H5DSset_scale(time_ds, "time");
+        //H5Dclose(time_ds);
+
+        //Get the offset of the State0 ouptut
+        size_t offset = 0;
+        for (unsigned int i = 0; i < globals->num_outputs; i++)
+        {
+            const Output * const out = &globals->outputs[i];
+            if (strcmp(out->name, "State0") == 0)
+                out_offset = offset;
+            offset += out->size;
+        }
+        out_buffer = malloc(num_timestep * sizeof(float));
+
+        //Create the memory data space
+        mem_dataspace_id = H5Screate_simple(1, &num_timestep, NULL);
+
+        // Describe the size of the array and create the data space for fixed size dataset.
+        hsize_t dimsf[2];
+        dimsf[0] = save_size;
+        dimsf[1] = num_timestep;
+        file_dataspace_id = H5Screate_simple(2, dimsf, NULL);
+
+        // Create a new dataset within the file using defined dataspace and
+        // datatype and default dataset creation properties.
+        dataset_id = H5Dcreate(file_id, "outputs", H5T_NATIVE_FLOAT, file_dataspace_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+        if (dataset_id < 0)
+        {
+            printf("Error: could not initialize h5 file %s.\n", output_filename);
+            return 2;
+        }
+
+        H5DSattach_scale(dataset_id, link_id_ds, 0);
+        H5DSattach_scale(dataset_id, time_ds, 1);
+
+        H5Dclose(link_id_ds);
+        H5Dclose(time_ds);
+    }
+
+    //Open input files
+    if (my_save_size)
+    {
+        if (!additional_temp)
+            sprintf(filename, "%s", globals->temp_filename);
+        else
+            sprintf(filename, "%s_%s", globals->temp_filename, additional_temp);
+        inputfile = fopen(filename, "rb");
+        if (!inputfile)
+        {
+            printf("\n[%i]: Error opening inputfile %s.\n", my_rank, filename);
+            return 2;
+        }
+    }
+
+    //Move data to final output
+    for (unsigned int i = 0; i < save_size; i++)
+    {
+        unsigned int loc = find_link_by_idtoloc(save_list[i], id_to_loc, N);
+        int proc = assignments[loc];
+        Link* current = &sys[loc];
+
+        if (proc == my_rank)
+        {
+            //Find the link in the temp file inputfile
+            unsigned int counter = 0;	//index of link in my_save_list of its process
+            unsigned int id, total_spaces;
+            fread(&id, sizeof(unsigned int), 1, inputfile);
+            fread(&total_spaces, sizeof(unsigned int), 1, inputfile);
+            while (id != save_list[i] && !feof(inputfile))
+            {
+                long jump_size = (long)total_spaces * (long)line_size;	//Watch overflows!
+                fseek(inputfile, jump_size, SEEK_CUR);
+                counter++;
+                fread(&id, sizeof(unsigned int), 1, inputfile);
+                fread(&total_spaces, sizeof(unsigned int), 1, inputfile);
+            }
+            if (feof(inputfile))
+            {
+                printf("\n[%i]: Error: could not find id %u in temp file %s.\n", my_rank, save_list[i], filename);
+                return 2;
+            }
+
+            //Read data in the temp file
+            if (my_rank == 0)
+            {
+                for (size_t k = 0; k < current->disk_iterations; k += chunk_size)
+                {
+                    size_t reminder = min(chunk_size, current->disk_iterations - k);
+                    size_t num_read = fread(data_storage, line_size, reminder, inputfile);
+                    assert(num_read <= (globals->maxtime / globals->print_time) + 1);
+
+                    char *begin = data_storage + out_offset;
+                    for (size_t i = 0; i < num_read; i++)
+                    {
+                        float *val = (float *)(begin + i * line_size);
+                        out_buffer[i] = *val;
+                    }
+
+                    ////herr_t ret = H5PTappend(packet_file_id, num_read, data_storage);
+                    ////Select memory hyperslab
+                    //start[0] = 0;
+                    ////stride[0] = line_size;
+                    //count[0] = num_read;
+                    ////block[0] = 1;
+                    //H5Sselect_hyperslab(mem_dataspace_id, H5S_SELECT_SET, start, NULL, count, NULL);
+
+                    start[0] = i;
+                    start[1] = k;
+                    //stride[0] = 1;
+                    //stride[1] = 1;
+                    count[0] = 1;
+                    count[1] = num_read;
+                    //block[0] = 1;
+                    //block[1] = 1;
+                    H5Sselect_hyperslab(file_dataspace_id, H5S_SELECT_SET, start, NULL, count, NULL);
+
+                    herr_t ret = H5Dwrite(dataset_id, H5T_NATIVE_FLOAT, mem_dataspace_id, file_dataspace_id, H5P_DEFAULT, out_buffer);
+                }
+            }
+            else
+            {
+                MPI_Ssend(&(current->disk_iterations), 1, MPI_UNSIGNED, 0, save_list[i], MPI_COMM_WORLD);
+
+                for (hsize_t k = 0; k < current->disk_iterations; k += chunk_size)
+                {
+                    size_t reminder = min(chunk_size, current->disk_iterations - k);
+                    unsigned int num_read = (unsigned int)fread(data_storage, line_size, reminder, inputfile);
+
+                    MPI_Ssend(&num_read, 1, MPI_UNSIGNED, 0, save_list[i], MPI_COMM_WORLD);
+                    MPI_Ssend(data_storage, num_read * line_size, MPI_CHAR, 0, save_list[i], MPI_COMM_WORLD);
+                }
+            }
+
+            //Skip over the last unused space. This is done so that the file does not need to be rewound.
+            for (unsigned int k = 0; k < total_spaces - current->disk_iterations; k++)
+                for (unsigned int j = 0; j < globals->num_outputs; j++)
+                    fread(data_storage, globals->outputs[j].size, 1, inputfile);
+        }
+        else if (my_rank == 0)
+        {
+            //Write to file
+            MPI_Recv(&(current->disk_iterations), 1, MPI_UNSIGNED, proc, save_list[i], MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+            for (hsize_t k = 0; k < current->disk_iterations; k += chunk_size)
+            {
+                unsigned int num_read;
+
+                MPI_Recv(&num_read, 1, MPI_UNSIGNED, proc, save_list[i], MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                MPI_Recv(data_storage, num_read * line_size, MPI_CHAR, proc, save_list[i], MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+                //H5PTappend(packet_file_id, num_read, data_storage);
+            }
+        }
+    }
+
+    //Cleanup
+    if (inputfile)
+        fclose(inputfile);
+
+    if (my_rank == 0)
+    {
+        H5Sclose(file_dataspace_id);
+        H5Sclose(mem_dataspace_id);
+        H5Dclose(dataset_id);
+        H5Fclose(file_id);
+
+        if (out_buffer)
+            free(out_buffer);
     }
 
     if (my_rank == 0)
@@ -1919,6 +2187,7 @@ int RemoveTemporaryFiles(GlobalVars* globals, unsigned int my_save_size, char* a
         else
             sprintf(filename, "%s_%s", globals->temp_filename, additional_temp);
         //sprintf(filename,"%s_%s_%.3i",globals->temp_filename,additional_temp,my_rank);
+
         ret_val = remove(filename);
         if (ret_val == -1)
             ret_val = errno;
