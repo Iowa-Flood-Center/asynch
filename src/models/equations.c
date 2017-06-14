@@ -1042,7 +1042,6 @@ void LinearHillslope_MonthlyEvap_OnlyRouts(double t, const double * const y_i, u
     unsigned short i;
 
     double lambda_1 = global_params[1];
-    //double e_pot = global_params[6] * (1e-3/60.0);	//[mm/hr]->[m/min]
 
     double A_h = params[2];
     double k2 = params[3];
@@ -1052,6 +1051,7 @@ void LinearHillslope_MonthlyEvap_OnlyRouts(double t, const double * const y_i, u
     double q = y_i[0];		                                        // [m^3/s]
 	double s_p = y_i[1];	                                        // [m]
     double s_a = y_i[2];	                                        // [m]
+	double acc = y_i[3];	                                        // [m]
 
 	double q_rp = forcing_values[0] * (0.001 / 60.0);		        // (mm/hr -> m/min)
 	double q_pl = k2 * s_p;                                         // (1/min * m)
@@ -1060,37 +1060,40 @@ void LinearHillslope_MonthlyEvap_OnlyRouts(double t, const double * const y_i, u
     double q_al = k3 * s_a;                                         // (1/min * m)
 
     //Evaporation
-    double C_p, C_a, C_T, Corr_evap;
-    //double e_pot = forcing_values[1] * (1e-3/60.0);
+    double C_a, C_T, Corr_evap;
     double e_pot = forcing_values[2] * (1e-3 / (30.0*24.0*60.0));	//[mm/month] -> [m/min]
 
     if (e_pot > 0.0){
-		C_p = s_p / e_pot;
         C_a = s_a / e_pot;
         C_T = C_a;
     } else {
-		C_p = 0.0;
         C_a = 0.0;
         C_T = 0.0;
     }
 
-    //Corr_evap = (!state && C_T > 0.0) ? 1.0/C_T : 1.0;
     Corr_evap = (C_T > 1.0) ? 1.0 / C_T : 1.0;
 
-	double e_p = Corr_evap * C_p * e_pot;
     double e_a = Corr_evap * C_a * e_pot;
+	double q_parent;
+	int q_pidx;
 
     //Discharge
     ans[0] = -q + ((q_al + q_pl) * A_h / 60.0);
-    for (i = 0; i<num_parents; i++)
-        ans[0] += y_p[i * dim];
+	for (i = 0; i < num_parents; i++) {
+		q_pidx = i * dim;
+		q_parent = y_p[q_pidx];
+		ans[0] += q_parent;
+	}
     ans[0] = invtau * pow(q, lambda_1) * ans[0];
 
     //Hillslope
-	ans[1] = q_rp - q_pl - e_p;	
+	ans[1] = q_rp - q_pl;
 	
 	//Sub-surface
     ans[2] = q_ra - q_al - e_a;	
+
+	//Accumulated precip
+	ans[3] = q_rp + q_ra;
 }
 
 

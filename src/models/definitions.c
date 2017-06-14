@@ -920,8 +920,8 @@ void InitRoutines(
 	else if (model_uid == 195)
     {
 		// adlz: so far, a copy of 190
-        link->dim = 3;
-        link->no_ini_start = link->dim;
+        link->dim = 4;
+        link->no_ini_start = 3;
         link->diff_start = 0;
 
         link->num_dense = 1;
@@ -931,7 +931,7 @@ void InitRoutines(
         link->differential = &LinearHillslope_MonthlyEvap_OnlyRouts;
         link->algebraic = NULL;
         link->check_state = NULL;
-        link->check_consistency = &CheckConsistency_Nonzero_3States;
+        link->check_consistency = &CheckConsistency_Nonzero_AllStates_q;
     }
     else if (model_uid == 200)	//This is for use with SIMPLE only
     {
@@ -1974,6 +1974,11 @@ int ReadInitData(
         y_0[4] = 0.0;
         y_0[5] = y_0[0];	//I'm not really sure what to use here...
     }
+	else if (model_uid == 195)
+	{
+		//For this model_uid, the extra states need to be set (3)
+		y_0[3] = 0.0;
+	}
     else if (model_uid == 200)
     {
         //For model_uid 200, only the discharge has been set. Need to set the storage.
