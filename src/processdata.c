@@ -29,6 +29,10 @@
 #endif
 
 #if defined(HAVE_HDF5)
+// Define compatibility macros mostly to support Travis that uses an older version of HDF5 library
+// https://support.hdfgroup.org/HDF5/doc/RM/APICompatMacros.html
+#define H5Dopen_vers 1
+#define H5Dcreate_vers 1
 #include <hdf5.h>
 #include <hdf5_hl.h>
 #endif
@@ -869,7 +873,7 @@ int DumpTimeSerieNcFile(Link* sys, GlobalVars* globals, unsigned int N, unsigned
         H5LTmake_dataset_int(file_id, "link_id", 1, &num_link, save_list);
 
         //Make it a dimension scale
-        hid_t link_id_ds = H5Dopen(file_id, "link_id", H5P_DEFAULT);
+        hid_t link_id_ds = H5Dopen(file_id, "link_id");
         H5DSset_scale(link_id_ds, "link_id");
 
         //Set the time axis
@@ -883,7 +887,7 @@ int DumpTimeSerieNcFile(Link* sys, GlobalVars* globals, unsigned int N, unsigned
         free(buffer);
         
         //Make it a dimension scale
-        hid_t time_ds = H5Dopen(file_id, "time", H5P_DEFAULT);
+        hid_t time_ds = H5Dopen(file_id, "time");
         H5DSset_scale(time_ds, "time");
 
         //Check if all the outputs are of type float (limitation of the current implementation)
@@ -908,7 +912,7 @@ int DumpTimeSerieNcFile(Link* sys, GlobalVars* globals, unsigned int N, unsigned
         free(buffer);
 
         //Make it a dimension scale
-        hid_t output_ds = H5Dopen(file_id, "output", H5P_DEFAULT);
+        hid_t output_ds = H5Dopen(file_id, "output");
         H5DSset_scale(output_ds, "output");
 
         //Create the memory data space
@@ -926,7 +930,7 @@ int DumpTimeSerieNcFile(Link* sys, GlobalVars* globals, unsigned int N, unsigned
 
         // Create a new dataset within the file using defined dataspace and
         // datatype and default dataset creation properties.
-        dataset_id = H5Dcreate(file_id, "outputs", H5T_NATIVE_FLOAT, file_dataspace_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+        dataset_id = H5Dcreate(file_id, "outputs", H5T_NATIVE_FLOAT, file_dataspace_id, H5P_DEFAULT);
         if (dataset_id < 0)
         {
             printf("Error: could not initialize h5 file %s.\n", output_filename);
