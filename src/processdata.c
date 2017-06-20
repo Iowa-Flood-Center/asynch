@@ -813,13 +813,11 @@ int DumpTimeSerieNcFile(Link* sys, GlobalVars* globals, unsigned int N, unsigned
     hid_t dataset_id;
     hid_t mem_dataspace_id, file_dataspace_id;
     
-    hsize_t start[2];  // Start of hyperslab
-    hsize_t stride[2]; // Stride of hyperslab
-    hsize_t count[2];  // Block count
-    hsize_t block[2];  // Block sizes
+    hsize_t start[3];  // Start of hyperslab
+    hsize_t count[3];  // Block count
 
-    hsize_t out_offset = 0;
-    float *out_buffer = NULL;
+    //hsize_t out_offset = 0;
+    //float *out_buffer = NULL;
 
     const hsize_t chunk_size = 512; // Chunk size, in number of table entries per chunk
     const int compression = 5;      // Compression level, a value of 0 through 9.
@@ -893,25 +891,56 @@ int DumpTimeSerieNcFile(Link* sys, GlobalVars* globals, unsigned int N, unsigned
         H5DSset_scale(time_ds, "time");
         //H5Dclose(time_ds);
 
-        //Get the offset of the State0 ouptut
-        size_t offset = 0;
+        ////Get the offset of the State0 ouptut
+        //size_t offset = 0;
+        //for (unsigned int i = 0; i < globals->num_outputs; i++)
+        //{
+        //    const Output * const out = &globals->outputs[i];
+        //    if (strcmp(out->name, "State0") == 0)
+        //        out_offset = offset;
+        //    offset += out->size;
+        //}
+
+        //Check if all the outputs are of type float (limitation of the current implementation)
         for (unsigned int i = 0; i < globals->num_outputs; i++)
         {
             const Output * const out = &globals->outputs[i];
-            if (strcmp(out->name, "State0") == 0)
-                out_offset = offset;
-            offset += out->size;
+            if (out->type != ASYNCH_FLOAT)
+            {
+                printf("\nAll output's types should be float (got %i for %s).\n", out->type, out->name);
+                return 1;
+            }
         }
-        out_buffer = malloc(num_timestep * sizeof(float));
+
+        //Set the output axis
+        hsize_t num_outputs = globals->num_outputs;
+        buffer = malloc(globals->num_outputs * sizeof(int));
+        for (unsigned int i = 0; i < num_outputs; i++)
+        {
+            buffer[i] = i;
+        }
+        H5LTmake_dataset_int(file_id, "output", 1, &num_outputs, buffer);
+        free(buffer);
+
+        //Make it a dimension scale
+        hid_t output_ds = H5Dopen(file_id, "output", H5P_DEFAULT);
+        H5DSset_scale(output_ds, "output");
+        //H5Dclose(time_ds);
+
+        //out_buffer = malloc(num_timestep * globals->num_outputs * sizeof(float));
 
         //Create the memory data space
-        mem_dataspace_id = H5Screate_simple(1, &num_timestep, NULL);
+        hsize_t dims[2];  // Block count
+        dims[0] = num_timestep;
+        dims[1] = num_outputs;
+        mem_dataspace_id = H5Screate_simple(2, dims, NULL);
 
         // Describe the size of the array and create the data space for fixed size dataset.
-        hsize_t dimsf[2];
+        hsize_t dimsf[3];
         dimsf[0] = save_size;
         dimsf[1] = num_timestep;
-        file_dataspace_id = H5Screate_simple(2, dimsf, NULL);
+        dimsf[2] = globals->num_outputs;
+        file_dataspace_id = H5Screate_simple(3, dimsf, NULL);
 
         // Create a new dataset within the file using defined dataspace and
         // datatype and default dataset creation properties.
@@ -924,9 +953,11 @@ int DumpTimeSerieNcFile(Link* sys, GlobalVars* globals, unsigned int N, unsigned
 
         H5DSattach_scale(dataset_id, link_id_ds, 0);
         H5DSattach_scale(dataset_id, time_ds, 1);
+        H5DSattach_scale(dataset_id, output_ds, 2);
 
         H5Dclose(link_id_ds);
         H5Dclose(time_ds);
+        H5Dclose(output_ds);
     }
 
     //Open input files
@@ -981,32 +1012,19 @@ int DumpTimeSerieNcFile(Link* sys, GlobalVars* globals, unsigned int N, unsigned
                     size_t num_read = fread(data_storage, line_size, reminder, inputfile);
                     assert(num_read <= (globals->maxtime / globals->print_time) + 1);
 
-                    char *begin = data_storage + out_offset;
-                    for (size_t i = 0; i < num_read; i++)
-                    {
-                        float *val = (float *)(begin + i * line_size);
-                        out_buffer[i] = *val;
-                    }
-
-                    ////herr_t ret = H5PTappend(packet_file_id, num_read, data_storage);
-                    ////Select memory hyperslab
-                    //start[0] = 0;
-                    ////stride[0] = line_size;
-                    //count[0] = num_read;
-                    ////block[0] = 1;
-                    //H5Sselect_hyperslab(mem_dataspace_id, H5S_SELECT_SET, start, NULL, count, NULL);
-
                     start[0] = i;
                     start[1] = k;
+                    start[2] = 0;
                     //stride[0] = 1;
                     //stride[1] = 1;
                     count[0] = 1;
                     count[1] = num_read;
+                    count[2] = globals->num_outputs;
                     //block[0] = 1;
                     //block[1] = 1;
                     H5Sselect_hyperslab(file_dataspace_id, H5S_SELECT_SET, start, NULL, count, NULL);
 
-                    herr_t ret = H5Dwrite(dataset_id, H5T_NATIVE_FLOAT, mem_dataspace_id, file_dataspace_id, H5P_DEFAULT, out_buffer);
+                    herr_t ret = H5Dwrite(dataset_id, H5T_NATIVE_FLOAT, mem_dataspace_id, file_dataspace_id, H5P_DEFAULT, data_storage);
                 }
             }
             else
@@ -1040,7 +1058,19 @@ int DumpTimeSerieNcFile(Link* sys, GlobalVars* globals, unsigned int N, unsigned
                 MPI_Recv(&num_read, 1, MPI_UNSIGNED, proc, save_list[i], MPI_COMM_WORLD, MPI_STATUS_IGNORE);
                 MPI_Recv(data_storage, num_read * line_size, MPI_CHAR, proc, save_list[i], MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 
-                //H5PTappend(packet_file_id, num_read, data_storage);
+                start[0] = i;
+                start[1] = k;
+                start[2] = 0;
+                //stride[0] = 1;
+                //stride[1] = 1;
+                count[0] = 1;
+                count[1] = num_read;
+                count[2] = globals->num_outputs;
+                //block[0] = 1;
+                //block[1] = 1;
+                H5Sselect_hyperslab(file_dataspace_id, H5S_SELECT_SET, start, NULL, count, NULL);
+
+                herr_t ret = H5Dwrite(dataset_id, H5T_NATIVE_FLOAT, mem_dataspace_id, file_dataspace_id, H5P_DEFAULT, data_storage);
             }
         }
     }
@@ -1055,9 +1085,6 @@ int DumpTimeSerieNcFile(Link* sys, GlobalVars* globals, unsigned int N, unsigned
         H5Sclose(mem_dataspace_id);
         H5Dclose(dataset_id);
         H5Fclose(file_id);
-
-        if (out_buffer)
-            free(out_buffer);
     }
 
     if (my_rank == 0)

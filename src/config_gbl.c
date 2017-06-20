@@ -447,15 +447,15 @@ GlobalVars* Read_Global_Data(
         if (globals->hydros_loc_flag == 1 && !CheckFilenameExtension(globals->hydros_loc_filename, ".dat"))	return NULL;
         if (globals->hydros_loc_flag == 2 && !CheckFilenameExtension(globals->hydros_loc_filename, ".csv"))	return NULL;
         if (globals->hydros_loc_flag == 4 && !CheckFilenameExtension(globals->hydros_loc_filename, ".rad"))	return NULL;
-        if (globals->hydros_loc_flag == 5 && !CheckFilenameExtension(globals->hydros_loc_filename, ".h5p"))	return NULL;
-        if (globals->hydros_loc_flag == 6 && !CheckFilenameExtension(globals->hydros_loc_filename, ".h5a"))	return NULL;
+        if (globals->hydros_loc_flag == 5 && !CheckFilenameExtension(globals->hydros_loc_filename, ".h5"))	return NULL;
+        if (globals->hydros_loc_flag == 6 && !CheckFilenameExtension(globals->hydros_loc_filename, ".h5"))	return NULL;
         //globals->output_flag = (globals->hydros_loc_flag == 1) ? 0 : 1;
 
         if (globals->hydros_loc_flag == 1)	RemoveSuffix(globals->hydros_loc_filename, ".dat");
         else if (globals->hydros_loc_flag == 2)	RemoveSuffix(globals->hydros_loc_filename, ".csv");
         else if (globals->hydros_loc_flag == 4)	RemoveSuffix(globals->hydros_loc_filename, ".rad");
-        else if (globals->hydros_loc_flag == 5)	RemoveSuffix(globals->hydros_loc_filename, ".h5p");
-        else if (globals->hydros_loc_flag == 6)	RemoveSuffix(globals->hydros_loc_filename, ".h5a");
+        else if (globals->hydros_loc_flag == 5)	RemoveSuffix(globals->hydros_loc_filename, ".h5");
+        else if (globals->hydros_loc_flag == 6)	RemoveSuffix(globals->hydros_loc_filename, ".h5");
     }
     else if (globals->hydros_loc_flag == 3)
     {
