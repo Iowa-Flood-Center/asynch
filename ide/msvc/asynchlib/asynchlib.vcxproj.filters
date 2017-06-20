@@ -239,6 +239,5 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="$(RootDir)\LICENSE" />
-    <None Include="$(RootDir)\makefile" />
   </ItemGroup>
 </Project>

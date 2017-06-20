@@ -36,8 +36,4 @@
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
-  <ItemGroup>
-    <None Include="$(RootDir)\src\LICENSE" />
-    <None Include="$(RootDir)\src\makefile" />
-  </ItemGroup>
 </Project>
