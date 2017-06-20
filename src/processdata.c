@@ -234,11 +234,11 @@ int DumpTimeSerieFile(Link* sys, GlobalVars* globals, unsigned int N, unsigned i
         if (outputfile)	fclose(outputfile);
     }
 #endif //ASYNCH_HAVE_RADEK_PATENTED_COMPACT_BINARY_FORMAT_THAT_NO_ONE_ELSE_CAN_READ
-    else if (globals->hydros_loc_flag == 5)	//.h5p
+    else if (globals->hydros_loc_flag == 5)	//.h5 packet
     {
         DumpTimeSerieH5File(sys, globals, N, save_list, save_size, my_save_size, id_to_loc, assignments, additional_temp, additional_out);
     }
-    else if (globals->hydros_loc_flag == 6)	//.h5a
+    else if (globals->hydros_loc_flag == 6)	//.h5 array
     {
         DumpTimeSerieNcFile(sys, globals, N, save_list, save_size, my_save_size, id_to_loc, assignments, additional_temp, additional_out);
     }
@@ -650,15 +650,15 @@ int DumpTimeSerieH5File(Link* sys, GlobalVars* globals, unsigned int N, unsigned
                 sprintf(filenamespace, "_%.4e", globals->global_params[i]);
                 strcat(output_filename, filenamespace);
             }
-            sprintf(filenamespace, ".h5p");
+            sprintf(filenamespace, ".h5");
             strcat(output_filename, filenamespace);
         }
         else
         {
             if (!additional_out)
-                sprintf(output_filename, "%s.h5p", globals->hydros_loc_filename);
+                sprintf(output_filename, "%s.h5", globals->hydros_loc_filename);
             else
-                sprintf(output_filename, "%s_%s.h5p", globals->hydros_loc_filename, additional_out);
+                sprintf(output_filename, "%s_%s.h5", globals->hydros_loc_filename, additional_out);
         }
         
         //Create output file
@@ -841,15 +841,15 @@ int DumpTimeSerieNcFile(Link* sys, GlobalVars* globals, unsigned int N, unsigned
                 sprintf(filenamespace, "_%.4e", globals->global_params[i]);
                 strcat(output_filename, filenamespace);
             }
-            sprintf(filenamespace, ".h5a");
+            sprintf(filenamespace, ".h5");
             strcat(output_filename, filenamespace);
         }
         else
         {
             if (!additional_out)
-                sprintf(output_filename, "%s.h5a", globals->hydros_loc_filename);
+                sprintf(output_filename, "%s.h5", globals->hydros_loc_filename);
             else
-                sprintf(output_filename, "%s_%s.h5a", globals->hydros_loc_filename, additional_out);
+                sprintf(output_filename, "%s_%s.h5", globals->hydros_loc_filename, additional_out);
         }
 
         //Create output file
@@ -907,8 +907,8 @@ int DumpTimeSerieNcFile(Link* sys, GlobalVars* globals, unsigned int N, unsigned
             const Output * const out = &globals->outputs[i];
             if (out->type != ASYNCH_FLOAT)
             {
-                printf("\nAll output's types should be float (got %i for %s).\n", out->type, out->name);
-                return 1;
+                printf("Error: All output types should be float (got %i for %s).\n", out->type, out->name);
+                MPI_Abort(MPI_COMM_WORLD, 0);
             }
         }
 
