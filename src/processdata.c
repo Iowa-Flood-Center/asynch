@@ -816,9 +816,6 @@ int DumpTimeSerieNcFile(Link* sys, GlobalVars* globals, unsigned int N, unsigned
     hsize_t start[3];  // Start of hyperslab
     hsize_t count[3];  // Block count
 
-    //hsize_t out_offset = 0;
-    //float *out_buffer = NULL;
-
     const hsize_t chunk_size = 512; // Chunk size, in number of table entries per chunk
     const int compression = 5;      // Compression level, a value of 0 through 9.
 
@@ -874,7 +871,6 @@ int DumpTimeSerieNcFile(Link* sys, GlobalVars* globals, unsigned int N, unsigned
         //Make it a dimension scale
         hid_t link_id_ds = H5Dopen(file_id, "link_id", H5P_DEFAULT);
         H5DSset_scale(link_id_ds, "link_id");
-        //H5Dclose(link_id_ds);
 
         //Set the time axis
         hsize_t num_timestep = (int) (globals->maxtime / globals->print_time) + 1;
@@ -889,17 +885,6 @@ int DumpTimeSerieNcFile(Link* sys, GlobalVars* globals, unsigned int N, unsigned
         //Make it a dimension scale
         hid_t time_ds = H5Dopen(file_id, "time", H5P_DEFAULT);
         H5DSset_scale(time_ds, "time");
-        //H5Dclose(time_ds);
-
-        ////Get the offset of the State0 ouptut
-        //size_t offset = 0;
-        //for (unsigned int i = 0; i < globals->num_outputs; i++)
-        //{
-        //    const Output * const out = &globals->outputs[i];
-        //    if (strcmp(out->name, "State0") == 0)
-        //        out_offset = offset;
-        //    offset += out->size;
-        //}
 
         //Check if all the outputs are of type float (limitation of the current implementation)
         for (unsigned int i = 0; i < globals->num_outputs; i++)
@@ -925,9 +910,6 @@ int DumpTimeSerieNcFile(Link* sys, GlobalVars* globals, unsigned int N, unsigned
         //Make it a dimension scale
         hid_t output_ds = H5Dopen(file_id, "output", H5P_DEFAULT);
         H5DSset_scale(output_ds, "output");
-        //H5Dclose(time_ds);
-
-        //out_buffer = malloc(num_timestep * globals->num_outputs * sizeof(float));
 
         //Create the memory data space
         hsize_t dims[2];  // Block count
