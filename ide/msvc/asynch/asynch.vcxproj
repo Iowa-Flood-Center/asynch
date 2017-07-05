@@ -110,10 +110,6 @@
     <ClCompile Include="..\..\..\src\optparse.c" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="$(RootDir)\src\LICENSE" />
-    <None Include="$(RootDir)\src\makefile" />
-  </ItemGroup>
-  <ItemGroup>
     <ProjectReference Include="..\asynchlib\asynchlib.vcxproj">
       <Project>{b7c669bc-cb73-4fd5-b095-65aa2c1d6d1b}</Project>
     </ProjectReference>

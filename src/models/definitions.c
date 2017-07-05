@@ -369,6 +369,18 @@ void SetParamSizes(
         globals->min_error_tolerances = 5;
         break;
         //--------------------------------------------------------------------------------------------
+    case 256:   num_global_params = 13;
+        globals->uses_dam = 0;
+        globals->num_params = 8;
+        globals->dam_params_size = 0;
+        globals->area_idx = 0;
+        globals->areah_idx = 2;
+        globals->num_disk_params = 3;
+        globals->convertarea_flag = 0;
+        globals->num_forcings = 3;
+        globals->min_error_tolerances = 8;
+        break;
+        //--------------------------------------------------------------------------------------------
     case 260:	num_global_params = 11;
         globals->uses_dam = 0;
         globals->num_params = 6;
@@ -562,17 +574,7 @@ void ConvertParams(
         params[2] *= 1e6;		//A_h: km^2 -> m^2
         params[4] *= .001;		//H_h: mm -> m
     }
-    else if (model_uid == 252 || model_uid == 260 || model_uid == 254 || model_uid == 261 || model_uid == 262)
-    {
-        params[1] *= 1000;		//L_h: km -> m
-        params[2] *= 1e6;		//A_h: km^2 -> m^2
-    }
-    else if (model_uid == 253)
-    {
-        params[1] *= 1000;		//L_h: km -> m
-        params[2] *= 1e6;		//A_h: km^2 -> m^2
-    }
-    else if (model_uid == 255)
+    else if (model_uid == 252 || model_uid == 253 || model_uid == 254 || model_uid == 255 || model_uid == 256 || model_uid == 260 || model_uid == 261 || model_uid == 262)
     {
         params[1] *= 1000;		//L_h: km -> m
         params[2] *= 1e6;		//A_h: km^2 -> m^2
@@ -1059,6 +1061,28 @@ void InitRoutines(
         link->check_state = &dam_check_qvs;
         link->check_consistency = &CheckConsistency_Nonzero_AllStates_q;
     }
+    else if (model_uid == 256)
+    {
+        link->dim = 8;
+        link->no_ini_start = 4;
+        link->diff_start = 0;
+
+        link->num_dense = 2;
+        link->dense_indices = (unsigned int*)realloc(link->dense_indices, link->num_dense * sizeof(unsigned int));
+        link->dense_indices[0] = 0;
+        link->dense_indices[1] = 6;
+
+        if (link->has_res)
+        {
+            link->differential = &TopLayerHillslope_Reservoirs;
+            link->solver = &ForcedSolutionSolver;
+        }
+        else		
+            link->differential = &TopLayerHillslope_even_more_extras;
+        link->algebraic = NULL;
+        link->check_state = NULL;
+        link->check_consistency = &CheckConsistency_Nonzero_AllStates_q;
+    }
     else if (model_uid == 260)
     {
         link->dim = 4;
@@ -1289,51 +1313,51 @@ void Precalculations(
 
         vals[3] = 60.0*v_r*pow(A_i, lambda_2) / ((1.0 - lambda_1)*L_i); //[1/min]  invtau
 
-                                                                        /*
-                                                                        //For gamma
-                                                                        double k_p = global_params[4];
-                                                                        double k_a = global_params[5];
-                                                                        double theta_p = global_params[6];
-                                                                        double theta_a = global_params[7];
-                                                                        vals[4] = 1.0/(tgamma(k_p)*pow(theta_p,k_p)); //c_1
-                                                                        vals[5] = 1.0/(tgamma(k_a)*pow(theta_a,k_a)); //c_2
-                                                                        */
-                                                                        /*
-                                                                        //For log normal
-                                                                        double mu = global_params[3];
-                                                                        double sigma2 = global_params[4];
-                                                                        double scale = global_params[5];
-                                                                        vals[4] = scale/(pow(2.0*3.141592653589*sigma2,0.5));
-                                                                        vals[5] = 0.0;
-                                                                        */
+        /*
+        //For gamma
+        double k_p = global_params[4];
+        double k_a = global_params[5];
+        double theta_p = global_params[6];
+        double theta_a = global_params[7];
+        vals[4] = 1.0/(tgamma(k_p)*pow(theta_p,k_p)); //c_1
+        vals[5] = 1.0/(tgamma(k_a)*pow(theta_a,k_a)); //c_2
+        */
+        /*
+        //For log normal
+        double mu = global_params[3];
+        double sigma2 = global_params[4];
+        double scale = global_params[5];
+        vals[4] = scale/(pow(2.0*3.141592653589*sigma2,0.5));
+        vals[5] = 0.0;
+        */
 
-                                                                        //Set some random values
-                                                                        //vals[4] = (double)(rand()%996) / 10.0 + 0.5;	//0.5 to 100.0
-                                                                        //vals[5] = (double)(rand()%991) + 10.0;	//10 to 1000
+        //Set some random values
+        //vals[4] = (double)(rand()%996) / 10.0 + 0.5;	//0.5 to 100.0
+        //vals[5] = (double)(rand()%991) + 10.0;	//10 to 1000
 
-                                                                        /*
-                                                                        //Order of parameters: A_i,L_i,A_h,k2,k3,invtau,c_1,c_2
-                                                                        //The numbering is:	0   1   2   3  4    5    6   7
-                                                                        //Order of global_params: v_r,lambda_1,lambda_2,RC,v_h,v_g
-                                                                        //The numbering is:        0      1        2     3  4   5
-                                                                        double* vals = params;
-                                                                        double A_i = params[0];
-                                                                        double L_i = params[1];
-                                                                        double A_h = params[2];
-                                                                        double v_r = global_params[0];
-                                                                        double lambda_1 = global_params[1];
-                                                                        double lambda_2 = global_params[2];
-                                                                        double RC = global_params[3];
-                                                                        double v_h = global_params[4];
-                                                                        double v_g = global_params[5];
-                                                                        double F_et = 0.05;
+        /*
+        //Order of parameters: A_i,L_i,A_h,k2,k3,invtau,c_1,c_2
+        //The numbering is:	0   1   2   3  4    5    6   7
+        //Order of global_params: v_r,lambda_1,lambda_2,RC,v_h,v_g
+        //The numbering is:        0      1        2     3  4   5
+        double* vals = params;
+        double A_i = params[0];
+        double L_i = params[1];
+        double A_h = params[2];
+        double v_r = global_params[0];
+        double lambda_1 = global_params[1];
+        double lambda_2 = global_params[2];
+        double RC = global_params[3];
+        double v_h = global_params[4];
+        double v_g = global_params[5];
+        double F_et = 0.05;
 
-                                                                        vals[3] = v_h * L_i / A_h * 60.0;	//[1/min]  k2
-                                                                        vals[4] = v_g * L_i / A_h * 60.0;	//[1/min]  k3
-                                                                        vals[5] = 60.0*v_r*pow(A_i,lambda_2) / ((1.0-lambda_1)*L_i);	//[1/min]  invtau
-                                                                        vals[6] = RC*(0.001/60.0);		//(mm/hr->m/min)  c_1
-                                                                        vals[7] = F_et*(1.0-RC)*(0.001/60.0);	//(mm/hr->m/min)  c_2
-                                                                        */
+        vals[3] = v_h * L_i / A_h * 60.0;	//[1/min]  k2
+        vals[4] = v_g * L_i / A_h * 60.0;	//[1/min]  k3
+        vals[5] = 60.0*v_r*pow(A_i,lambda_2) / ((1.0-lambda_1)*L_i);	//[1/min]  invtau
+        vals[6] = RC*(0.001/60.0);		//(mm/hr->m/min)  c_1
+        vals[7] = F_et*(1.0-RC)*(0.001/60.0);	//(mm/hr->m/min)  c_2
+        */
     }
     else if (model_uid == 60)
     {
@@ -1642,7 +1666,7 @@ void Precalculations(
         vals[6] = (0.001 / 60.0);		//(mm/hr->m/min)  c_1
         vals[7] = A_h / 60.0;	//  c_2
     }
-    else if (model_uid == 254)
+    else if (model_uid == 254 || model_uid == 256)
     {
         //Order of parameters: A_i,L_i,A_h,invtau,k_2,k_i,c_1,c_2
         //The numbering is:	0   1   2    3     4   5   6   7 
@@ -2038,6 +2062,14 @@ int ReadInitData(
             y_0[1] = tau_in_secs / (1.0 - lambda_1) * pow(y_0[0], 1.0 - lambda_1);
             return -1;
         }
+    }
+    else if (model_uid == 256)
+    {
+        //For this model_uid, the extra states need to be set (4,5,6,7)
+        y_0[4] = 0.0;
+        y_0[5] = 0.0;
+        y_0[6] = 0.0;
+        y_0[7] = y_0[0];
     }
     else if (model_uid == 261)
     {

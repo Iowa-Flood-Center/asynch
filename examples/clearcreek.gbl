@@ -8,9 +8,7 @@
 0	%Parameters to filenames
 
 %Components to print
-4
-Time
-LinkID
+2
 State0
 State6
 
@@ -55,8 +53,8 @@ Classic
 0
 
 %Where to put write hydrographs
-%(0 = no output, 1 = .dat file, 2 = .csv file, 3 = database)
-1 5.0 clearcreek.dat
+%(0 = no output, 1 = .dat file, 2 = .csv file, 3 = database, 5 = .h5 packet, 6 = .h5 array)
+6 5.0 clearcreek.h5
 
 %Where to put peakflow data
 %(0 = no output, 1 = .pea file, 2 = database)

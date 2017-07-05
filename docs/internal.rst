@@ -1,6 +1,9 @@
 Internals
 =========
 
+Data Structures
+---------------
+
 This section gives an overview of the data structure used in Asynch and mostly intended for the project maintainers.
 
 .. doxygenstruct:: AsynchSolver

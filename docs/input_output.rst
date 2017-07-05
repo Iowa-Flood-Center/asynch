@@ -75,7 +75,7 @@ Here is a typical global file taken from the examples folder:
   0
 
   %Where to put write hydrographs
-  %(0 = no output, 1 = .dat file, 2 = .csv file, 3 = database, 5 = .h5)
+  %(0 = no output, 1 = .dat file, 2 = .csv file, 3 = database, 5 = .h5 packet, 6 = .h5 array)
   5 5.0 outputs.h5
 
   %Where to put peakflow data
@@ -388,7 +388,8 @@ where :math:`A` is the upstream of the link, measured in km2.
 A time series flag of ``1`` indicates the results of the simulation will be saved as a .dat file. The filename complete with a path must be specified. If a file with the name and path given already exists, it is overwritten.
 A time series flag of ``2`` indicates the results will be stored as a .csv file.
 A time series flag of ``3`` indicates the results will be uploaded into the database described by the given .dbc file. In this case, a table name accessible by the queries in the .dbc file must be specified.
-A time series flag of ``5`` indicates indicates the results will be stored as a .h5 HDF5 file.
+A time series flag of ``5`` indicates the results will be stored as a .h5 HDF5 file with a packet layout compatible with PyTable.
+A time series flag of ``6`` indicates the results will be stored as a .h5 HDF5 file with an 3D array layout. Time, link id and output indexes are given as additional 1D "dimension" arrays. Selected outputs in :ref:`Solver Outputs` must have the same type (ASYNCH_FLOAT).
 
 This section is independent of the section for Link IDs to Save described below (see :ref:`Global Parameters`) For example, if link ids are specified in the Link IDs to Save section and the time series flag in the Time Series Locations set to ``0``, no output is generated. Similarly, if *the time series id flag* is set to ``0`` in the Link IDs to Save section and the time series flag is set to ``1``, a .dat file with ``0`` time series is produced.
 

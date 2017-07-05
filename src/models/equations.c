@@ -417,6 +417,91 @@ void dam_TopLayerHillslope_variable(const double * const y_i, unsigned int num_d
     }
 }
 
+//Type 256
+//Contains 3 layers on hillslope: ponded, top layer, soil. Also has 3 extra states: total precip, total ET, total runoff, base flow
+//Order of parameters: A_i,L_i,A_h,invtau,k_2,k_i,c_1,c_2
+//The numbering is:	0   1   2     3    4   5   6   7
+//Order of global_params: v_0,lambda_1,lambda_2,v_h,k_3,k_I_factor,h_b,S_L,A,B,exponent,v_B,k_tl
+//The numbering is:        0      1        2     3   4     5        6   7  8 9  10       11   12
+void TopLayerHillslope_even_more_extras(double t, const double * const y_i, unsigned int dim, const double * const y_p, unsigned short num_parents, const double * const global_params, const double * const params, const double * const forcing_values, const QVSData * const qvs, int state, void* user, double *ans)
+{
+    unsigned short i;
+
+    double lambda_1 = global_params[1];
+    double k_3 = global_params[4];  //[1/min]
+    double h_b = global_params[6];  //[m]
+    double S_L = global_params[7];  //[m]
+    double A = global_params[8];
+    double B = global_params[9];
+    double exponent = global_params[10];
+    double v_B = global_params[11];
+    double k_tl = global_params[12];
+    double e_pot = forcing_values[1] * (1e-3 / (30.0*24.0*60.0));   //[mm/month] -> [m/min]
+
+    double L = params[1];   //[m]
+    double A_h = params[2]; //[m^2]
+                            //double h_r = params[3];	//[m]
+    double invtau = params[3];  //[1/min]
+    double k_2 = params[4];     //[1/min]
+    double k_i = params[5];     //[1/min]
+    double c_1 = params[6];
+    double c_2 = params[7];
+
+    double q = y_i[0];      //[m^3/s]
+    double s_p = y_i[1];    //[m]
+    double s_t = y_i[2];    //[m]
+    double s_s = y_i[3];    //[m]
+                            //double s_precip = y_i[4];	//[m]
+                            //double V_r = y_i[5];	//[m^3]
+    double q_b = y_i[7];    //[m^3/s]
+
+    //Evaporation
+    double e_p, e_t, e_s;
+    double Corr = s_p + s_t / S_L + s_s / (h_b - S_L);
+    if (e_pot > 0.0 && Corr > 1e-12)
+    {
+        e_p = s_p * 1e3 * e_pot / Corr;
+        e_t = s_t / S_L * e_pot / Corr;
+        e_s = s_s / (h_b - S_L) * e_pot / Corr;
+    }
+    else
+    {
+        e_p = 0.0;
+        e_t = 0.0;
+        e_s = 0.0;
+    }
+
+    double pow_term = (1.0 - s_t / S_L > 0.0) ? pow(1.0 - s_t / S_L, exponent) : 0.0;
+    double k_t = (A + B * pow_term) * k_2;
+
+    //Fluxes
+    double q_pl = k_2 * s_p;
+    double q_pt = k_t * s_p;
+    double q_ts = k_i * s_t;
+    double q_tl = k_tl * s_t;
+    double q_sl = k_3 * s_s;    //[m/min]
+
+    //Discharge
+    ans[0] = -q + (q_pl + q_tl + q_sl) * c_2;
+    for (i = 0; i < num_parents; i++)
+        ans[0] += y_p[i * dim];
+    ans[0] = invtau * pow(q, lambda_1) * ans[0];    // discharge[0]
+
+    //Hillslope
+    ans[1] = forcing_values[0] * c_1 - q_pl - q_pt - e_p;   // pond[1]
+    ans[2] = q_pt - q_ts - q_tl - e_t;                      // toplayer[2]
+    ans[3] = q_ts - q_sl - e_s;                             // subsurface[3]
+
+    //Additional states
+    ans[4] = forcing_values[0] * c_1;   // precip[4]
+    ans[5] = forcing_values[1] * c_1;   // et[5]
+    ans[6] = q_pl;                      // runoff[]6
+    ans[7] = q_sl * A_h - q_b*60.0;     // baseflow[7]
+    for (i = 0; i < num_parents; i++)
+        ans[7] += y_p[i * dim + 7] * 60.0;
+    ans[7] *= v_B / L;
+}
+
 
 //Type 260
 //Contains 3 layers on hillslope: ponded, top layer, soil

@@ -1058,6 +1058,9 @@ int Asynch_Check_Peakflow_Output(AsynchSolver* asynch, char* name)
 
 int Asynch_Delete_Temporary_Files(AsynchSolver* asynch)
 {
+    if (asynch->outputfile)
+        fclose(asynch->outputfile);
+
     int ret_val = RemoveTemporaryFiles(asynch->globals, asynch->my_save_size, NULL);
     //if(ret_val == 1)	printf("[%i]: Error deleting temp file. File does not exist.\n");
     if (ret_val != 0)	printf("[%i]: Error [%i] while deleting temp file.\n", my_rank, ret_val);

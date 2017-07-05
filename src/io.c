@@ -45,7 +45,7 @@ void OutputFunc_Init(
         output_func->PreparePeakflowOutput = NULL;
 
     //Create Final Time Series Output
-    if (hydros_loc_flag == 1 || hydros_loc_flag == 2 || hydros_loc_flag == 4 || hydros_loc_flag == 5)
+    if (hydros_loc_flag == 1 || hydros_loc_flag == 2 || hydros_loc_flag == 4 || hydros_loc_flag == 5 || hydros_loc_flag == 6)
         output_func->CreateOutput = &DumpTimeSerieFile;
     else if (hydros_loc_flag == 3)
     {
