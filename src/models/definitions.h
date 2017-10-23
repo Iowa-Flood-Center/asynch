@@ -13,6 +13,9 @@ void SetParamSizes(
     GlobalVars* globals,
     void* external);
 
+void SetOutputConstraints(
+    GlobalVars* globals);
+
 void ConvertParams(
     double *params,
     unsigned int type,

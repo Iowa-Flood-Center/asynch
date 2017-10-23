@@ -1269,6 +1269,89 @@ void LinearHillslope_MonthlyEvap_OnlyRouts(double t, const double * const y_i, u
 }
 
 
+//Type 196
+//Order of parameters: A_i,L_i,A_h,k2,k3,invtau,c_1,c_2
+//The numbering is:	0   1   2   3  4    5    6   7
+//Order of global_params: v_r,lambda_1,lambda_2,RC,v_h,v_g
+//The numbering is:        0      1        2     3  4   5 
+void LinearHillslope_MonthlyEvap_OnlyRouts_NotReservoir(double t, const double * const y_i, unsigned int dim, const double * const y_p, unsigned short num_parents, unsigned int max_dim, const double * const global_params, const double * const params, const double * const forcing_values, const QVSData * const qvs, int state, void* user, double *ans)
+{
+	unsigned short i;
+
+	double lambda_1 = global_params[1];
+
+	double A_h = params[2];
+	double k2 = params[3];
+	double k3 = params[4];
+	double invtau = params[5];
+
+	double q = y_i[0];		                                        // [m^3/s]
+	double s_p = y_i[1];	                                        // [m]
+	double s_a = y_i[2];	                                        // [m]
+	double acc = y_i[3];	                                        // [m]
+
+	double q_rp = forcing_values[0] * (0.001 / 60.0);		        // (mm/hr -> m/min)
+	double q_pl = k2 * s_p;                                         // (1/min * m)
+
+	double q_ra = forcing_values[1] * (0.001 / 60.0);               // (mm/hr -> m/min)
+	double q_al = k3 * s_a;                                         // (1/min * m)
+
+																	//Evaporation
+	double C_a, C_T, Corr_evap;
+	double e_pot = forcing_values[2] * (1e-3 / (30.0*24.0*60.0));	//[mm/month] -> [m/min]
+
+	if (e_pot > 0.0) {
+		C_a = s_a / e_pot;
+		C_T = C_a;
+	}
+	else {
+		C_a = 0.0;
+		C_T = 0.0;
+	}
+
+	Corr_evap = (C_T > 1.0) ? 1.0 / C_T : 1.0;
+
+	double e_a = Corr_evap * C_a * e_pot;
+	double q_parent;
+	int q_pidx;
+
+	//Discharge
+	ans[0] = -q + ((q_al + q_pl) * A_h / 60.0);
+	for (i = 0; i < num_parents; i++) {
+		q_pidx = i * dim;
+		q_parent = y_p[q_pidx];
+		ans[0] += q_parent;
+	}
+	ans[0] = invtau * pow(q, lambda_1) * ans[0];
+
+	//Hillslope
+	ans[1] = q_rp - q_pl;
+
+	//Sub-surface
+	ans[2] = q_ra - q_al - e_a;
+
+	//Accumulated precip
+	ans[3] = q_rp + q_ra;
+
+	//Accumulated runoff
+	ans[4] = q_rp;
+}
+
+//Type 196
+//Order of parameters: A_i,L_i,A_h,k2,k3,invtau,c_1,c_2
+//The numbering is:	0   1   2   3  4    5    6   7
+//Order of global_params: v_r,lambda_1,lambda_2,RC,v_h,v_g,v_B
+//The numbering is:        0      1        2     3  4   5   6
+void LinearHillslope_MonthlyEvap_OnlyRouts_HasReservoir(double t, const double * const y_i, unsigned int dim, const double * const y_p, unsigned short num_parents, unsigned int max_dim, const double * const global_params, const double * const params, const double * const forcing_values, const QVSData * const qvs, int state, void* user, double *ans)
+{
+	ans[0] = forcing_values[3];
+	ans[1] = 0.0;
+	ans[2] = 0.0;
+	ans[3] = 0.0;
+	ans[4] = 0.0;
+}
+
+
 //Type 20
 //Order of parameters: A_i,L_i,A_h,invtau,c_1,c_2
 //The numbering is:	0   1   2    3     4   5

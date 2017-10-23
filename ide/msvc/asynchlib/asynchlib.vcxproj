@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|x64">
       <Configuration>Debug</Configuration>
@@ -14,20 +14,20 @@
     <ProjectGuid>{B7C669BC-CB73-4FD5-B095-65AA2C1D6D1B}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>asynchlib</RootNamespace>
-    <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.15063.0</WindowsTargetPlatformVersion>
     <ProjectName>asynchlib</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v140</PlatformToolset>
+    <PlatformToolset>v141</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v140</PlatformToolset>
+    <PlatformToolset>v141</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
@@ -53,7 +53,7 @@
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_WARNINGS;NOMINMAX;ASYNCH_WITH_HDF5;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>$(MSMPI_INC);$(MSMPI_INC)\x64;$(RootDir);$(RootDir)\src;$(RootDir)\third_party\zlib-1.2.8;$(RootDir)\third_party\postgresql-8.4.22-1\include;$(RootDir)\third_party\hdf5-1.8.18-win64\include;$(RootDir)\third_party\metis-5.1.0\include;$(RootDir)\third_party\petsc-3.7.3\include;$(RootDir)\third_party\petsc-3.7.3\arch-mswin-c-debug\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(MSMPI_INC);$(MSMPI_INC)\x64;$(RootDir);$(RootDir)\src;$(RootDir)\third_party\zlib-1.2.8;$(RootDir)\third_party\postgresql-9.1.20-1-x64\include;$(RootDir)\third_party\hdf5-1.8.18-win64\include;$(RootDir)\third_party\metis-5.1.0\include;$(RootDir)\third_party\petsc-3.7.3\include;$(RootDir)\third_party\petsc-3.7.3\arch-mswin-c-opt\include</AdditionalIncludeDirectories>
       <WarningLevel>Level3</WarningLevel>
       <AdditionalOptions>/we4133 /we4113 /we4029 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
@@ -103,6 +103,7 @@
     <ClInclude Include="..\..\..\src\date_manip.h" />
     <ClInclude Include="..\..\..\src\models\definitions.h" />
     <ClInclude Include="..\..\..\src\models\equations.h" />
+    <ClInclude Include="..\..\..\src\models\output_constraints.h" />
     <ClInclude Include="..\..\..\src\model_def.h" />
     <ClInclude Include="$(RootDir)\src\forcings.h" />
     <ClInclude Include="$(RootDir)\src\io.h" />
@@ -144,6 +145,7 @@
     <ClCompile Include="$(RootDir)\src\io.c" />
     <ClCompile Include="..\..\..\src\blas.c" />
     <ClCompile Include="$(RootDir)\src\misc.c" />
+    <ClCompile Include="..\..\..\src\models\output_constraints.c" />
     <ClCompile Include="..\..\..\src\outputs.c" />
     <ClCompile Include="$(RootDir)\src\partition.c" />
     <ClCompile Include="$(RootDir)\src\processdata.c" />

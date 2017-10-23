@@ -134,7 +134,7 @@ int main(int argc, char* argv[])
 		print_out("Compiled under:\n");
 		print_out("- O.S.:       %s\n", OS_VERSION);
 		print_out("- Compiler:   %s\n", CC_VERSION);
-		print_out("- HDF5 lib:   %s\n", H5_VERSION);
+		print_out("- HDF5 lib:   %s\n", HDF5_VERSION);
 		print_out("- SZip:       %s\n", SZ_VERSION);
 		print_out("- ZLib:       %s\n", ZL_VERSION);
 		print_out("- PostGreSQL: %s\n", PQ_VERSION);

@@ -305,6 +305,10 @@ struct GlobalVars
     char* dump_table;
     //char* dump_location;
     //char* halt_filename;
+
+    void (*OutputConstrainsHdf5)(double* states);   // function for constraining HDF5 files values
+    void (*OutputConstrainsPsql)(double* states);   // function for constraining PostGreSQL values
+    void (*OutputConstrainsRec)(double* states);    // function for constraining REC files values
 };
 
 

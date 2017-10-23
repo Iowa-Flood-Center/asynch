@@ -1,7 +1,7 @@
 AC_INIT([asynch], [1.4.2], [samuel-debionne@uiowa.edu])
 AC_CONFIG_MACRO_DIR([m4])
 
-AM_INIT_AUTOMAKE([foreign -Wall -Werror])
+AM_INIT_AUTOMAKE([foreign subdir-objects -Wall -Werror])
 
 # Check for programms
 AX_PROG_CC_MPI([], [], [AC_MSG_FAILURE([MPI compiler requested, but couldn't find MPI.])] )
@@ -19,7 +19,7 @@ AX_LAPACK
 
 AC_DEFINE([OS_VERSION], ["Not specified"], [TODO])
 AC_DEFINE([CC_VERSION], ["Not specified"], [TODO])
-AC_DEFINE([H5_VERSION], ["Not specified"], [TODO])
+AC_DEFINE([HDF5_VERSION], ["Not specified"], [TODO])
 AC_DEFINE([SZ_VERSION], ["Not specified"], [TODO])
 AC_DEFINE([ZL_VERSION], ["Not specified"], [TODO])
 AC_DEFINE([PQ_VERSION], ["Not specified"], [TODO])

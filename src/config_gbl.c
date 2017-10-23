@@ -200,6 +200,9 @@ GlobalVars* Read_Global_Data(
     else
         SetParamSizes(globals, external);
 
+    //Define output data constrains
+    SetOutputConstraints(globals);
+
     //Find the states needed for printing
     globals->num_states_for_printing = 0;
     globals->print_indices = (unsigned int*)calloc(globals->num_outputs, sizeof(unsigned int));

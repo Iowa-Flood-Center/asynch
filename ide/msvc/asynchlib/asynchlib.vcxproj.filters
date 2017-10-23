@@ -153,6 +153,9 @@
     <ClCompile Include="..\..\..\src\assim\ancillary.c">
       <Filter>Source Files\assim</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\src\models\output_constraints.c">
+      <Filter>Source Files\models</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="$(RootDir)\src\asynch_interface.h">
@@ -265,6 +268,9 @@
     </ClInclude>
     <ClInclude Include="..\..\..\src\assim\structs.h">
       <Filter>Header Files\assim</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\models\output_constraints.h">
+      <Filter>Source Files\models</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

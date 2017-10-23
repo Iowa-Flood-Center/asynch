@@ -21,6 +21,7 @@ libasynch_a_SOURCES = \
   sort.c \
   system.c \
   models/check_consistency.c \
+  models/output_constraints.c \
   models/check_state.c \
   models/definitions.c \
   models/equations.c \
@@ -60,6 +61,7 @@ libasynch_a_SOURCES = \
   structs_fwd.h \
   system.h \
   models/check_consistency.h \
+  models/output_constraints.h \
   models/check_state.h \
   models/definitions.h \
   models/equations.h \
