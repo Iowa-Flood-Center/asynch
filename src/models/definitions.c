@@ -352,6 +352,20 @@ case 20:	num_global_params = 9;
         globals->min_error_tolerances = 5;
         break;
     //--------------------------------------------------------------------------------------------
+    //model alexander
+      case 197:	
+        num_global_params = 3;
+		globals->uses_dam = 0;
+		globals->num_params = 4;
+		globals->dam_params_size = 0;
+		globals->area_idx = 0;
+		globals->areah_idx = 2;
+		globals->num_disk_params = 3;
+		globals->convertarea_flag = 0;
+		globals->num_forcings = 1;
+		globals->min_error_tolerances = 1;
+        break;
+    //--------------------------------------------------------------------------------------------
     case 200:	num_global_params = 10;
         globals->uses_dam = 0;
         globals->num_params = 20;
