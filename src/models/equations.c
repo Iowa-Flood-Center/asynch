@@ -3563,6 +3563,40 @@ void routing_runoff2(double t, const double * const y_i, unsigned int dim, const
 
 }
 
+void model_alexander(double t, const double * const y_i, unsigned int dim, const double * const y_p, unsigned short num_parents, unsigned int max_dim, const double * const global_params, const double * const params, const double * const forcing_values, const QVSData * const qvs, int state, void* user, double *ans)
+{
+    unsigned short i;
+
+    double lambda_1 = global_params[1];
+
+	double A_i = params[0];
+	double L_i = params[1];
+	double A_h = params[2];
+	double invtau = params[3];
+	//printf("invtau: %f\n", invtau);
+    double q = y_i[0];		                                        // [m^3/s]
+
+    double runoff = forcing_values[0]*(0.001 / 60.0);               //(mm/hr ->m/min)
+
+
+
+    ans[0] = -q + (runoff * A_h / 60.0); //m3/min to m3/s
+    for (i = 0; i<num_parents; i++)
+        ans[0] += y_p[i * dim];
+    ans[0] = invtau * pow(q, lambda_1) * ans[0];
+    
+	
+    //Hillslope
+    //ans[1] = q_rp - q_pl;
+
+    //Sub-surface
+   // ans[2] = q_ra - q_al - e_a;
+
+    //Accumulated precip
+    //ans[3] = q_rp + q_ra;
+
+
+}
 //Type 194
 //Order of parameters: A_i,L_i,A_h,k2,k3,invtau,c_1,c_2
 //The numbering is:	0   1   2   3  4    5    6   7
