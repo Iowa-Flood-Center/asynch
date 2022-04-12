@@ -693,7 +693,7 @@ void TilesModel(double t, const double * const y_i, unsigned int dim, const doub
     double d = params[8];
     double k3 = params[9];
     double ki_fac = params[10];
-    double t_L = params[11];
+    double t_L = params[11]*forcing_values[3];
     double NoFlow = params[12];
     double Td = params[13];
     double Beta = params[14];
@@ -711,14 +711,14 @@ void TilesModel(double t, const double * const y_i, unsigned int dim, const doub
 
     //In forcings rainfall and snowmelt
     double q_in = forcing_values[0] * (0.001/60);	//[m/min]
-    double snowmelt = forcing_values[3] * (0.001)/60; //mm/hour to m/min
-    q_in += snowmelt;
+    //double snowmelt = forcing_values[3] * (0.001)/60; //mm/hour to m/min
+    //q_in += snowmelt;
 
     //Vertical fluxes
     double pow_t = (1.0 - s_l/t_L > 0.0)? pow(1.0 - s_l/t_L,3): 0.0;
     //double pow_t2 = (4.7 - 3.4*(s_s/1.67) > 0.0)? pow(4.7 - 3.4*(s_s/1.67),0.405): 0.0; // Exp kind of Green y Ampt 
     double q_pl = k2*99.0*pow_t*s_p;
-    double q_ls = k2*ki_fac*s_l;
+    double q_ls = k2*ki_fac*s_l;//*forcing_values[3];
     //double q_ls = k2*ki_fac*pow_t2*s_l; //Exp Green y Ampt approach
     double q_pLink = k2*s_p;
     //subsurface runoff
@@ -739,8 +739,8 @@ void TilesModel(double t, const double * const y_i, unsigned int dim, const doub
     }    
     //Evaporation
     double C_p = s_p;
-    double C_l = s_l/t_L;
-    double C_s = s_s/(Beta-NoFlow);
+    double C_l = (s_l/t_L > 1)? s_l/t_L: 1.0;//s_l/t_L;
+    double C_s = s_s/(2.18-t_L); //(Beta-NoFlow);
     double Corr_evap = 1/(C_p + C_l + C_s);
     double e_pot = forcing_values[1] * (1e-3 / (30.0*24.0*60.0));	//[mm/month] -> [m/min]
     double e_p = Corr_evap * C_p * e_pot;
@@ -2431,6 +2431,123 @@ void OfflineTopLayerInterflowHillslope_Reservoirs(double t, const double * const
     ans[3] = 0.0;
 }
 
+//Type 612 Tetis edited by nicolas
+//Tetis model structure for runoff generation + normal routing (NO stream order based velocity)
+//Four layers
+//Global parameters:
+//The numbering is:    0   1   2   3      4      5   6   7...8
+
+//y_i: vector with model states to be resolved by the solver
+//dim:scalar with number of dimensions (states?) of the model
+//y_p
+//num_parents: number of tributary links
+//max_dim
+//global_params: global parameters applied to all hillslopes. See Precalculations in definitions.c
+//params: distributed parameters per hillslope. see Precalculations in definitions.c
+//forcing_values:
+//qvs: unused
+//state: unused
+//user: unused
+//ans: unused
+void tetis_nicoV1(double t, \
+		const double * const y_i, \
+		unsigned int dim, \
+		const double * const y_p, \
+		unsigned short num_parents, \
+		unsigned int max_dim, \
+		const double * const global_params, \
+		const double * const params, \
+		const double * const forcing_values, \
+		const QVSData * const qvs, \
+		int state, \
+		void* user, \
+		double *ans)
+{
+
+	 	unsigned short i; //auxiliary variable for loops
+	    double L = params[1];   // Length of the channel [m]
+	    double A_h = params[2]; //Area of the hillslopes [m^2]
+	    double c_1 = params[4]; //factor .converts [mm/hr] to [m/min]
+        double c_3 = params[6]; // hillslope residency time [s/(min*m)]
+	    double rainfall = forcing_values[0] * c_1; //rainfall. from [mm/hr] to [m/min]
+		//double snowmelt = forcing_values[2]; //we need to put it in [m/min]
+	    double x1 = rainfall; // x1 can be rainfall + snowmelt when last available
+	    double e_pot = forcing_values[1] * (1e-3 / (30.0*24.0*60.0));//potential et[mm/month] -> [m/min]
+        //Lenght area relation fix 
+        if (c_3<0.025)
+            c_3 = 0.025;
+        if (c_3>1)
+            c_3 = 1;
+
+		//static storage
+		double h1 = y_i[1]; //static storage [m]
+		double Hu = global_params[3]/1000; //max available storage in static tank [mm] to [m]
+		double x2 = max(0,x1 + h1 - Hu ); //excedance flow to the second storage [m] [m/min] check units
+		//double x2 = (x1 + h1 -Hu>0.0) ? x1 + h1 -Hu : 0.0;
+		double d1 = x1 - x2; // the input to static tank [m/min]
+		double out1 = min(e_pot*pow(h1/Hu,0.6), h1); //evaporation from the static tank. it cannot evaporate more than h1 [m]
+		//double out1 = (e_pot > h1) ? e_pot : 0.0;
+		ans[1] = d1 - out1; //differential equation of static storage
+
+
+		//surface storage tank
+		double h2 = y_i[2];//water in the hillslope surface [m]
+		double infiltration = global_params[4]*c_1; //infiltration rate [m/min]
+		double x3 = min(x2, infiltration); //water that infiltrates to gravitational storage [m/min]
+		double d2 = x2 - x3; // the input to surface storage [m] check units
+		double alfa2 = global_params[6]; //hillslope surface reference speed [m/s].
+        double out2 = 0;
+        if(alfa2>=1)
+		    out2 = h2 * alfa2 * c_3; //h2[m]*alfa2[m/s]*c_3[s/(min*m)] -> direct runoff [m/min] 
+		ans[2] = d2 - out2; //differential equation of surface storage
+
+
+		// gravitational storage
+		double h3 = y_i[3]; //water in the gravitational storage in the upper part of soil [m]
+		double percolation = global_params[5]*c_1; // percolation rate to aquifer [m/min]
+		double x4 = min(x3,percolation); //water that percolates to aquifer storage [m/min]
+		double d3 = x3 - x4; // input to gravitational storage [m/min]
+		double alfa3 = global_params[7]; //hillslope subsurface reference speed [m/s].
+        double out3=0;
+        if(alfa3>=1)
+		    out3 = h3 * alfa3*c_3; // h3[m]*alfa3[m/s]*c_3[s/(min*m)] -> interflow [m/min]
+		ans[3] = d3 - out3; //differential equation for gravitational storage
+
+		//aquifer storage
+		double h4 = y_i[4]; //water in the aquifer storage [m]
+		double deepinf = 0; //water loss to deeper aquifer [m]
+		//double x5 = min(x4,deepinf);
+		double x5 = 0;
+		double d4 = x4 - x5;
+		double alfa4 = global_params[8]* 24*60; //residence time [days] to [min].
+        double out4=0;
+        if(alfa4>=1)
+		    out4 = h4/alfa4 ; //base flow [m/min]
+		ans[4] = d4 - out4; //differential equation for aquifer storage
+
+		//channel storage
+
+		double lambda_1 = global_params[1];
+	    double invtau = params[3];// 60.0*v_0*pow(A_i, lambda_2) / ((1.0 - lambda_1)*L_i);	//[1/min]  invtau
+	    double q = y_i[0];      //[m^3/s]
+	   	double c_2 = params[5];// = A_h / 60.0;	//  c_2
+
+	    ans[0] = -q + (out2 + out3 + out4) * c_2; //[m/min] to [m3/s]
+	    for (i = 0; i < num_parents; i++)
+	        ans[0] += y_p[i * dim];
+	    ans[0] = invtau * pow(q, lambda_1) * ans[0];    // discharge[0]
+
+        // if (forcing_values[0]>1 && ratio<1) {
+        //     printf("time: %f\n", t);
+        //     printf(" rain in mm/hour: %f\n", forcing_values[0]);
+        //     printf(" area hill, area basin, area ratio: %f %f %f\n", A_h,A_i,ratio);
+        //     MPI_Abort(MPI_COMM_WORLD, 1);
+        // }
+
+}
+
+
+
 //Type 400
 //Tetis model structure for runoff generation + normal routing (NO stream order based velocity)
 //Four layers
@@ -2480,7 +2597,7 @@ void model400(double t, \
 		double x2 = max(0,x1 + h1 - Hu ); //excedance flow to the second storage [m] [m/min] check units
 		//double x2 = (x1 + h1 -Hu>0.0) ? x1 + h1 -Hu : 0.0;
 		double d1 = x1 - x2; // the input to static tank [m/min]
-		double out1 = min(e_pot, h1); //evaporation from the static tank. it cannot evaporate more than h1 [m]
+		double out1 = min(e_pot*pow(h1/Hu,0.6), h1); //evaporation from the static tank. it cannot evaporate more than h1 [m]
 		//double out1 = (e_pot > h1) ? e_pot : 0.0;
 		ans[1] = d1 - out1; //differential equation of static storage
 
