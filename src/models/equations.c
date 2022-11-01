@@ -2957,7 +2957,7 @@ double get_storage_from_discharge(double discharge){
 }
 
 //Type 403
-//model tetis with dams using specific individual ratings 
+//model tetis with dams using specific individual ratings . 
 void model403(double t, \
 		const double * const y_i, \
 		unsigned int dim, \
@@ -3354,6 +3354,285 @@ void model404(double t, \
         // }
 
 }
+
+//Type 405
+//model tetis with dams using specific individual ratings, but using the flowchart algorithm . 
+void model405(double t, \
+		const double * const y_i, \
+		unsigned int dim, \
+		const double * const y_p, \
+		unsigned short num_parents, \
+		unsigned int max_dim, \
+		const double * const global_params, \
+		const double * const params, \
+		const double * const forcing_values, \
+		const QVSData * const qvs, \
+		int state, \
+		void* user, \
+		double *ans)
+{
+
+	 	unsigned short i; //auxiliary variable for loops
+	    double L = params[1];   // Length of the channel [m]
+	    double A_h = params[2]; //Area of the hillslopes [m^2]
+	    double c_1 = params[4]; //factor .converts [mm/hr] to [m/min]
+	    double rainfall = forcing_values[0] * c_1; //rainfall. from [mm/hr] to [m/min]
+	    double e_pot = forcing_values[1] * (1e-3 / (30.0*24.0*60.0));//potential et[mm/month] -> [m/min]
+        double temperature = forcing_values[2]; //daily temperature in Celsius
+        double temp_thres=global_params[10]; // celsius degrees
+        double melt_factor = global_params[9] *(1/(24*60.0)) *(1/1000.0); // mm/day/degree to m/min/degree
+        double frozen_ground = forcing_values[3]; // 1 if ground is frozen, 0 if not frozen 
+        double x1 =0;
+        double factor_low_threshold = global_params[11];
+        double factor_high_threshold = global_params[12];
+        double factor_operating_window = global_params[13];
+
+        //states
+        unsigned int STATE_DISCHARGE=0;
+        unsigned int STATE_STATIC= 1;
+        unsigned int STATE_SURFACE=2;
+        unsigned int STATE_SUBSURF=3;
+        unsigned int STATE_GW = 4;
+        unsigned int STATE_SNOW = 5;
+        unsigned int STATE_DAM_STORAGE=6;
+
+        //INITIAL VALUES
+        double h5 = y_i[STATE_SNOW];//snow storage [m]
+		double h1 = y_i[STATE_STATIC]; //static storage [m]
+		double h2 = y_i[STATE_SURFACE];//water in the hillslope surface [m]
+		double h3 = y_i[STATE_SUBSURF]; //water in the gravitational storage in the upper part of soil [m]
+		double h4 = y_i[STATE_GW]; //water in the aquifer storage [m]
+	    double q = y_i[STATE_DISCHARGE];      //[m^3/s]
+        double dam_storage =y_i[STATE_DAM_STORAGE] ;//m^3
+
+        //snow storage
+        //temperature =0 is the flag for no forcing the variable. no snow process
+        if(temperature==0){
+            x1 = rainfall;
+            ans[STATE_SNOW]=0;
+        }
+        else{
+            if(temperature>=temp_thres){
+                double snowmelt = min(h5,temperature * melt_factor); // in [m]
+                ans[STATE_SNOW]=-snowmelt; //melting outs of snow storage
+                x1 = rainfall + snowmelt; // in [m]
+               // printf("temp > th: %f\n", temperature);
+               // printf("snowmelt : %f\n", snowmelt);
+            }
+            if(temperature != 0 & temperature <temp_thres){
+                ans[STATE_SNOW]=rainfall; //all precipitation is stored in the snow storage
+                x1=0;
+                //printf("temp < th: %f\n", temperature);
+            }
+        }
+        
+
+		//static storage
+		double Hu = global_params[3]/1000; //max available storage in static tank [mm] to [m]
+		double x2 = max(0,x1 + h1 - Hu ); //excedance flow to the second storage [m] [m/min] check units
+        //if ground is frozen, x1 goes directly to the surface
+        //therefore nothing is diverted to static tank
+        if(frozen_ground == 1){
+            x2 = x1;
+        }
+            
+		double d1 = x1 - x2; // the input to static tank [m/min]
+		double out1 = min(e_pot, h1); //evaporation from the static tank. it cannot evaporate more than h1 [m]
+		//double out1 = (e_pot > h1) ? e_pot : 0.0;
+		ans[STATE_STATIC] = d1 - out1; //differential equation of static storage
+
+
+		//surface storage tank
+		double infiltration = global_params[4]*c_1; //infiltration rate [m/min]
+         if(frozen_ground == 1){
+            infiltration = 0;
+        }
+		double x3 = min(x2, infiltration); //water that infiltrates to gravitational storage [m/min]
+		double d2 = x2 - x3; // the input to surface storage [m] check units
+        double alfa2 =global_params[6]; //velocity in m/s
+        double w = alfa2 * L / A_h  * 60; // [1/min]
+        w = min(1,w); //water can take less than 1 min (dt) to leave surface
+        double out2 =0;
+        out2  = h2 * w; //direct runoff [m/min]
+		ans[STATE_SURFACE] = d2 - out2; //differential equation of surface storage
+
+
+		// SUBSURFACE storage
+		double percolation = global_params[5]*c_1; // percolation rate to aquifer [m/min]
+		double x4 = min(x3,percolation); //water that percolates to aquifer storage [m/min]
+		double d3 = x3 - x4; // input to gravitational storage [m/min]
+		double alfa3 = global_params[7]* 24*60; //residence time [days] to [min].
+        double out3=0;
+        if(alfa3>=1)
+		    out3 = h3/alfa3; //interflow [m/min]
+		ans[STATE_SUBSURF] = d3 - out3; //differential equation for gravitational storage
+
+		//aquifer storage
+		double x5 = 0;//water loss to deeper aquifer [m]
+		double d4 = x4 - x5;
+		double alfa4 = global_params[8]* 24*60; //residence time [days] to [min].
+        double out4=0;
+        if(alfa4>=1)
+		    out4 = h4/alfa4 ; //base flow [m/min]
+		ans[STATE_GW] = d4 - out4; //differential equation for aquifer storage
+
+		//channel storage
+
+		double lambda_1 = global_params[1];
+	    double invtau = params[3];// 60.0*v_0*pow(A_i, lambda_2) / ((1.0 - lambda_1)*L_i);	//[1/min]  invtau
+	   	double c_2 = params[5];// = A_h / 60.0;	//  c_2
+
+        //printf("state: %d\n", state);
+        if(state == 0){ //no dams
+            ans[STATE_DISCHARGE] = -q + (out2 + out3 + out4) * c_2; //[m/min] to [m3/s]
+	        for (i = 0; i < num_parents; i++)
+	            ans[STATE_DISCHARGE] += y_p[i * dim + STATE_DISCHARGE];
+	        ans[STATE_DISCHARGE] = invtau * pow(q, lambda_1) * ans[STATE_DISCHARGE];    // discharge[0]
+            dam_storage=1e-1;
+            ans[STATE_DAM_STORAGE] = -dam_storage;
+        }
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// DAM MODEL
+        //state is the array index corresponding to the current storage in the qvs 
+        if(state == 1 ){// dams
+            int debug = 0;
+            
+            if(debug) printf("state: %d\n", state);
+
+            double dam_input = 0;//m3
+            double dam_output=0;//m3
+            //double dam_outflow=0; //m3s-1
+            double rating_flow=0; //m3s-1
+            
+            
+
+            if(debug) printf("time: %f\n", t);
+            //inflow from upstream links
+            for (i = 0; i < num_parents; i++)
+	            dam_input += y_p[i * dim + STATE_DISCHARGE] * 60.0; //m3/s to m3
+            if(debug) printf("inflow from upstream in m3: %f\n", dam_input);
+            // storage inputs
+            if(debug) printf("initial dam storage in m3: %f\n", dam_storage);
+            //dam_storage= dam_storage + dam_input;
+            if(debug) printf("step1 dam storage in m3: %f\n", dam_storage + dam_input);
+
+            //if(debug) printf("state: %u\n", state);
+            unsigned int max_storage_pond_index = (int)qvs->n_values - 1;
+            double max_storage_pond = qvs->points[max_storage_pond_index][0];
+            // find the upper and lower storage threshold for this link
+            double low_storage_threshold = max_storage_pond * factor_low_threshold;
+            double high_storage_threshold = max_storage_pond * factor_high_threshold;
+            
+            if (dam_storage + dam_input >= max_storage_pond)
+            {
+                if(debug) printf("storage >= max.sto.pond\n");
+                //S_max = qvs->points[qvs->n_values - 1][0];
+                double q_max = qvs->points[max_storage_pond_index][1];
+                if(debug) printf("qmax : %f\n", q_max);
+                dam_outflow = q_max;//m3s-1
+            }
+            else if (dam_storage + dam_input < max_storage_pond)
+            {
+                if(debug) printf("storage within rating range\n");
+                double S = (dam_storage + dam_input < 0.0) ? 0.0 : dam_storage + dam_input;
+                if(debug) printf("storage  : %f\n", S);
+                //find discharge value in rating
+                unsigned int ii;
+                for (ii = 0; ii < qvs->n_values - 1; ii++){
+				   // if(debug)printf("model403 storage qvs points: %f\n", qvs->points[ii][0]);
+                    if (qvs->points[ii][0] <= S
+						&& S < qvs->points[ii + 1][0])    
+					break;
+                }
+                double q2 = qvs->points[ii + 1][1];
+                double q1 = qvs->points[ii][1];
+                double S2 = qvs->points[ii + 1][0];
+                double S1 = qvs->points[ii][0];
+                //dam_outflow = (q2 - q1) / (S2 - S1) * (S - S1) + q1;//m3s-1
+                //rating_flow is Qrating in the flowchart
+                rating_flow = (q2 - q1) / (S2 - S1) * (S - S1) + q1;//m3s-1
+
+                if(dam_storage + dam_input <= low_storage_threshold){
+                    //is thhe pond storage too low, is it an emergency and we
+                    //need to hurry to build storage
+                    if(dam_storage + dam_input <= low_storage_threshold*0.8){
+                        dam_outflow = 1e-6;
+                    }
+                    if(dam_storage + dam_input > low_storage_threshold*0.8){
+                        //find ideal flow
+                        double deltaS = low_storage_threshold-(dam_storage + dam_input);
+                        double deltaQ = deltaS / 60.0;
+                        double inflow = dam_input / 60.0;
+                        double Qideal = inflow - deltaQ;
+                        if(Qideal <=rating_flow){
+                            dam_outflow = Qideal;
+                        }
+                        if(Qideal >rating_flow){
+                            dam_outflow = rating_flow;
+                        }
+                    }
+                }
+                if(dam_storage + dam_input > low_storage_threshold){
+                    //if the pond storage is greater than threslow but less than threshigh
+                    if(dam_storage + dam_input < high_storage_threshold){
+                        double deltaS = (dam_storage + dam_input) - low_storage_threshold;
+                        double deltaQ = deltaS / 60.0;
+                        double inflow = dam_input / 60.0;
+                        double Qideal = factor_operating_window * (inflow + deltaQ);
+                        if(Qideal <=rating_flow){
+                            dam_outflow = Qideal;
+                        }
+                        if(Qideal >rating_flow){
+                            dam_outflow = rating_flow;
+                        }
+                    }
+                    if(dam_storage + dam_input >= high_storage_threshold){
+                        double deltaS = (dam_storage + dam_input) - low_storage_threshold;
+                        double deltaQ = deltaS / 60.0;
+                        double inflow = dam_input / 60.0;
+                        double Qideal = inflow + deltaQ;
+                        if(Qideal <=rating_flow){
+                            dam_outflow = Qideal;
+                        }
+                        if(Qideal >rating_flow){
+                            dam_outflow = rating_flow;
+                        }
+                    }
+                }
+            }
+
+            
+            //calculate dam outflow
+            //dam_outflow = get_discharge_from_storage(dam_storage + dam_input); //m3s-1
+            if(debug) printf("dam outflow in m3/s: %f\n", dam_outflow);
+
+            ans[STATE_DISCHARGE] = dam_outflow - q;
+            
+            //storage output
+            //dam_output =get_storage_from_discharge(dam_outflow);
+            dam_output = dam_outflow * 60.0; //m3s-1 to m3
+            if(debug) printf("dam output storage in m3: %f\n", dam_output);
+            if(debug) printf("step2 dam storage in m3: %f\n", dam_storage + dam_input - dam_output);
+
+            //dam_storage = max(dam_storage,0);
+            //if(debug) printf("step3 dam storage in m3: %f\n", dam_storage);
+            //ans[STATE_DAM_STORAGE] = dam_storage;
+            ans[STATE_DAM_STORAGE] = dam_input - dam_output;
+
+            if(debug) printf("\n");
+
+            
+        }
+
+        // if (forcing_values[0]>1 && ratio<1) {
+        //     printf("time: %f\n", t);
+        //     printf(" rain in mm/hour: %f\n", forcing_values[0]);
+        //     printf(" area hill, area basin, area ratio: %f %f %f\n", A_h,A_i,ratio);
+        //     MPI_Abort(MPI_COMM_WORLD, 1);
+        // }
+}
+
 //Type 260
 //Contains 3 layers on hillslope: ponded, top layer, soil
 //Order of parameters: A_i,L_i,A_h | invtau,c_1,c_2
