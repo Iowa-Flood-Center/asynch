@@ -3502,7 +3502,7 @@ void model405(double t, \
 
             double dam_input = 0;//m3
             double dam_output=0;//m3
-            //double dam_outflow=0; //m3s-1
+            double dam_outflow=0; //m3s-1
             double rating_flow=0; //m3s-1
             
             
