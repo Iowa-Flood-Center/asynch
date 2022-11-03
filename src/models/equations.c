@@ -3523,6 +3523,9 @@ void model405(double t, \
             // find the upper and lower storage threshold for this link
             double low_storage_threshold = max_storage_pond * factor_low_threshold;
             double high_storage_threshold = max_storage_pond * factor_high_threshold;
+            if(debug) printf("max.sto.pond %d\n",max_storage_pond);
+            if(debug) printf("low_storage_factor and high_storage_factor: %d and %d\n", factor_low_threshold,factor_high_threshold);
+
             if(debug) printf("low_storage_threshold and high_storage_threshold: %d and %d\n", low_storage_threshold,high_storage_threshold);
             if (dam_storage + dam_input >= max_storage_pond)
             {
