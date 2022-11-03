@@ -3496,7 +3496,7 @@ void model405(double t, \
 // DAM MODEL
         //state is the array index corresponding to the current storage in the qvs 
         if(state == 1 ){// dams
-            int debug = 1;
+            int debug = 0;
             
             if(debug) printf("state: %d\n", state);
 
@@ -3523,6 +3523,7 @@ void model405(double t, \
             // find the upper and lower storage threshold for this link
             double low_storage_threshold = max_storage_pond * factor_low_threshold;
             double high_storage_threshold = max_storage_pond * factor_high_threshold;
+            if(dam_storage + dam_input >0) debug=1; //only print results if there is water in the pond
             if(debug) printf("max.sto.pond %f\n",max_storage_pond);
             if(debug) printf("low_storage_factor and high_storage_factor: %f and %f\n", factor_low_threshold,factor_high_threshold);
 
