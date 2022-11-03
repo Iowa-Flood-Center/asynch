@@ -3496,7 +3496,7 @@ void model405(double t, \
 // DAM MODEL
         //state is the array index corresponding to the current storage in the qvs 
         if(state == 1 ){// dams
-            int debug = 0;
+            int debug = 1;
             
             if(debug) printf("state: %d\n", state);
 
@@ -3523,7 +3523,7 @@ void model405(double t, \
             // find the upper and lower storage threshold for this link
             double low_storage_threshold = max_storage_pond * factor_low_threshold;
             double high_storage_threshold = max_storage_pond * factor_high_threshold;
-            
+            if(debug) printf("low_storage_threshold and high_storage_threshold: %d and %d\n", low_storage_threshold,high_storage_threshold);
             if (dam_storage + dam_input >= max_storage_pond)
             {
                 if(debug) printf("storage >= max.sto.pond\n");
@@ -3554,12 +3554,16 @@ void model405(double t, \
                 rating_flow = (q2 - q1) / (S2 - S1) * (S - S1) + q1;//m3s-1
 
                 if(dam_storage + dam_input <= low_storage_threshold){
+                    if(debug) printf("storage <= low_storage_threshold\n");
                     //is thhe pond storage too low, is it an emergency and we
                     //need to hurry to build storage
                     if(dam_storage + dam_input <= low_storage_threshold*0.8){
+                         if(debug) printf("storage <= low_storage_threshold*.8\n");
                         dam_outflow = 1e-6;
                     }
                     if(dam_storage + dam_input > low_storage_threshold*0.8){
+                        if(debug) printf("storage > low_storage_threshold*0.8\n");
+
                         //find ideal flow
                         double deltaS = low_storage_threshold-(dam_storage + dam_input);
                         double deltaQ = deltaS / 60.0;
@@ -3576,6 +3580,7 @@ void model405(double t, \
                 if(dam_storage + dam_input > low_storage_threshold){
                     //if the pond storage is greater than threslow but less than threshigh
                     if(dam_storage + dam_input < high_storage_threshold){
+                        if(debug) printf("storage < high_storage_threshold\n");
                         double deltaS = (dam_storage + dam_input) - low_storage_threshold;
                         double deltaQ = deltaS / 60.0;
                         double inflow = dam_input / 60.0;
@@ -3588,6 +3593,7 @@ void model405(double t, \
                         }
                     }
                     if(dam_storage + dam_input >= high_storage_threshold){
+                        if(debug) printf("storage >= high_storage_threshold\n");
                         double deltaS = (dam_storage + dam_input) - low_storage_threshold;
                         double deltaQ = deltaS / 60.0;
                         double inflow = dam_input / 60.0;
