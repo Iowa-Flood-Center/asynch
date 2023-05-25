@@ -821,6 +821,19 @@ case 20:	num_global_params = 9;
 		globals->min_error_tolerances = 7;//as many as states:static,surface,subsurf,gw,channel,snow,damstorage
 		break;
 
+        case 408://
+		num_global_params = 12; //v0,l1,l2,hu,infil,perc,surfvel,subrestime,gwrestime,meltfactor,tempthres,output_mode
+		globals->uses_dam = 1;
+		globals->num_params = 6;
+		globals->dam_params_size = 0;
+		globals->area_idx = 0;
+		globals->areah_idx = 2;
+		globals->num_disk_params = 3;
+		globals->convertarea_flag = 0;
+		globals->num_forcings = 5;
+		globals->min_error_tolerances = 10;//as many as states:static,surface,subsurf,gw,channel,snow,damstorage,pipe,weir, opening, 
+		break;
+
 //--------------------------------------------------------------------------------------------
 
 
@@ -1007,7 +1020,7 @@ void ConvertParams(
     else if (model_uid == 249 || model_uid == 251 || model_uid == 252 || model_uid == 253 || 
     model_uid == 254 || model_uid == 255 || model_uid == 256 || model_uid == 257 || model_uid == 258 ||
      model_uid == 259 || model_uid == 260 || model_uid == 261 || model_uid == 262 || model_uid == 263 || 
-     model_uid == 264 || model_uid==400 || model_uid==401 || model_uid==402 || model_uid==403 || model_uid==405 )
+     model_uid == 264 || model_uid==400 || model_uid==401 || model_uid==402 || model_uid==403 || model_uid==405 || model_uid==408)
     {
         
         params[1] *= 1000;		//L_h: km -> m
@@ -2133,6 +2146,32 @@ void InitRoutines(
 			link->check_consistency = &CheckConsistency_Nonzero_AllStates_q;
 		}
 
+    else if (model_uid == 408) //tetis with individual  dams and flowchart
+		{
+			link->dim = 10;// states:static,surface,subsurf,gw,channel,snow,damstorage
+			link->no_ini_start =  link->dim;
+			link->diff_start = 0;
+
+			link->num_dense = 1;
+			link->dense_indices = (unsigned int*) realloc(link->dense_indices,
+					link->num_dense * sizeof(unsigned int));
+			link->dense_indices[0] = 0;
+			
+			if (link->has_res) {
+				link->differential = &Tetis03_Reservoirs;
+				link->solver = &ForcedSolutionSolver;
+			} 
+            else
+            {
+                link->differential = &model407;
+                //link->solver = &ExplicitRKIndex1SolverDam;;
+
+            }
+            link->algebraic = NULL;
+			link->check_state = NULL;
+            //link->check_state = &dam_check_qvs_403;
+			link->check_consistency = &CheckConsistency_Nonzero_AllStates_q;
+		}
 	//else if (model_uid == 300)
 	//{
 	//    link->dim = 2;
@@ -3383,7 +3422,30 @@ else if (model_uid == 405) //tetis01 model
 
 
 	}
+else if (model_uid == 408) //
+		{
+		double* vals = params;
+		double A_i = params[0]; //upstream area of the hillslope
+		double L_i = params[1];	// channel lenght
+		double A_h = params[2]; //area of the hillslope
+		double v_0 = global_params[0]; //velocity river in channels [m/s]
+		double lambda_1 = global_params[1]; //power discharge in routing function
+		double lambda_2 = global_params[2]; //power of area in routing function
+		double Hu = global_params[3]; //max available storage static storage [mm]
+		double infiltration = global_params[4]; //infiltration rate [mm/hr]
+		double percolation = global_params[5]; //percolation rate [mm/hr]
+		double alfa2 = global_params[6]; //surface velocity [m/s]
+		double alfa3 = global_params[7]; //linear reserv. coef gravitational storage [days]
+		double alfa4 = global_params[8]; //linear reserv. coef aquifer storage [days]
+        double melt_factor = global_params[9]; // melting factor in mm/hour/degree
+        double temp_thres = global_params[10]; // in celsius degrees
+        double output_mode = global_params[11];
+        vals[3] = 60.0 * v_0 * pow(A_i, lambda_2) / ((1.0 - lambda_1) * L_i);//[1/min]  invtau params[3]
+		vals[4] = (0.001 / 60.0);		//(mm/hr->m/min)  c_1
+		vals[5] = A_h / 60.0;	//  c_2
 
+
+	}
 
     else if (model_uid == 2000) {
 		//Order of parameters: L_i,A_h,A_i,h_b,h_H,max_inf_rate,K_sat,S_h,eta,b_H,c_H,d_H,invtau,epsilon,c_1,c_2,c_3,c_4,c_5,c_6
@@ -3987,6 +4049,22 @@ int ReadInitData(
             }
                 
 	    }
+        else if (model_uid == 407 )        //tetis
+		{
+            unsigned int STATE_STORAGE=5;
+            int state=0; //no dam
+            if(dam){
+                y_0[STATE_STORAGE] = y_0[STATE_STORAGE];
+                state= 1;
+                return state;
+            }
+            else{
+                y_0[STATE_STORAGE] = 0.0;
+                return state;
+            }
+                
+	    }
+        
     else if (model_uid == 404)        //tetis
 	    {
 
