@@ -201,10 +201,10 @@ void Destroy_RKMethod(RKMethod* method)
 void Destroy_ErrorData(ErrorData* error)
 {
     assert(error != NULL);
-    free(&error->abstol);
-    free(&error->reltol);
-    free(&error->abstol_dense);
-    free(&error->reltol_dense);
+    free(error->abstol);
+    free(error->reltol);
+    free(error->abstol_dense);
+    free(error->reltol_dense);
 }
 
 //Allocates workspace for RK solvers

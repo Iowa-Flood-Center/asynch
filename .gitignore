@@ -12,10 +12,15 @@ Makefile.in
 /config.h.in
 /configure
 /configure.scan
+/ar-lib
+/config.guess
+/config.sub
+/test-driver
 /depcomp
 /install-sh
 /missing
 /stamp-h1
+/build/*
 
 # others
 

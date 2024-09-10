@@ -55,7 +55,7 @@ AsynchSolver* Asynch_Init(MPI_Comm comm, bool verbose)
 
         res->comm = comm;
         if (comm != MPI_COMM_WORLD)
-            printf("Warning: asynchsolver object my not work fully with in a comm other than MPI_COMM_WORLD.\n");
+            printf("Warning: asynchsolver object might not work fully with in a comm other than MPI_COMM_WORLD.\n");
 
         //Initialize MPI stuff
         MPI_Initialized(&init_flag);
@@ -439,8 +439,11 @@ void Asynch_Free(AsynchSolver* asynch)
     Destroy_Workspace(&asynch->workspace, asynch->globals->max_rk_stages, asynch->globals->max_parents);
     free(asynch->getting);
     
-    if (asynch->outputfile)
+    if (asynch->outputfile != NULL)
+    {
         fclose(asynch->outputfile);
+        asynch->outputfile = NULL;
+    }
 
     for (i = 0; i < asynch->N; i++)
         Destroy_Link(&asynch->sys[i], asynch->rkdfilename[0] != '\0', asynch->forcings, asynch->globals);
@@ -1074,8 +1077,11 @@ int Asynch_Check_Peakflow_Output(AsynchSolver* asynch, char* name)
 
 int Asynch_Delete_Temporary_Files(AsynchSolver* asynch)
 {
-    if (asynch->outputfile)
+    if (asynch->outputfile != NULL)
+    {
         fclose(asynch->outputfile);
+        asynch->outputfile = NULL;
+    }
 
     int ret_val = RemoveTemporaryFiles(asynch->globals, asynch->my_save_size, NULL);
     //if(ret_val == 1)	printf("[%i]: Error deleting temp file. File does not exist.\n");
