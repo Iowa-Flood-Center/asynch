@@ -695,8 +695,11 @@ int Create_Rain_Data_Grid(
                             forcing->received[cell] = 1;
                             forcing->intensities[cell] = (float)(intensity * forcing->factor);
                         }
-                        else
+                        else{
                             printf("Warning: bad grid cell id in file %s.\n", filename);
+                            printf("Read cell id %u num_cells is %u.\n", cell,forcing->num_cells);
+                        }
+                            
                     }
                 }
                 else
@@ -715,8 +718,10 @@ int Create_Rain_Data_Grid(
                             forcing->received[cell] = 1;
                             forcing->intensities[cell] = (float)(intensity * forcing->factor);
                         }
-                        else
+                        else{
                             printf("Warning: bad grid cell id in file %s.\n", filename);
+                            printf("Read cell id %u num_cells is %u.\n", cell,forcing->num_cells);
+                        }
                     }
                 }
 

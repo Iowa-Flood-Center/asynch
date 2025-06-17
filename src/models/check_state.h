@@ -59,4 +59,22 @@ int dam_check_qvs(
     bool has_dam,
     void *user);
 
+//Type 402
+int dam_check_qvs_402(
+    double *y, unsigned int num_dof,
+    const double * const params, unsigned int num_params,
+    const double * const global_params, unsigned int num_global_params,
+    QVSData *qvs,
+    bool has_dam,
+    void *user);
+
+//Type 403
+int dam_check_qvs_403(
+    double *y, unsigned int num_dof,
+    const double * const params, unsigned int num_params,
+    const double * const global_params, unsigned int num_global_params,
+    QVSData *qvs,
+    bool has_dam,
+    void *user);
+    
 #endif //!defined(ASYNCH_MODEL_CHECK_STATE_H)

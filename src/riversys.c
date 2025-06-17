@@ -361,6 +361,7 @@ void Create_River_Network(GlobalVars* globals, Link** system, unsigned int* N, L
             {
                 if (my_rank == 0)
                     printf("Error: Invalid id in topology data (%u).\n", loc_to_children[i][j]);
+                    printf("N: (%u) curr_loc (%u).\n", *N, curr_loc);
                 *N = 0;
                 return;
             }
@@ -1006,7 +1007,7 @@ static int Load_Initial_Conditions_Ini(
                         system[loc].params, globals->num_params,
                         y_0, system[loc].dim,
                         system[loc].user);
-                else
+                else // load from ini
                     system[i].state = ReadInitData(
                         globals->global_params, globals->num_global_params,
                         system[loc].params, globals->num_params,
@@ -1074,7 +1075,7 @@ static int Load_Initial_Conditions_Ini(
                         system[loc].params, globals->num_params,
                         y_0, system[loc].dim,
                         system[loc].user);
-                else
+                else // also from ini
                     system[i].state = ReadInitData(
                         globals->global_params, globals->num_global_params,
                         system[loc].params, globals->num_params,
@@ -1191,7 +1192,7 @@ static int Load_Initial_Conditions_Uini(
                     system[i].params, globals->num_params,
                     y_0, system[i].dim,
                     system[i].user);
-            else
+            else // from uini
                 system[i].state = ReadInitData(
                     globals->global_params, globals->num_global_params,
                     system[i].params, globals->num_params,

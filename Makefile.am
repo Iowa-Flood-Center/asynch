@@ -1,3 +1,5 @@
+AUTOMAKE_OPTIONS = subdir-objects
+
 SUBDIRS = src tests tools
 ACLOCAL_AMFLAGS = -I m4
 EXTRA_DIST = LICENSE README.md examples

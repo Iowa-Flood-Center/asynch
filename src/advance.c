@@ -76,7 +76,7 @@ void Advance(
         //Read in next set of forcing data
 		if ((print_level >= 2) && (my_rank == 0))
 		{
-			printf("[%i] Reading next set of forging data...", my_rank);
+			printf("[%i] Reading next set of forcing data...", my_rank);
 			fflush(stdout);
 		}
         double maxtime = globals->maxtime;

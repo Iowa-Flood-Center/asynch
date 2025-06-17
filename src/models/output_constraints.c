@@ -60,3 +60,16 @@ void OutputConstraints_Model256_Hdf5(double* states)
     if (states[7] < 1e-12)
         states[7] = 0;
 }
+void OutputConstraints_Model249_Hdf5(double* states)
+{
+    if (states[1] < 1e-12)
+        states[1] = 0;
+    if (states[2] < 1e-12)
+        states[2] = 0;
+    if (states[3] < 1e-12)
+        states[3] = 0;
+    if (states[4] < 1e-12)
+        states[4] = 0;
+    if (states[5] < 1e-12)
+        states[5] = 0;
+}

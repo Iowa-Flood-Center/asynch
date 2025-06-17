@@ -1,0 +1,47 @@
+# Strip the 'v' from the version tag
+{% if GIT_DESCRIBE_TAG is defined %}
+{%   set version = GIT_DESCRIBE_TAG %}
+{% else %}
+{%   set version = "0.0.0" %}
+{% endif %}
+
+package:
+  name: async
+  version: {{ version }}
+
+source:
+  #git_url: https://github.com/Iowa-Flood-Center/asynch.git
+  #git_rev: 1.4.2
+  #git_depth: 1
+  path: ..
+
+build:
+  number: 0
+
+requirements:
+  host:
+    - hdf5 1.10.*
+    - libpq
+    - openmpi
+    - openmpi-mpicc
+    - zlib
+  build:
+    - autoconf
+    - automake
+    - libtool
+    - m4
+    - pkg-config
+    - make
+    - {{ compiler('c') }}
+    - {{ compiler('fortran') }}
+  run:
+    - {{ pin_compatible('hdf5', max_pin='1.10') }}
+    - libpq
+    - mpi
+    - zlib
+
+about:
+  home: https://iowafloodcenter.org/
+  license: Boost
+  license_family: BSD
+  summary: Asynch is numerical library for solving differential equations with a tree structure

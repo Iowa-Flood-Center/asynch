@@ -31,6 +31,12 @@ void CheckConsistency_Nonzero_4States(
     const double * const params, unsigned int num_params,
     void *user);
 
+void CheckConsistency_Nonzero_5States(
+    double *y, unsigned int num_dof,
+    const double * const global_params, unsigned int num_global_params,
+    const double * const params, unsigned int num_params,
+    void *user);
+
 void CheckConsistency_Model5(
     double *y, unsigned int num_dof,
     const double * const global_params, unsigned int num_global_params,
@@ -45,6 +51,12 @@ void CheckConsistency_Model30(
     void *user);
 
 void CheckConsistency_Nonzero_AllStates_q(
+    double *y, unsigned int num_dof,
+    const double * const global_params, unsigned int num_global_params,
+    const double * const params, unsigned int num_params,
+    void *user);
+
+void CheckConsistency_608(
     double *y, unsigned int num_dof,
     const double * const global_params, unsigned int num_global_params,
     const double * const params, unsigned int num_params,

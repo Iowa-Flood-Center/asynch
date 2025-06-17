@@ -55,7 +55,7 @@ AsynchSolver* Asynch_Init(MPI_Comm comm, bool verbose)
 
         res->comm = comm;
         if (comm != MPI_COMM_WORLD)
-            printf("Warning: asynchsolver object my not work fully with in a comm other than MPI_COMM_WORLD.\n");
+            printf("Warning: asynchsolver object might not work fully with in a comm other than MPI_COMM_WORLD.\n");
 
         //Initialize MPI stuff
         MPI_Initialized(&init_flag);
